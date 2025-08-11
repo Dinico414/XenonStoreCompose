@@ -72,6 +72,8 @@ dependencies {
     implementation(composeBom)
     androidTestImplementation(composeBom)
     implementation(libs.haze)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation(libs.androidx.animation.graphics)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.haze.materials)

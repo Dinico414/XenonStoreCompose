@@ -1,11 +1,5 @@
-package com.xenon.store.ui.layouts.store // Assuming you want to change the package name
+package com.xenon.store.ui.layouts.store
 
-// Import other necessary resources for your store app
-// import com.xenon.store.ui.res.StoreItemCell // Example: if you have a store item cell
-// import com.xenon.store.ui.res.StoreItemContent // Example: if you have store item content
-// import com.xenon.store.viewmodel.StoreViewModel // Example: if you have a StoreViewModel
-// import com.xenon.store.viewmodel.StoreViewModelFactory // Example
-// import com.xenon.store.viewmodel.classes.StoreItem // Example
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
@@ -36,26 +30,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xenon.store.R
 import com.xenon.store.ui.layouts.ActivityScreen
-import com.xenon.store.ui.layouts.QuicksandTitleVariable
 import com.xenon.store.ui.res.FloatingToolbarContent
 import com.xenon.store.ui.res.GoogleProfilBorder
+import com.xenon.store.ui.res.StoreItemCell
 import com.xenon.store.ui.res.XenonSnackbar
 import com.xenon.store.ui.values.ExtraLargePadding
 import com.xenon.store.ui.values.ExtraLargeSpacing
-import com.xenon.store.ui.values.LargestPadding
 import com.xenon.store.ui.values.MediumPadding
 import com.xenon.store.ui.values.NoSpacing
 import com.xenon.store.ui.values.SmallPadding
 import com.xenon.store.viewmodel.DevSettingsViewModel
 import com.xenon.store.viewmodel.LayoutType
 import com.xenon.store.viewmodel.StoreViewModel
+import com.xenon.store.viewmodel.classes.StoreItem
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.rememberHazeState
@@ -75,24 +67,12 @@ fun CompactStore(
     onOpenSettings: () -> Unit,
     widthSizeClass: WindowWidthSizeClass,
 ) {
-
-    val storeItemsWithHeaders = remember { mutableStateOf<List<Any>>(emptyList()) }
-
-    @Suppress("UnusedVariable", "unused") val isAppBarCollapsible = when (layoutType) {
-        LayoutType.COVER -> false
-        LayoutType.SMALL -> false
-        LayoutType.COMPACT -> !isLandscape
-        LayoutType.MEDIUM -> true
-        LayoutType.EXPANDED -> true
-    }
+    val storeItems by storeViewModel.storeItems.collectAsState()
+    val error by storeViewModel.error.collectAsState()
 
     val hazeState = rememberHazeState()
-
-
     val snackbarHostState = remember { SnackbarHostState() }
-
     val currentSearchQuery by remember { mutableStateOf("") }
-
     var appWindowSize by remember { mutableStateOf(IntSize.Zero) }
 
     val showDummyProfile by devSettingsViewModel.showDummyProfileState.collectAsState()
@@ -123,7 +103,7 @@ fun CompactStore(
                 widthSizeClass = widthSizeClass,
                 layoutType = layoutType,
                 onSearchQueryChanged = { newQuery ->
-                    // storeViewModel.setSearchQuery(newQuery) // Example
+                    // Handle search query changes
                 },
                 appSize = appWindowSize
             )
@@ -175,7 +155,6 @@ fun CompactStore(
             },
 
             appBarActions = {},
-
             appBarSecondaryActionIcon = {},
 
             content = { _ ->
@@ -184,7 +163,20 @@ fun CompactStore(
                         .fillMaxSize()
                         .padding(horizontal = ExtraLargeSpacing)
                 ) {
-                    if (storeItemsWithHeaders.value.isEmpty() && currentSearchQuery.isBlank()) {
+                    if (error != null) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = error!!,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    } else if (storeItems.isEmpty()) {
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -196,51 +188,21 @@ fun CompactStore(
                                 style = MaterialTheme.typography.bodyLarge,
                             )
                         }
-                    } else if (storeItemsWithHeaders.value.isEmpty() && currentSearchQuery.isNotBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(R.string.no_search_results),
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                        }
                     } else {
                         LazyColumn(
-                            modifier = Modifier.weight(1f), contentPadding = PaddingValues(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(
                                 top = ExtraLargePadding,
                                 bottom = scaffoldPadding.calculateBottomPadding() + MediumPadding
                             )
                         ) {
-                            itemsIndexed(
-                                items = storeItemsWithHeaders.value,
-                            ) { index, item ->
-                                when (item) {
-                                    is String -> {
-                                        Text(
-                                            text = item,
-                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                                            ),
-                                            fontWeight = FontWeight.Thin,
-                                            textAlign = TextAlign.Start,
-                                            fontFamily = QuicksandTitleVariable,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(
-                                                    top = if (index == 0) 0.dp else LargestPadding,
-                                                    bottom = SmallPadding,
-                                                    start = SmallPadding,
-                                                    end = LargestPadding
-                                                )
-                                        )
-                                    }
-
-
-                                }
+                            items(storeItems) { storeItem ->
+                                StoreItemCell(
+                                    storeItem = storeItem,
+                                    onInstall = { /* Handle install */ },
+                                    onUninstall = { /* Handle uninstall */ },
+                                    onOpen = { /* Handle open */ }
+                                )
                             }
                         }
                     }
