@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,31 +67,57 @@ fun StoreItemCell(
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
+
             when (storeItem.state) {
-                AppEntryState.NOT_INSTALLED -> {
-                    Button(onClick = { onInstall(storeItem) }) {
-                        Text(text = "Install")
-                    }
-                }
                 AppEntryState.DOWNLOADING -> {
                     LinearProgressIndicator(
                         progress = { storeItem.bytesDownloaded.toFloat() / storeItem.fileSize.toFloat() },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+                AppEntryState.NOT_INSTALLED -> {
+                    Button(
+                        onClick = { onInstall(storeItem) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(text = "Install")
+                    }
+                }
                 AppEntryState.INSTALLED -> {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { onOpen(storeItem) }) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(onClick = { onOpen(storeItem) }, modifier = Modifier.weight(1f)) {
                             Text(text = "Open")
                         }
-                        Button(onClick = { onUninstall(storeItem) }) {
-                            Text(text = "Uninstall")
+                        Button(onClick = { onUninstall(storeItem) }, modifier = Modifier.weight(0.5f)) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "Uninstall"
+                            )
                         }
                     }
                 }
                 AppEntryState.INSTALLED_AND_OUTDATED -> {
-                    Button(onClick = { onInstall(storeItem) }) {
-                        Text(text = "Update")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(onClick = { onInstall(storeItem) }, modifier = Modifier.weight(1f)) {
+                            Text(text = "Update")
+                        }
+                        Button(onClick = { onOpen(storeItem) }, modifier = Modifier.weight(1f)) {
+                            Text(text = "Open")
+                        }
+                        Button(onClick = { onUninstall(storeItem) }, modifier = Modifier.weight(0.5f)) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "Uninstall"
+                            )
+                        }
                     }
                 }
             }
@@ -96,27 +125,50 @@ fun StoreItemCell(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Store Item States")
 @Composable
 private fun StoreItemCellPreview() {
-    // Create a direct instance of StoreItem with mock data for the preview.
-    // Use hashMapOf() to create a HashMap as required by the constructor.
-    val mockItem = StoreItem(
-        nameMap = hashMapOf("en" to "Sample App", "es" to "Aplicación de Muestra"),
-        packageName = "com.sample.app",
-        githubUrl = "https://github.com/sample/app",
-        iconPath = "" // Assuming the real getDrawableId handles an empty path
-    ).apply {
-        // Set the mutable state properties for the preview
-        state = AppEntryState.NOT_INSTALLED
-        installedVersion = "N/A"
-        newVersion = "1.0.0"
-    }
+    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        // Not Installed State
+        StoreItemCell(
+            storeItem = StoreItem(
+                nameMap = hashMapOf("en" to "Not Installed App"),
+                packageName = "com.sample.app.notinstalled",
+                githubUrl = "...", iconPath = ""
+            ).apply {
+                state = AppEntryState.NOT_INSTALLED
+                installedVersion = "N/A"
+                newVersion = "1.0.0"
+            },
+            onInstall = {}, onUninstall = {}, onOpen = {}
+        )
 
-    StoreItemCell(
-        storeItem = mockItem,
-        onInstall = {},
-        onUninstall = {},
-        onOpen = {}
-    )
+        // Installed State
+        StoreItemCell(
+            storeItem = StoreItem(
+                nameMap = hashMapOf("en" to "Installed App"),
+                packageName = "com.sample.app.installed",
+                githubUrl = "...", iconPath = ""
+            ).apply {
+                state = AppEntryState.INSTALLED
+                installedVersion = "1.0.0"
+                newVersion = "1.0.0"
+            },
+            onInstall = {}, onUninstall = {}, onOpen = {}
+        )
+
+        // Outdated State
+        StoreItemCell(
+            storeItem = StoreItem(
+                nameMap = hashMapOf("en" to "Outdated App"),
+                packageName = "com.sample.app.outdated",
+                githubUrl = "...", iconPath = ""
+            ).apply {
+                state = AppEntryState.INSTALLED_AND_OUTDATED
+                installedVersion = "1.0.0"
+                newVersion = "1.1.0"
+            },
+            onInstall = {}, onUninstall = {}, onOpen = {}
+        )
+    }
 }
