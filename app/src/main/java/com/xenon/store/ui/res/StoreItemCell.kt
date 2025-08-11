@@ -32,7 +32,6 @@ fun StoreItemCell(
     onOpen: (StoreItem) -> Unit
 ) {
     val context = LocalContext.current
-    // Get configuration the Compose-native way to ensure recomposition on change
     val configuration = LocalConfiguration.current
     val language = configuration.locales[0].language
 
@@ -56,7 +55,6 @@ fun StoreItemCell(
                     )
                 }
                 Column(modifier = Modifier.padding(start = 16.dp)) {
-                    // Use the language from the state-aware configuration
                     Text(text = storeItem.getName(language))
                     if (storeItem.isOutdated()) {
                         Text(text = "Version: ${storeItem.installedVersion} -> ${storeItem.newVersion}")
@@ -101,17 +99,18 @@ fun StoreItemCell(
 @Preview(showBackground = true)
 @Composable
 private fun StoreItemCellPreview() {
-    // A mock StoreItem is created for the preview because we can't use the
-    // real ViewModel logic here. This shows the 'Not Installed' state.
-    val mockItem = object : StoreItem() {
-        init {
-            state = AppEntryState.NOT_INSTALLED
-            installedVersion = "N/A"
-            newVersion = "1.0.0"
-        }
-        override fun getName(language: String): String = "Sample App"
-        override fun getDrawableId(context: android.content.Context): Int = 0
-        override fun isOutdated(): Boolean = false
+    // Create a direct instance of StoreItem with mock data for the preview.
+    // Use hashMapOf() to create a HashMap as required by the constructor.
+    val mockItem = StoreItem(
+        nameMap = hashMapOf("en" to "Sample App", "es" to "Aplicación de Muestra"),
+        packageName = "com.sample.app",
+        githubUrl = "https://github.com/sample/app",
+        iconPath = "" // Assuming the real getDrawableId handles an empty path
+    ).apply {
+        // Set the mutable state properties for the preview
+        state = AppEntryState.NOT_INSTALLED
+        installedVersion = "N/A"
+        newVersion = "1.0.0"
     }
 
     StoreItemCell(
