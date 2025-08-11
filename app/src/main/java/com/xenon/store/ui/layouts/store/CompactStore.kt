@@ -100,7 +100,7 @@ fun CompactStore(
     Scaffold(
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
-                XenonSnackbar( // Adapt XenonSnackbar or use a standard one
+                XenonSnackbar(
                     snackbarData = snackbarData,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                 )
@@ -175,7 +175,7 @@ fun CompactStore(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = stringResource(R.string.no_search_results),
+                                text = stringResource(R.string.nothing_in_store_yet),
                                 style = MaterialTheme.typography.bodyLarge,
                             )
                         }

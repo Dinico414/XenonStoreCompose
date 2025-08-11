@@ -4,11 +4,6 @@ import android.annotation.SuppressLint
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -52,7 +47,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -100,7 +94,6 @@ fun FloatingToolbarContent(
 ) {
     val localContext = LocalContext.current
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
-    var showActionIconsExceptSearch by rememberSaveable { mutableStateOf(true) }
     var canShowTextField by rememberSaveable { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
@@ -122,15 +115,9 @@ fun FloatingToolbarContent(
     val internalStartPadding = 8.dp
     val internalEndPadding = 8.dp
     val iconSize = 48.dp
-    val spaceBetweenToolbarAndFab = 8.dp
-    val fabSize = 56.dp
-    val totalSubtractionInDp =
-        startPadding + internalStartPadding + iconSize + internalEndPadding + endPadding +
-                if (isSearchActive) { // Only add FAB size if it's supposed to be there
-                    spaceBetweenToolbarAndFab + fabSize
-                } else {
-                    0.dp
-                }
+
+    val fabSpace = 56.dp + 8.dp
+
     val baseScreenWidthDp =
         if ((appWidthDp == 561.dp && appHeightDp == 748.dp) || (appWidthDp == 748.dp && appHeightDp == 561.dp)) {
             appWidthDp
@@ -138,44 +125,47 @@ fun FloatingToolbarContent(
             screenWidthDp
         }
 
-    val calculatedMaxWidth = baseScreenWidthDp - totalSubtractionInDp
+    val totalSubtractionForSearchActive =
+        startPadding + internalStartPadding + iconSize + internalEndPadding + endPadding + fabSpace
+    val totalSubtractionForSearchInactive =
+        startPadding + internalStartPadding + (iconSize * 3) + internalEndPadding + endPadding
+
+    val calculatedMaxWidth = if (isSearchActive) {
+        baseScreenWidthDp - totalSubtractionForSearchActive
+    } else {
+        baseScreenWidthDp - totalSubtractionForSearchInactive
+    }
+
 
     LaunchedEffect(isSearchActive) {
-        if (isSearchActive) {
             delay(iconsClearanceTime.toLong() - iconGroupExitAnimationDuration)
-            showActionIconsExceptSearch = false
-        } else {
-            showActionIconsExceptSearch = true
-        }
     }
 
     LaunchedEffect(isSearchActive) {
         if (isSearchActive) {
             delay(textFieldExistenceDelay)
             canShowTextField = true
+            delay(50)
         } else {
             canShowTextField = false
+            keyboardController?.hide()
         }
     }
-
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
-                bottom = WindowInsets.navigationBars.asPaddingValues()
+                bottom = WindowInsets.navigationBars
+                    .asPaddingValues()
                     .calculateBottomPadding() + LargePadding,
             ), contentAlignment = Alignment.Center
     ) {
-        HorizontalFloatingToolbar(
-            modifier = Modifier.height(64.dp),
-            expanded = true,
-            floatingActionButton =  {
-                AnimatedVisibility(
-                    visible = isSearchActive,
-                    enter = fadeIn(animationSpec = tween(durationMillis = 300, delayMillis = 100)),
-                    exit = fadeOut(animationSpec = tween(durationMillis = 200))
-                ) {
+        if (isSearchActive) {
+            HorizontalFloatingToolbar(
+                modifier = Modifier.height(64.dp),
+                expanded = true,
+                floatingActionButton = {
                     Box(contentAlignment = Alignment.Center) {
                         val fabShape = FloatingActionButtonDefaults.shape
                         val interactionSource = remember { MutableInteractionSource() }
@@ -224,22 +214,18 @@ fun FloatingToolbarContent(
                                 )
                             }
                         }
-
                         FloatingActionButton(
                             onClick = {
                                 onSearchQueryChanged("")
-                                keyboardController?.hide()
-                                isSearchActive = false
+                                isSearchActive = false // This will trigger recomposition to the other branch
                             },
-                            containerColor = Color.Transparent,
+                            containerColor = Color.Transparent, // Consider making this solid if haze isn't perfect
                             shape = fabShape,
-                            elevation = FloatingActionButtonDefaults.elevation(
-                                0.dp, 0.dp, 0.dp, 0.dp
-                            ),
+                            elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
                             interactionSource = interactionSource,
                             modifier = Modifier
                                 .clip(FloatingActionButtonDefaults.shape)
-                                .background(colorScheme.primary)
+                                .background(colorScheme.primary) // Ensure background for haze
                                 .hazeEffect(
                                     state = hazeState,
                                     style = HazeMaterials.ultraThin(hazeThinColor),
@@ -247,116 +233,31 @@ fun FloatingToolbarContent(
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = if (isSearchActive) stringResource(R.string.cancel) else stringResource(
-                                    R.string.add_task_description
-                                ),
+                                contentDescription = stringResource(R.string.cancel),
                                 tint = fabIconTint,
                             )
                         }
                     }
-                }
-            },
-            colors = FloatingToolbarDefaults.standardFloatingToolbarColors(colorScheme.surfaceDim),
-            contentPadding = FloatingToolbarDefaults.ContentPadding,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = {
-                    isSearchActive = true
-                }) {
-                    Icon(
-                        Icons.Filled.Search,
-                        contentDescription = stringResource(R.string.search_tasks_description),
-                        tint = colorScheme.onSurface
-                    )
-                }
-                AnimatedVisibility(
-                    visible = showActionIconsExceptSearch && !isSearchActive,
-                    enter = fadeIn(animationSpec = tween(durationMillis = 500)),
-                    exit = shrinkHorizontally(
-                        animationSpec = tween(
-                            durationMillis = iconGroupExitAnimationDuration,
-                            delayMillis = iconsClearanceTime
+                },
+                colors = FloatingToolbarDefaults.standardFloatingToolbarColors(colorScheme.surfaceDim),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Search Icon (still clickable to potentially re-initiate search, though current logic closes it)
+                    IconButton(onClick = { /* isSearchActive is already true */ }) {
+                        Icon(
+                            Icons.Filled.Search,
+                            contentDescription = stringResource(R.string.search_tasks_description),
+                            tint = colorScheme.onSurface
                         )
-                    ) + fadeOut(
-                        animationSpec = tween(
-                            durationMillis = iconGroupExitAnimationDuration,
-                            delayMillis = iconsClearanceTime
-                        )
-                    )
-                ) {
-                    Row {
-                        val iconAlphaTarget = if (isSearchActive) 0f else 1f
-
-                        val sortIconAlpha by animateFloatAsState(
-                            targetValue = iconAlphaTarget, animationSpec = tween(
-                                durationMillis = iconsAlphaDuration,
-                                delayMillis = if (isSearchActive) 0 else 0
-                            ), label = "SortIconAlpha"
-                        )
-                        IconButton(
-                            onClick = {
-                                Toast.makeText(localContext, "Coming soon", Toast.LENGTH_SHORT)
-                                    .show()
-                            },
-                            modifier = Modifier.alpha(sortIconAlpha),
-                            enabled = !isSearchActive && showActionIconsExceptSearch
-                        ) {
-                            Icon(
-                                Icons.Filled.Download,
-                                contentDescription = stringResource(R.string.sort_tasks_description),
-                                tint = colorScheme.onSurface
-                            )
-                        }
-
-                        val filterIconAlpha by animateFloatAsState(
-                            targetValue = iconAlphaTarget, animationSpec = tween(
-                                durationMillis = iconsAlphaDuration,
-                                delayMillis = if (isSearchActive) 100 else 0
-                            ), label = "FilterIconAlpha"
-                        )
-                        IconButton(
-                            onClick = {
-                                Toast.makeText(localContext, "Coming soon", Toast.LENGTH_SHORT)
-                                    .show()
-                            },
-                            modifier = Modifier.alpha(filterIconAlpha),
-                            enabled = !isSearchActive && showActionIconsExceptSearch
-                        ) {
-                            Icon(
-                                Icons.Filled.Share,
-                                contentDescription = stringResource(R.string.filter_tasks_description),
-                                tint = colorScheme.onSurface
-                            )
-                        }
-
-                        val settingsIconAlpha by animateFloatAsState(
-                            targetValue = iconAlphaTarget, animationSpec = tween(
-                                durationMillis = iconsAlphaDuration,
-                                delayMillis = if (isSearchActive) 200 else 0
-                            ), label = "SettingsIconAlpha"
-                        )
-                        IconButton(
-                            onClick = onOpenSettings,
-                            modifier = Modifier.alpha(settingsIconAlpha),
-                            enabled = !isSearchActive && showActionIconsExceptSearch
-                        ) {
-                            Icon(
-                                Icons.Filled.Settings,
-                                contentDescription = stringResource(R.string.settings),
-                                tint = colorScheme.onSurface
-                            )
-                        }
                     }
-                }
 
-                if (canShowTextField) {
-                    AnimatedVisibility(
-                        visible = isSearchActive
-                    ) {
+                    // TextField is only shown when canShowTextField is true
+                    // and canShowTextField is controlled by isSearchActive with a delay
+                    AnimatedVisibility(visible = canShowTextField) {
                         val maxWidth = when {
                             layoutType == LayoutType.MEDIUM -> 280.dp
                             layoutType == LayoutType.EXPANDED && widthSizeClass == WindowWidthSizeClass.Expanded -> 280.dp
-                            else -> if (calculatedMaxWidth > 0.dp) calculatedMaxWidth else 0.dp
+                            else -> if (calculatedMaxWidth > 0.dp) calculatedMaxWidth else 0.dp // Use calculatedMaxWidth
                         }
                         XenonTextFieldV2(
                             value = currentSearchQuery,
@@ -366,7 +267,7 @@ fun FloatingToolbarContent(
                             modifier = Modifier
                                 .widthIn(max = maxWidth)
                                 .focusRequester(focusRequester)
-                            .weight(1f, fill = false),
+                                .weight(1f, fill = false),
                             placeholder = { Text(stringResource(R.string.search)) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -374,6 +275,56 @@ fun FloatingToolbarContent(
                                 keyboardController?.hide()
                             })
                         )
+                    }
+                }
+            }
+        } else {
+            // Layout WHEN SEARCH IS NOT ACTIVE (only action icons)
+            HorizontalFloatingToolbar(
+                modifier = Modifier.height(64.dp), // Ensure consistent height
+                expanded = true,
+                // NO floatingActionButton when search is not active
+                colors = FloatingToolbarDefaults.standardFloatingToolbarColors(colorScheme.surfaceDim),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = {
+                        isSearchActive = true // This will trigger recomposition to the other branch
+                    }) {
+                        Icon(
+                            Icons.Filled.Search,
+                            contentDescription = stringResource(R.string.search_tasks_description),
+                            tint = colorScheme.onSurface
+                        )
+                    }
+                    // Action icons are always visible in this branch (showActionIconsExceptSearch will be true)
+                    // You can keep AnimatedVisibility for their individual fade in/out if desired,
+                    // but the group's visibility is controlled by the outer if/else.
+                    Row {
+                        IconButton(
+                            onClick = { Toast.makeText(localContext, "Coming soon", Toast.LENGTH_SHORT).show() }
+                        ) {
+                            Icon(
+                                Icons.Filled.Download,
+                                contentDescription = stringResource(R.string.sort_tasks_description),
+                                tint = colorScheme.onSurface
+                            )
+                        }
+                        IconButton(
+                            onClick = { Toast.makeText(localContext, "Coming soon", Toast.LENGTH_SHORT).show() }
+                        ) {
+                            Icon(
+                                Icons.Filled.Share,
+                                contentDescription = stringResource(R.string.filter_tasks_description),
+                                tint = colorScheme.onSurface
+                            )
+                        }
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(
+                                Icons.Filled.Settings,
+                                contentDescription = stringResource(R.string.settings),
+                                tint = colorScheme.onSurface
+                            )
+                        }
                     }
                 }
             }
