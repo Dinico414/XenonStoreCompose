@@ -16,6 +16,9 @@ import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -43,6 +46,7 @@ fun DevDefaultSettings(
 
     ActivityScreen(
         titleText = stringResource(id = R.string.developer_options_title),
+
         navigationIconStartPadding = MediumPadding,
         navigationIconPadding = MediumPadding,
         navigationIconSpacing = NoSpacing,

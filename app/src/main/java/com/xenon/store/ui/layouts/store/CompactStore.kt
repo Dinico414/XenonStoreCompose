@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -97,6 +98,14 @@ fun CompactStore(
     val showDummyProfile by devSettingsViewModel.showDummyProfileState.collectAsState()
     val isDeveloperModeEnabled by devSettingsViewModel.devModeToggleState.collectAsState()
 
+    val shouldShowNavigationElements by remember(isDeveloperModeEnabled, showDummyProfile) {
+        derivedStateOf {
+            val isMainIconPresent = false
+            val isExtraIconPresent = isDeveloperModeEnabled && showDummyProfile
+            isMainIconPresent || isExtraIconPresent
+        }
+    }
+
     Scaffold(
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
@@ -130,18 +139,24 @@ fun CompactStore(
                 },
             titleText = stringResource(id = R.string.app_name),
 
-            navigationIconStartPadding = SmallPadding,
-            navigationIconPadding = if (isDeveloperModeEnabled && showDummyProfile) SmallPadding else MediumPadding,
-            navigationIconSpacing = NoSpacing,
+            navigationIconStartPadding = if (shouldShowNavigationElements) SmallPadding else 0.dp,
+            navigationIconPadding = if (shouldShowNavigationElements) {
+                if (isDeveloperModeEnabled && showDummyProfile) SmallPadding else MediumPadding
+            } else {
+                0.dp
+            },
+            navigationIconSpacing = if (shouldShowNavigationElements) NoSpacing else 0.dp,
 
-            navigationIconContent = {
+            navigationIconContent = null,
 
+            hasNavigationIconExtraContent = if (shouldShowNavigationElements) {
+                isDeveloperModeEnabled && showDummyProfile
+            } else {
+                false
             },
 
-            hasNavigationIconExtraContent = isDeveloperModeEnabled && showDummyProfile,
-
-            navigationIconExtraContent = {
-                if (isDeveloperModeEnabled && showDummyProfile) {
+            navigationIconExtraContent = if (shouldShowNavigationElements && isDeveloperModeEnabled && showDummyProfile) {
+                {
                     Box(
                         contentAlignment = Alignment.Center,
                     ) {
@@ -155,6 +170,8 @@ fun CompactStore(
                         )
                     }
                 }
+            } else {
+                {}
             },
 
             appBarActions = {},
