@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">XenonStore(alpha)</string>
+    <string name="todo_sheet_title">To-Do Listen</string>
+    <string name="settings">Einstellungen</string>
+
+    <string name="theme">Theme</string>
+    <string name="cover_screen_mode">Frontdisplay Modus</string>
+    <string name="language">Sprache</string>
+    <string name="clear_data">Alle Daten löschen</string>
+    <string name="version">Version</string>
+
+    <string name="current">Aktuell:</string>
+    <string name="cover_screen_mode_description">Ausgewählter Frontdisplay</string>
+    <string name="enabled">Aktiv</string>
+    <string name="disabled">Inaktiv</string>
+    <string name="clear_data_description">Löscht App Daten und Cache</string>
+
+    <string name="ok">Okay</string>
+    <string name="confirm">Bestätigen</string>
+    <string name="yes">Ja</string>
+    <string name="cancel">Abbruch</string>
+    <string name="no">Nein</string>
+
+    <string name="error_restarting_app">Fehler beim Neustart</string>
+    <string name="error_clearing_data_failed">Fehler beim Löschen der Daten</string>
+    <string name="error_clearing_data_permission">Berechtigung fehlt</string>
+
+    <string name="theme_dialog_title">Wähle Theme</string>
+    <string name="cover_screen_dialog_title">Ist dies aktuell der Frontdisplay?</string>
+    <string name="language_dialog_title">Wähle Sprache</string>
+    <string name="clear_data_dialog_title">Alle Daten löschen?</string>
+
+    <string name="cover_dialog_description">Aktivieren, um ein kompakteres, randloses Layout anzuwenden, wenn das Frontdisplay verwendet wird.</string>
+    <string name="clear_data_dialog_description">Bist du sicher, dass du alle Daten löschen willst?</string>
+
+    <string name="switch_units_description">Wechsel Einheiten</string>
+    <string name="navigate_back_description">Zurück Aktion</string>
+
+
+    <string name="system_default">System</string>
+    <string name="delete_task_description">Aufgabe löschen</string>
+    <string name="add_task_description">Aufgabe hinzufügen</string>
+    <string name="new_task_label">Neue Aufgabe</string>
+    <string name="no_tasks_message">Keine Aufgaben</string>
+    <string name="settings_menu_item_description">Öffne Einstellungen</string>
+    <string name="settings_menu_item">Einstellungen</string>
+    <string name="menu_description">Öffne Menü</string>
+    <string name="checkbox">Checkbox</string>
+
+    <string name="save_task">Aufgabe speichern</string>
+    <string name="mark_complete_description">Als Vollständige markieren</string>
+    <string name="edit_task_label">Aufgabe bearbeiten</string>
+    <string name="sort_tasks_description">Aufgabe sortieren</string>
+    <string name="filter_tasks_description">Aufgabe filtern</string>
+    <string name="search_tasks_description">Aufgabe suchen</string>
+    <string name="open_navigation_menu">Öffne Navigation</string>
+    <string name="less_options">weniger Optionen</string>
+    <string name="more_options">mehr Optionen</string>
+    <string name="task_description_label">Beschreibung</string>
+    <string name="task_has_description">Beschreibung vorhanden</string>
+    <string name="task_has_notification">Benachrichtigung vorhanden</string>
+    <string name="task_is_important">Ist Wichtig</string>
+    <string name="task_is_very_important">Ist sehr Wichtig</string>
+    <string name="task_has_steps">Schritte vorhanden</string>
+    <string name="task_has_attachments">Anhang vorhanden</string>
+    <string name="priority_label">Priorität</string>
+    <string name="priority_low">Niedrig</string>
+    <string name="priority_high">Hoch</string>
+    <string name="priority_highest">Höchste</string>
+    <string name="mark_incomplete_description">Als Unvollständig markieren</string>
+    <string name="my_tasklist">Meine Aufgabelisten</string>
+    <string name="placeholder">Placeholder</string>
+    <string name="add_new_list">Neue Liste hinzufügen</string>
+    <string name="delete_lists">Lösche ausgewählte Liste(n)</string>
+    <string name="list_name_label">Listen Name</string>
+    <string name="save">Speichern</string>
+    <string name="add_new_list_dialog_title">Neue Liste hinzufügen</string>
+    <string name="rename_list_dialog_title">Liste umbenennen</string>
+    <string name="confirm_delete_title">Löschen bestätigen</string>
+    <string name="confirm_delete_message">Bist du sicher, dass du die ausgewählte(n) Liste(n) löschen willst? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="delete">Löschen</string>
+    <string name="select_date_title">Datum auswählen</string>
+    <string name="select_date">Datum\nauswählen</string>
+    <string name="select_time_title">Zeit auswählen</string>
+    <string name="select_time">Zeit\nauswählen</string>
+    <string name="blacked_out">Ausgeschwärzt</string>
+    <string name="blacked_out_description">Dunkelt Darkmode noch mehr ab.</string>
+    <string name="descending_label">Absteigend</string>
+    <string name="ascending_label">Aufsteigend</string>
+    <string name="reset">Zurück\u200Bsetzen</string>
+    <string name="reset_settings">Alle Einstellungen zurücksetzen</string>
+    <string name="reset_settings_dialog_title">Alle Einstellungen zurücksetzen?</string>
+    <string name="reset_settings_dialog_description">Bist du sicher, dass du alle Einstellungen zurücksetzen willst?</string>
+    <string name="include">Anzeigen</string>
+    <string name="exclude">Ausblenden</string>
+    <string name="time_format">Zeitformat</string>
+    <string name="date_format">Datumsformat</string>
+    <string name="date_time_format"><![CDATA[Zeit & Datums Format]]></string>
+    <string name="search">Suche</string>
+    <string name="add_new_step">Schritt hinzufügen</string>
+    <string name="steps">Schritte</string>
+    <string name="no_steps">Keine Schritte</string>
+    <string name="remove_step">Schritt löschen</string>
+    <string name="undo">Rückgängig</string>
+    <string name="no_search_results">Keine Suchergebnisse</string>
+    <string name="task_text">Aufgabe</string>
+    <string name="deleted_text">gelöscht</string>
+    <string name="task_name">Task Name</string>
+    <string name="developer_options_title">Developer Options</string>
+    <string name="dev_settings_description">Enable Alpha and Beta State Features</string>
+    <string name="developer_options">Developer Settings</string>
+    <string name="already_in_developer_mode">You are already in developer mode</string>
+    <string name="developer_mode_enabled">Developer mode enabled!</string>
+    <string name="taps_remaining_to_developer">You are now %d steps away from being a developer.</string>
+    <string name="show_dummy_profile_title">Enable Fake Google Profile</string>
+    <string name="restart_app_description">restart app</string>
+
+</resources>

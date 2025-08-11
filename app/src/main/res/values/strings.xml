@@ -1,0 +1,119 @@
+<resources>
+    <string name="app_name">XenonStore(alpha) </string>
+    <string name="todo_sheet_title">To-Do Lists</string>
+    <string name="settings">Settings</string>
+
+    <string name="theme">Theme</string>
+    <string name="cover_screen_mode">Cover Screen Mode</string>
+    <string name="language">Language</string>
+    <string name="clear_data">Clear all Data</string>
+    <string name="version">Version</string>
+
+    <string name="current">Current:</string>
+    <string name="cover_screen_mode_description">Selected Cover Screen </string>
+    <string name="enabled">Active</string>
+    <string name="disabled">Inactive</string>
+    <string name="clear_data_description">Clear app data and cache</string>
+
+
+    <string name="ok">OK</string>
+    <string name="confirm">Confirm</string>
+    <string name="yes">Yes</string>
+    <string name="cancel">Cancel</string>
+    <string name="no">No</string>
+
+    <string name="error_restarting_app">Error restarting app</string>
+    <string name="error_clearing_data_failed">Error clearing data</string>
+    <string name="error_clearing_data_permission">Permission missing</string>
+
+    <string name="theme_dialog_title">Select Theme</string>
+    <string name="cover_screen_dialog_title">Is this currently the cover screen?</string>
+    <string name="language_dialog_title">Select Language</string>
+    <string name="clear_data_dialog_title">Clear all data?</string>
+
+    <string name="cover_dialog_description">Enable to apply a more compact, borderless layout when you are using the Cover Display.</string>
+    <string name="clear_data_dialog_description">Are you sure you want to clear all data?</string>
+
+    <string name="switch_units_description">Switch Units</string>
+    <string name="navigate_back_description">Back Action</string>
+
+    <string name="system_default">System</string>
+    <string name="delete_task_description">Delete Task</string>
+    <string name="add_task_description">Add Task</string>
+    <string name="new_task_label">New Task</string>
+    <string name="no_tasks_message">No Tasks</string>
+    <string name="settings_menu_item_description">Open Settings</string>
+    <string name="settings_menu_item">Settings</string>
+    <string name="menu_description">Open Menu</string>
+    <string name="checkbox">Checkbox</string>
+
+    <string name="save_task">Save Task</string>
+    <string name="mark_complete_description">Mark as Completed</string>
+    <string name="edit_task_label">Edit Task</string>
+    <string name="sort_tasks_description">Sort Tasks</string>
+    <string name="filter_tasks_description">Filter Tasks</string>
+    <string name="search_tasks_description">Search Tasks</string>
+    <string name="open_navigation_menu">Open List Selector</string>
+    <string name="less_options">less options</string>
+    <string name="more_options">more options</string>
+    <string name="task_description_label">Description</string>
+    <string name="task_has_description">Description available</string>
+    <string name="task_has_notification">Notification</string>
+    <string name="task_is_important">Is Important</string>
+    <string name="task_is_very_important">Is very Important</string>
+    <string name="task_has_steps">Steps</string>
+    <string name="task_has_attachments">Attachments</string>
+    <string name="priority_label">Priority</string>
+    <string name="priority_low">Low</string>
+    <string name="priority_high">High</string>
+    <string name="priority_highest">Highest</string>
+    <string name="mark_incomplete_description">task not completed</string>
+    <string name="my_tasklist">My Tasklist</string>
+    <string name="placeholder">Placeholder</string>
+    <string name="add_new_list">Add new List</string>
+    <string name="delete_lists">Delete selected List(s)</string>
+    <string name="list_name_label">List Name</string>
+    <string name="save">Save</string>
+    <string name="add_new_list_dialog_title">Add New List</string>
+    <string name="rename_list_dialog_title">Rename List</string>
+    <string name="confirm_delete_title">Confirm Delete</string>
+    <string name="confirm_delete_message">Are you sure you want to delete the selected list(s)? This
+        action cannot be undone.
+    </string>
+    <string name="delete">Delete</string>
+    <string name="select_date_title">select Date</string>
+    <string name="select_date">select\nDate</string>
+    <string name="select_time_title">select Time</string>
+    <string name="select_time">select\nTime</string>
+    <string name="blacked_out">Blacked-out</string>
+    <string name="blacked_out_description">Make Darkmode even darker.</string>
+    <string name="descending_label">Descending</string>
+    <string name="ascending_label">Ascending</string>
+    <string name="reset">Reset</string>
+    <string name="reset_settings">Reset all Settings</string>
+    <string name="reset_settings_dialog_title">Reset all settings?</string>
+    <string name="reset_settings_dialog_description">Are you sure you want to reset all settings?</string>
+    <string name="include">Include</string>
+    <string name="exclude">Exclude</string>
+    <string name="time_format">Time format</string>
+    <string name="date_format">Date format</string>
+    <string name="date_time_format"><![CDATA[Time & Date format]]></string>
+    <string name="search">Search</string>
+    <string name="add_new_step">Add Step</string>
+    <string name="steps">Steps</string>
+    <string name="no_steps">No Steps</string>
+    <string name="remove_step">Delete Step</string>
+    <string name="undo">Undo</string>
+    <string name="no_search_results">No search results</string>
+    <string name="task_text">Task</string>
+    <string name="deleted_text">deleted</string>
+    <string name="task_name">Task Name</string>
+    <string name="developer_options_title">Developer Options</string>
+    <string name="dev_settings_description">Enable Alpha and Beta State Features</string>
+    <string name="developer_options">Developer Settings</string>
+    <string name="already_in_developer_mode">You are already in developer mode</string>
+    <string name="developer_mode_enabled">Developer mode enabled!</string>
+    <string name="taps_remaining_to_developer">You are now %d steps away from being a developer.</string>
+    <string name="show_dummy_profile_title">Enable Fake Google Profile</string>
+    <string name="restart_app_description">restart app</string>
+</resources>
