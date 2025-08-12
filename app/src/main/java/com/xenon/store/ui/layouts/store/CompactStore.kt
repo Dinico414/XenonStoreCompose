@@ -1,6 +1,7 @@
 package com.xenon.store.ui.layouts.store
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
@@ -41,13 +42,13 @@ import com.xenon.store.ui.res.StoreItemCell
 import com.xenon.store.ui.res.XenonSnackbar
 import com.xenon.store.ui.values.ExtraLargePadding
 import com.xenon.store.ui.values.ExtraLargeSpacing
+import com.xenon.store.ui.values.LargestPadding
 import com.xenon.store.ui.values.MediumPadding
 import com.xenon.store.ui.values.NoSpacing
 import com.xenon.store.ui.values.SmallPadding
 import com.xenon.store.viewmodel.DevSettingsViewModel
 import com.xenon.store.viewmodel.LayoutType
 import com.xenon.store.viewmodel.StoreViewModel
-import com.xenon.store.viewmodel.classes.StoreItem
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.rememberHazeState
@@ -91,7 +92,7 @@ fun CompactStore(
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
                 XenonSnackbar(
                     snackbarData = snackbarData,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    modifier = Modifier.padding(horizontal = LargestPadding, vertical = 12.dp)
                 )
             }
         },
@@ -192,11 +193,12 @@ fun CompactStore(
                         LazyColumn(
                             modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(
-                                top = ExtraLargePadding,
+                                top = LargestPadding,
                                 bottom = scaffoldPadding.calculateBottomPadding() + MediumPadding
-                            )
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(LargestPadding)
                         ) {
-                            items(storeItems) { storeItem ->
+                            itemsIndexed(storeItems) { index, storeItem ->
                                 StoreItemCell(
                                     storeItem = storeItem,
                                     onInstall = { /* Handle install */ },

@@ -5,11 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
@@ -30,6 +30,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.xenon.store.ui.values.MediumCornerRadius
+import com.xenon.store.ui.values.MediumPadding
 import com.xenon.store.viewmodel.classes.AppEntryState
 import com.xenon.store.viewmodel.classes.StoreItem
 
@@ -47,14 +49,15 @@ fun StoreItemCell(
 
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Card(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(MediumCornerRadius))
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(MediumPadding)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -89,7 +92,11 @@ fun StoreItemCell(
 
                     AppEntryState.NOT_INSTALLED -> {
                         Button(
-                            onClick = { onInstall(storeItem) }, modifier = Modifier.fillMaxWidth()
+                            onClick = { onInstall(storeItem) },
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp)
                         ) {
                             Text(text = "Install")
                         }
@@ -98,16 +105,23 @@ fun StoreItemCell(
                     AppEntryState.INSTALLED -> {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Button(
-                                onClick = { onOpen(storeItem) }, modifier = Modifier.weight(1f)
+                                onClick = { onOpen(storeItem) },
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp)
                             ) {
                                 Text(text = "Open")
                             }
                             Button(
                                 onClick = { onUninstall(storeItem) },
-                                modifier = Modifier.weight(0.5f)
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier
+                                    .weight(0.5f)
+                                    .height(40.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Delete, contentDescription = null
@@ -119,21 +133,32 @@ fun StoreItemCell(
                     AppEntryState.INSTALLED_AND_OUTDATED -> {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Button(
-                                onClick = { onInstall(storeItem) }, modifier = Modifier.weight(1f)
+                                onClick = { onInstall(storeItem) },
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp)
                             ) {
                                 Text(text = "Update")
                             }
                             Button(
-                                onClick = { onOpen(storeItem) }, modifier = Modifier.weight(1f)
+                                onClick = { onOpen(storeItem) },
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp)
                             ) {
                                 Text(text = "Open")
                             }
                             Button(
                                 onClick = { onUninstall(storeItem) },
-                                modifier = Modifier.weight(0.5f)
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier
+                                    .weight(0.75f)
+                                    .height(40.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Delete, contentDescription = null
@@ -147,13 +172,12 @@ fun StoreItemCell(
 
         if (storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED) {
             Column(
-                modifier = Modifier
-                    .padding(start = 8.dp),
+                modifier = Modifier.padding(start = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "${storeItem.installedVersion}->${storeItem.newVersion}", 
+                    text = "${storeItem.installedVersion}->${storeItem.newVersion}",
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.graphicsLayer(rotationZ = -90f)
