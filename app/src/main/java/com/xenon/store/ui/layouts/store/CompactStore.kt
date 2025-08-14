@@ -1,34 +1,17 @@
 package com.xenon.store.ui.layouts.store
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
@@ -40,18 +23,14 @@ import com.xenon.store.ui.res.FloatingToolbarContent
 import com.xenon.store.ui.res.GoogleProfilBorder
 import com.xenon.store.ui.res.StoreItemCell
 import com.xenon.store.ui.res.XenonSnackbar
-import com.xenon.store.ui.values.ExtraLargePadding
-import com.xenon.store.ui.values.ExtraLargeSpacing
-import com.xenon.store.ui.values.LargestPadding
-import com.xenon.store.ui.values.MediumPadding
-import com.xenon.store.ui.values.NoSpacing
-import com.xenon.store.ui.values.SmallPadding
+import com.xenon.store.ui.values.*
 import com.xenon.store.viewmodel.DevSettingsViewModel
 import com.xenon.store.viewmodel.LayoutType
 import com.xenon.store.viewmodel.StoreViewModel
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.rememberHazeState
+import kotlinx.coroutines.flow.collectLatest
 
 
 @OptIn(
@@ -68,12 +47,14 @@ fun CompactStore(
     onOpenSettings: () -> Unit,
     widthSizeClass: WindowWidthSizeClass,
 ) {
+    val context = LocalContext.current
     val storeItems by storeViewModel.storeItems.collectAsState()
-    val error by storeViewModel.error.collectAsState()
+    val errorMessage by storeViewModel.error.collectAsState()
+    val currentActionInfo by storeViewModel.currentActionInfo.collectAsState()
 
     val hazeState = rememberHazeState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val currentSearchQuery by remember { mutableStateOf("") }
+    var currentSearchQuery by remember { mutableStateOf("") }
     var appWindowSize by remember { mutableStateOf(IntSize.Zero) }
 
     val showDummyProfile by devSettingsViewModel.showDummyProfileState.collectAsState()
@@ -86,6 +67,26 @@ fun CompactStore(
             isMainIconPresent || isExtraIconPresent
         }
     }
+
+    LaunchedEffect(Unit) {
+        storeViewModel.error.collectLatest { errorMsg ->
+            if (errorMsg != null) {
+                snackbarHostState.showSnackbar(
+                    message = errorMsg,
+                    duration = SnackbarDuration.Long
+                )
+                storeViewModel.clearError()
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        storeViewModel.currentActionInfo.collectLatest { infoMsg ->
+            if (infoMsg != null) {
+                Toast.makeText(context, infoMsg, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
 
     Scaffold(
         snackbarHost = {
@@ -104,12 +105,13 @@ fun CompactStore(
                 widthSizeClass = widthSizeClass,
                 layoutType = layoutType,
                 onSearchQueryChanged = { newQuery ->
-                    // Handle search query changes
+                    currentSearchQuery = newQuery
                 },
                 appSize = appWindowSize
             )
         },
-    ) { scaffoldPadding ->
+
+        ) { scaffoldPadding ->
         ActivityScreen(
             modifier = Modifier
                 .fillMaxSize()
@@ -119,7 +121,6 @@ fun CompactStore(
                     appWindowSize = newSize
                 },
             titleText = stringResource(id = R.string.app_name),
-
             navigationIconStartPadding = if (shouldShowNavigationElements) SmallPadding else 0.dp,
             navigationIconPadding = if (shouldShowNavigationElements) {
                 if (isDeveloperModeEnabled && showDummyProfile) SmallPadding else MediumPadding
@@ -154,17 +155,15 @@ fun CompactStore(
             } else {
                 {}
             },
-
             appBarActions = {},
             appBarSecondaryActionIcon = {},
-
             content = { _ ->
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = ExtraLargeSpacing)
                 ) {
-                    if (error != null) {
+                    if (errorMessage != null) {
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -172,7 +171,7 @@ fun CompactStore(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = error!!,
+                                text = errorMessage!!,
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -198,12 +197,18 @@ fun CompactStore(
                             ),
                             verticalArrangement = Arrangement.spacedBy(LargestPadding)
                         ) {
-                            itemsIndexed(storeItems) { index, storeItem ->
+                            itemsIndexed(storeItems, key = { _, item -> item.packageName }) { _, storeItem ->
                                 StoreItemCell(
                                     storeItem = storeItem,
-                                    onInstall = { /* Handle install */ },
-                                    onUninstall = { /* Handle uninstall */ },
-                                    onOpen = { /* Handle open */ }
+                                    onInstall = { item ->
+                                        storeViewModel.installApp(item, context)
+                                    },
+                                    onUninstall = { item ->
+                                        storeViewModel.uninstallApp(item, context)
+                                    },
+                                    onOpen = { item ->
+                                        storeViewModel.openApp(item, context)
+                                    }
                                 )
                             }
                         }

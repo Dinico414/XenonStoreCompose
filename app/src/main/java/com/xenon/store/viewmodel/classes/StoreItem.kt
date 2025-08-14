@@ -1,55 +1,53 @@
 package com.xenon.store.viewmodel.classes
 
 import android.content.Context
-import com.xenon.store.util.Util
+import android.content.res.Resources // For Util.getCurrentLanguage
+import com.xenon.store.util.Util // Assuming Util.getCurrentLanguage
 
 enum class AppEntryState {
     NOT_INSTALLED,
     DOWNLOADING,
     INSTALLED,
-    INSTALLED_AND_OUTDATED,
+    INSTALLED_AND_OUTDATED
 }
 
 data class StoreItem(
-    val nameMap: HashMap<String, String>,
+    val nameMap: Map<String, String>,
     val iconPath: String,
     val githubUrl: String,
     val packageName: String,
-) {
-    var id: Int = -1
-    var state: AppEntryState = AppEntryState.NOT_INSTALLED
-    var installedVersion: String = ""
-    var newVersion: String = ""
-    var installedIsPreRelease = false
-    var newIsPreRelease = false
 
-    fun isOutdated(): Boolean {
-        return installedVersion.isNotEmpty() && isNewerVersion(newVersion)
+    var state: AppEntryState = AppEntryState.NOT_INSTALLED,
+    var installedVersion: String = "",
+    var newVersion: String = "",
+    var downloadUrl: String = "",
+    var bytesDownloaded: Long = 0L,
+    var fileSize: Long = 0L
+) {
+    val owner: String
+        get() = githubUrl.split("/").getOrNull(3) ?: ""
+    val repo: String
+        get() = githubUrl.split("/").getOrNull(4) ?: ""
+
+    fun getName(language: String): String {
+        return nameMap[language] ?: nameMap["en"] ?: packageName
     }
 
-    // Download progressbar variables
-    var bytesDownloaded: Long = 0
-    var fileSize: Long = 0
-    var downloadUrl: String = ""
+    fun isOutdated(): Boolean {
+        if (installedVersion.isEmpty() || newVersion.isEmpty()) return false
+        return Util.isNewerVersion(installedVersion, newVersion)
+    }
 
-    private val ownerRepoRegex = "^https://[^/]*github\\.com/([^/]+)/([^/]+)".toRegex()
-    val owner = ownerRepoRegex.find(githubUrl)?.groups?.get(1)?.value ?: ""
-    val repo = ownerRepoRegex.find(githubUrl)?.groups?.get(2)?.value ?: ""
-
-    private val iconRegex = "^@([^/]+)/([^/]+)".toRegex()
-    private val iconDirectory = iconRegex.find(iconPath)?.groups?.get(1)?.value
-    private val iconName = iconRegex.find(iconPath)?.groups?.get(2)?.value
-
-    fun getName(langCode: String): String {
-        return nameMap[langCode] ?: nameMap["en"] ?: "App"
+    fun isNewerVersion(remoteVersion: String): Boolean {
+        if (newVersion.isEmpty() && remoteVersion.isNotEmpty()) return true
+        return Util.isNewerVersion(newVersion, remoteVersion)
     }
 
     fun getDrawableId(context: Context): Int {
-        if (iconDirectory == null || iconName == null) return 0
-        return context.resources.getIdentifier(iconName, iconDirectory, context.packageName)
-    }
-
-    fun isNewerVersion(latestVersion: String): Boolean {
-        return Util.isNewerVersion(installedVersion, latestVersion)
+        return try {
+            context.resources.getIdentifier(iconPath, "drawable", context.packageName)
+        } catch (e: Exception) {
+            0
+        }
     }
 }
