@@ -66,6 +66,7 @@ fun SettingsItems(
     val haptic = LocalHapticFeedback.current
     val blackedOutEnabled by viewModel.blackedOutModeEnabled.collectAsState()
     val developerModeEnabled by viewModel.developerModeEnabled.collectAsState()
+    val checkForPreReleases by viewModel.checkForPreReleases.collectAsState() // Collect pre-release state
 
     val actualInnerGroupRadius = if (useGroupStyling) innerGroupRadius else 0.dp
     val actualOuterGroupRadius = if (useGroupStyling) outerGroupRadius else 0.dp
@@ -99,9 +100,9 @@ fun SettingsItems(
     else RoundedCornerShape(NoCornerRadius)
 
     val showDummyProfile by devSettingsViewModel.showDummyProfileState.collectAsState()
-    val isDeveloperModeEnabled by devSettingsViewModel.devModeToggleState.collectAsState()
+    val isDeveloperModeEnabled by devSettingsViewModel.devModeToggleState.collectAsState() // This seems to be from DevSettingsViewModel, ensure it's the correct one for overall dev mode visibility
 
-    if (isDeveloperModeEnabled && showDummyProfile) {
+    if (isDeveloperModeEnabled && showDummyProfile) { // Assuming isDeveloperModeEnabled from devSettingsViewModel is the primary toggle for the dummy profile
         SettingsGoogleTile(
             title = "Your Name",
             subtitle = "your.email@gmail.com",
@@ -258,7 +259,7 @@ fun SettingsItems(
     Spacer(Modifier.height(actualInnerGroupSpacing))
     SettingsTile(
         title = stringResource(R.string.version),
-        subtitle = "v $appVersion" + if (developerModeEnabled) " (Developer)" else "",
+        subtitle = "v $appVersion" + if (developerModeEnabled) " (Developer)" else "", // developerModeEnabled from SettingsViewModel
         onClick = { viewModel.onInfoTileClicked(context) },
         onLongClick = { viewModel.openImpressum(context) },
         icon = {
@@ -276,6 +277,7 @@ fun SettingsItems(
         verticalPadding = tileVerticalPadding
     )
 
+    // Use developerModeEnabled from SettingsViewModel for controlling visibility of this section
     if (developerModeEnabled) {
         Spacer(Modifier.height(actualOuterGroupSpacing))
         SettingsTile(
@@ -295,12 +297,36 @@ fun SettingsItems(
                     tint = tileSubtitleColor
                 )
             },
-            shape = tileShapeOverride ?: standaloneShape,
+            // This tile is now the top of a group of two
+            shape = tileShapeOverride ?: topShape, 
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
             horizontalPadding = tileHorizontalPadding,
             verticalPadding = tileVerticalPadding
+        )
+        Spacer(Modifier.height(actualInnerGroupSpacing)) // Spacer between dev options and pre-release switch
+        SettingsSwitchTile(
+            title = "Check for pre-releases", // TODO: Replace with stringResource
+            subtitle = "Include pre-release versions when checking for updates", // TODO: Replace with stringResource
+            checked = checkForPreReleases,
+            onCheckedChange = { viewModel.setCheckForPreReleases(it) },
+            onClick = { viewModel.setCheckForPreReleases(!checkForPreReleases) },
+            icon = {
+                Icon(
+                    painterResource(R.drawable.developer), // TODO: Replace with actual pre-release/beta icon
+                    contentDescription = "Check for pre-releases", // TODO: Replace with stringResource
+                    tint = tileSubtitleColor
+                )
+            },
+            // This tile is now the bottom of a group of two
+            shape = tileShapeOverride ?: bottomShape,
+            backgroundColor = tileBackgroundColor,
+            contentColor = tileContentColor,
+            subtitleColor = tileSubtitleColor,
+            horizontalPadding = tileHorizontalPadding,
+            verticalPadding = tileVerticalPadding,
+            switchColors = switchColorsOverride ?: defaultSwitchColors
         )
     }
 }

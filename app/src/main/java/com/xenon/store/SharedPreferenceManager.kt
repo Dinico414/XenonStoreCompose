@@ -25,6 +25,7 @@ class SharedPreferenceManager(context: Context) {
     private val developerModeKey = "developer_mode_enabled"
     // New key for the dummy profile setting
     private val showDummyProfileKey = "show_dummy_profile_enabled"
+    private val checkForPreReleasesKey = "check_for_pre_releases" // Added key
 
     internal val sharedPreferences: SharedPreferences =
         context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
@@ -82,6 +83,10 @@ class SharedPreferenceManager(context: Context) {
         get() = sharedPreferences.getBoolean(showDummyProfileKey, false)
         set(value) = sharedPreferences.edit { putBoolean(showDummyProfileKey, value) }
 
+    var checkForPreReleases: Boolean // Added property
+        get() = sharedPreferences.getBoolean(checkForPreReleasesKey, false)
+        set(value) = sharedPreferences.edit { putBoolean(checkForPreReleasesKey, value) }
+
 
     fun getBoolean(key: String, defaultValue: Boolean): Boolean {
         return sharedPreferences.getBoolean(key, defaultValue)
@@ -121,6 +126,7 @@ class SharedPreferenceManager(context: Context) {
             putString(timeFormatKey, defaultTimeFormat)
             putBoolean(developerModeKey, false)
             putBoolean(showDummyProfileKey, false)
+            putBoolean(checkForPreReleasesKey, false) // Added reset
         }
     }
 }

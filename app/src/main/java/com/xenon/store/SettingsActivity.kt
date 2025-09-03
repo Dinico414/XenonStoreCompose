@@ -91,6 +91,5 @@ class SettingsActivity : ComponentActivity() {
         // from DevSettingsActivity), the ViewModel's state is updated from SharedPreferences
         // or other sources, which will then trigger UI recomposition if needed.
         settingsViewModel.updateCurrentLanguage() // This now also calls refreshDeveloperModeState()
-        settingsViewModel.refreshDeveloperModeState() // Explicit call for clarity, though updateCurrentLanguage also calls it
     }
 }

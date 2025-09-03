@@ -117,4 +117,10 @@
     <string name="restart_app_description">restart app</string>
     <string name="nothing_in_store_yet">Nothing in store yet</string>
 
+    <string name="install">install</string>
+    <string name="update">update</string>
+    <string name="open">open</string>
+    <string name="version_with_prefix">Version: %s</string>
+    <string name="uninstall">uninstall</string>
+
 </resources>

@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.xenon.store.SharedPreferenceManager // Added import
 import com.xenon.store.util.Util // Assuming Util.getCurrentLanguage and other utils
 import com.xenon.store.viewmodel.classes.AppEntryState
 import com.xenon.store.viewmodel.classes.StoreItem
@@ -25,6 +26,7 @@ import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -43,6 +45,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     val currentActionInfo: StateFlow<String?> = _currentActionInfo.asStateFlow()
 
     private val client: OkHttpClient
+    private val sharedPreferenceManager = SharedPreferenceManager(application) // Added instance
 
     private companion object {
         const val APP_LIST_PROTOCOL_VERSION = "v0.1"
@@ -61,21 +64,21 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _currentActionInfo.value = "Refreshing app list..."
             val urlString =
-                "https://raw.githubusercontent.com/Dinico414/Xenon-Commons/master/accesspoint/src/main/java/com/xenon/commons/accesspoint/app_list.json" // Replace with your actual URL
+                "https://raw.githubusercontent.com/Dinico414/Xenon-Commons/master/accesspoint/src/main/java/com/xenon/commons/accesspoint/app_list.json"
             downloadToString(urlString, object : DownloadListener<String> {
                 override fun onCompleted(result: String) {
                     val hash = result.hashCode()
                     if (useCache && cachedJsonHash != 0 && _storeItems.value.isNotEmpty() && cachedJsonHash == hash) {
-                        Log.d(TAG, "App list JSON is unchanged, refreshing existing items.")
-                        refreshAllAppItemsStates(useCache)
+                        Log.d(TAG, "App list JSON is unchanged, refreshing existing items states with useCache = true.")
+                        refreshAllAppItemsStates(true) // Pass true to respect cached newVersion/downloadUrl
                         _currentActionInfo.value = "App list refreshed (cached)."
                         return
                     }
                     cachedJsonHash = hash
-                    Log.d(TAG, "Parsing new app list JSON.")
+                    Log.d(TAG, "Parsing new app list JSON or cache miss/invalidated.")
                     val appList = parseAppListJson(result)
                     _storeItems.value = appList
-                    refreshAllAppItemsStates(false) // Refresh states with new list data
+                    refreshAllAppItemsStates(false) // Pass false to force GitHub fetches for new/updated list
                     _currentActionInfo.value = "App list updated."
                 }
 
@@ -87,48 +90,48 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun refreshAllAppItemsStates(useCache: Boolean = true) {
+    private fun refreshAllAppItemsStates(useCache: Boolean) { // Changed parameter name for clarity
         viewModelScope.launch {
             val updatedList = _storeItems.value.map { item ->
-                refreshAppItemBlocking(item.copy(), useCache) // Use copy to ensure new object for StateFlow
+                refreshAppItemBlocking(item.copy(), useCache) // Pass along useCache preference
             }
             _storeItems.value = updatedList
         }
     }
 
-    private suspend fun refreshAppItemBlocking(appItem: StoreItem, useCache: Boolean = true): StoreItem {
+    private suspend fun refreshAppItemBlocking(appItem: StoreItem, githubInfoUseCache: Boolean): StoreItem {
         return withContext(Dispatchers.IO) {
-            appItem.installedVersion = getInstalledAppVersion(appItem.packageName) ?: ""
+            val currentAppItem = appItem // Already a copy from refreshAllAppItemsStates
 
-            if (appItem.state != AppEntryState.DOWNLOADING) {
-                if (appItem.isOutdated()) {
-                    appItem.state = AppEntryState.INSTALLED_AND_OUTDATED
-                } else if (appItem.installedVersion.isNotEmpty()) {
-                    appItem.state = AppEntryState.INSTALLED
-                } else {
-                    appItem.state = AppEntryState.NOT_INSTALLED
-                }
-            }
+            currentAppItem.installedVersion = getInstalledAppVersion(currentAppItem.packageName) ?: ""
 
-            if (appItem.downloadUrl.isEmpty() || !useCache || appItem.newVersion.isEmpty()) {
+            val shouldFetchFromGitHub = currentAppItem.newVersion.isEmpty() ||
+                                        currentAppItem.downloadUrl.isEmpty() ||
+                                        !githubInfoUseCache
+
+            if (shouldFetchFromGitHub) {
                 try {
-                    val releaseInfo = getNewReleaseVersionGithubBlocking(appItem.owner, appItem.repo)
-                    appItem.downloadUrl = releaseInfo.downloadUrl
-                    if (appItem.isNewerVersion(releaseInfo.version)) {
-                        appItem.newVersion = releaseInfo.version
-                        if (appItem.state == AppEntryState.INSTALLED && appItem.isOutdated()) {
-                            appItem.state = AppEntryState.INSTALLED_AND_OUTDATED
-                        }
-                    } else if (appItem.newVersion.isEmpty()) {
-                        // If no newer version and newVersion was empty, set it to installed if available
-                        appItem.newVersion = appItem.installedVersion.ifEmpty { releaseInfo.version }
-                    }
+                    Log.d(TAG, "Fetching GitHub release for ${currentAppItem.packageName}. Conditions: newVersionEmpty=${currentAppItem.newVersion.isEmpty()}, downloadUrlEmpty=${currentAppItem.downloadUrl.isEmpty()}, githubInfoUseCache=$githubInfoUseCache")
+                    val releaseInfo = getNewReleaseVersionGithubBlocking(currentAppItem.owner, currentAppItem.repo)
+                    currentAppItem.downloadUrl = releaseInfo.downloadUrl
+                    currentAppItem.newVersion = releaseInfo.version
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to get release info for ${appItem.packageName}: ${e.message}")
-                    // Keep existing versions or mark as error if critical
+                    Log.e(TAG, "Failed to get release info for ${currentAppItem.packageName}: ${e.message}")
+                }
+            } else {
+                Log.d(TAG, "Skipping GitHub release fetch for ${currentAppItem.packageName} due to cache preference and existing data.")
+            }
+
+            if (currentAppItem.state != AppEntryState.DOWNLOADING) {
+                if (currentAppItem.isOutdated()) { 
+                    currentAppItem.state = AppEntryState.INSTALLED_AND_OUTDATED
+                } else if (currentAppItem.installedVersion.isNotEmpty()) {
+                    currentAppItem.state = AppEntryState.INSTALLED
+                } else {
+                    currentAppItem.state = AppEntryState.NOT_INSTALLED
                 }
             }
-            appItem // Return the modified item
+            currentAppItem
         }
     }
 
@@ -187,28 +190,53 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun getNewReleaseVersionGithubBlocking(owner: String, repo: String): GithubReleaseInfo {
-        val url = "https://api.github.com/repos/$owner/$repo/releases/latest"
+        val checkForPreReleases = sharedPreferenceManager.checkForPreReleases
+        val url = if (checkForPreReleases) {
+            "https://api.github.com/repos/$owner/$repo/releases"
+        } else {
+            "https://api.github.com/repos/$owner/$repo/releases/latest"
+        }
         val request = Request.Builder().url(url).build()
 
         return withContext(Dispatchers.IO) {
             try {
                 val response = client.newCall(request).execute()
-                if (!response.isSuccessful) throw IOException("Unexpected code $response")
+                if (!response.isSuccessful) throw IOException("Unexpected code $response for $url")
 
                 val responseBody = response.body?.string()
-                if (responseBody.isNullOrEmpty()) throw IOException("Empty response body")
+                if (responseBody.isNullOrEmpty()) throw IOException("Empty response body from $url")
 
-                val latestRelease = JSONObject(responseBody)
-                val newVersion = latestRelease.getString("tag_name")
-                val assets = latestRelease.getJSONArray("assets")
-                if (assets.length() > 0) {
-                    val asset = assets.getJSONObject(0) // Assuming the first asset is the APK
-                    GithubReleaseInfo(newVersion, asset.getString("browser_download_url"))
+                if (checkForPreReleases) {
+                    val releasesArray = JSONArray(responseBody)
+                    for (i in 0 until releasesArray.length()) {
+                        val releaseNode = releasesArray.getJSONObject(i)
+                        val isDraft = releaseNode.optBoolean("draft", false)
+                        if (!isDraft) {
+                            // We consider this release if it's not a draft.
+                            // If checkForPreReleases is true, we accept both pre-releases and stable releases.
+                            // The list is ordered newest first, so the first non-draft with assets is taken.
+                            val assets = releaseNode.getJSONArray("assets")
+                            if (assets.length() > 0) {
+                                val asset = assets.getJSONObject(0) // Assuming the first asset is the APK
+                                val newVersion = releaseNode.getString("tag_name")
+                                return@withContext GithubReleaseInfo(newVersion, asset.getString("browser_download_url"))
+                            }
+                        }
+                    }
+                    throw IOException("No suitable non-draft release with assets found in /releases endpoint for $owner/$repo")
                 } else {
-                    throw IOException("No assets found in the latest release")
+                    val latestRelease = JSONObject(responseBody)
+                    val newVersion = latestRelease.getString("tag_name")
+                    val assets = latestRelease.getJSONArray("assets")
+                    if (assets.length() > 0) {
+                        val asset = assets.getJSONObject(0) // Assuming the first asset is the APK
+                        GithubReleaseInfo(newVersion, asset.getString("browser_download_url"))
+                    } else {
+                        throw IOException("No assets found in the latest release for $owner/$repo")
+                    }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to get GitHub release for $owner/$repo: ${e.message}")
+                Log.e(TAG, "Failed to get GitHub release for $owner/$repo (URL: $url): ${e.message}")
                 throw e // Re-throw to be caught by caller
             }
         }
@@ -227,12 +255,9 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
 
-            // --- Basic Download and Install ---
-            // THIS IS A SIMPLIFIED VERSION. YOU NEED A ROBUST DOWNLOADER AND FILEPROVIDER.
             val fileName = "${storeItem.packageName}_${storeItem.newVersion}.apk"
             val destinationFile = File(context.getExternalFilesDir(null), fileName)
 
-            // Update item state to DOWNLOADING
             updateItemState(storeItem.packageName, AppEntryState.DOWNLOADING, bytesDownloaded = 0, fileSize = 100) // Placeholder fileSize
 
             downloadFile(storeItem.downloadUrl, destinationFile,
@@ -263,35 +288,28 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
             intent.setDataAndType(fileUri, "application/vnd.android.package-archive")
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) // Important if calling from non-Activity context
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) 
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 if (!context.packageManager.canRequestPackageInstalls()) {
                     _error.value = "Permission needed to install apps. Please enable in settings."
-                    // Guide user to settings
                     val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
                         data = Uri.parse("package:${context.packageName}")
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     context.startActivity(settingsIntent)
-                    updateItemState(packageName, AppEntryState.NOT_INSTALLED) // Reset state
+                    updateItemState(packageName, AppEntryState.NOT_INSTALLED) 
                     _currentActionInfo.value = null
                     return
                 }
             }
             context.startActivity(intent)
-            // After this, the system takes over. You'll need to refresh the list
-            // later to see if the installation was successful (e.g., in onResume or via broadcast receiver).
-            // For now, we'll just log.
             Log.d(TAG, "Installation intent started for ${apkFile.name}")
-            // Optimistically, you might set state to INSTALLED here, but it's better to verify.
-            // For simplicity, we wait for a manual refresh or app restart.
             _currentActionInfo.value = "Installation process started by system."
-            // Consider calling fetchAndRefreshAppList() after a short delay or when app resumes.
         } catch (e: Exception) {
             _error.value = "Failed to start installation: ${e.message}"
             Log.e(TAG, "Error initiating install: ", e)
-            updateItemState(packageName, AppEntryState.NOT_INSTALLED) // Reset state
+            updateItemState(packageName, AppEntryState.NOT_INSTALLED) 
             _currentActionInfo.value = null
         }
     }
@@ -306,8 +324,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-            // The system handles the uninstall dialog.
-            // Refresh list later (e.g., onResume or via broadcast).
             _currentActionInfo.value = "Uninstallation process started by system."
         } catch (e: Exception) {
             _error.value = "Failed to start uninstall: ${e.message}"
@@ -324,7 +340,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             if (intent != null) {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
-                _currentActionInfo.value = null // Clear info after opening
+                _currentActionInfo.value = null 
             } else {
                 _error.value = "Could not open app: ${storeItem.getName(Util.getCurrentLanguage(context.resources))}. App not found or no launch intent."
                 Log.w(TAG, "No launch intent found for package: ${storeItem.packageName}")
@@ -345,7 +361,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 val updatedItem = currentList[itemIndex].copy(
                     state = newState,
                     bytesDownloaded = bytesDownloaded,
-                    fileSize = if (fileSize > 0) fileSize else currentList[itemIndex].fileSize // Keep old if new is 0
+                    fileSize = if (fileSize > 0) fileSize else currentList[itemIndex].fileSize 
                 )
                 val newList = currentList.toMutableList()
                 newList[itemIndex] = updatedItem
@@ -361,8 +377,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         useCache: Boolean = true,
     ) {
         val request = Request.Builder().url(url).build()
-        // Cache control can be more fine-grained with OkHttpClient if needed
-        val currentClient = if (useCache) client else OkHttpClient() // Simplified cache handling
+        val currentClient = if (useCache) client else OkHttpClient()
 
         currentClient.newCall(request).enqueue(object : Callback {
             override fun onResponse(call: Call, response: Response) {
@@ -415,14 +430,14 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                             while (bytes >= 0) {
                                 outputStream.write(buffer, 0, bytes)
                                 bytesCopied += bytes
-                                if (fileSize > 0) { // Only report progress if total size is known
+                                if (fileSize > 0) { 
                                     viewModelScope.launch { onProgress(bytesCopied, fileSize) }
                                 }
                                 bytes = inputStream.read(buffer)
                             }
                         }
                     }
-                    if (bytesCopied > 0) { // Ensure something was actually downloaded
+                    if (bytesCopied > 0) { 
                         viewModelScope.launch { onCompleted() }
                     } else {
                         viewModelScope.launch { onFailure("Zero bytes downloaded.") }
@@ -442,7 +457,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         fun onFailure(error: String)
     }
 
-    // Clear error message
     fun clearError() {
         _error.value = null
     }
@@ -453,6 +467,5 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        // Cancel any ongoing operations if necessary
     }
 }
