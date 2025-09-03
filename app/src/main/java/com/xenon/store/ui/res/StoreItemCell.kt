@@ -4,12 +4,14 @@ import android.graphics.Paint
 import android.util.Log
 import android.view.View
 import android.widget.ImageView
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -23,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -68,15 +71,10 @@ fun StoreItemCell(
     val configuration = LocalConfiguration.current
     val language = Util.getCurrentLanguage(context.resources)
 
-    // Button visibility and text state variables based on old logic
-    val showInstallButton = storeItem.state == AppEntryState.NOT_INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED
-    val showOpenUninstallButtons = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated())
-    val showProgressBar = storeItem.state == AppEntryState.DOWNLOADING
-
     val installButtonText = when (storeItem.state) {
         AppEntryState.NOT_INSTALLED -> context.getString(R.string.install)
         AppEntryState.INSTALLED_AND_OUTDATED -> context.getString(R.string.update)
-        AppEntryState.DOWNLOADING -> "" // Old code set text to "" for actionButton during download
+        // For DOWNLOADING state, the button will show progress, so text is not primary
         else -> context.getString(R.string.install)
     }
 
@@ -169,85 +167,83 @@ fun StoreItemCell(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                if (showProgressBar) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        LinearProgressIndicator(
-                            progress = {
-                                if (storeItem.fileSize > 0) {
-                                    storeItem.bytesDownloaded.toFloat() / storeItem.fileSize.toFloat()
-                                } else {
-                                    0f // Indeterminate if no size
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = if (storeItem.fileSize > 0) {
-                                "Downloading: ${storeItem.bytesDownloaded / (1024 * 1024)}MB / ${storeItem.fileSize / (1024 * 1024)}MB"
-                            } else {
-                                "Downloading..."
-                            },
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-
-                // Button layout mimicking old logic
+                // Button layout
                 val mainActionButtonVisible = storeItem.state == AppEntryState.NOT_INSTALLED ||
-                                          storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED ||
-                                          storeItem.state == AppEntryState.DOWNLOADING
+                        storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED ||
+                        storeItem.state == AppEntryState.DOWNLOADING
 
                 val openAndUninstallRowVisible = storeItem.state == AppEntryState.INSTALLED ||
-                                               storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED ||
-                                               (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated())
+                        storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED ||
+                        (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated())
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = if (mainActionButtonVisible && openAndUninstallRowVisible) Arrangement.spacedBy(4.dp) else Arrangement.Center
+                    horizontalArrangement = if (mainActionButtonVisible && openAndUninstallRowVisible) Arrangement.spacedBy(4.dp) else Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (mainActionButtonVisible) {
                         Button(
-                            onClick = { onInstall(storeItem) },
+                            onClick = { if (storeItem.state != AppEntryState.DOWNLOADING) onInstall(storeItem) },
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier
                                 .then(if (openAndUninstallRowVisible) Modifier.weight(1f) else Modifier.fillMaxWidth())
                                 .height(40.dp),
-                            enabled = storeItem.state != AppEntryState.DOWNLOADING // Disabled while downloading, text is already empty
+                            enabled = storeItem.state != AppEntryState.DOWNLOADING, // Disable clicks during download
+                            contentPadding = if (storeItem.state == AppEntryState.DOWNLOADING) androidx.compose.foundation.layout.PaddingValues(0.dp) else ButtonDefaults.ContentPadding // Remove padding for progress bar
                         ) {
-                            if (installButtonText.isNotEmpty()) { // Only show text if not downloading
+                            if (storeItem.state == AppEntryState.DOWNLOADING) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillMaxHeight() // Make the Box fill the available height of the Button
+                                        .padding(8.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant) // Background for the track
+                                ) {
+                                    val progress = if (storeItem.fileSize > 0) {
+                                        storeItem.bytesDownloaded.toFloat() / storeItem.fileSize.toFloat()
+                                    } else {
+                                        0f
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxHeight() // Fill the height of the parent Box
+                                            .fillMaxWidth(fraction = progress) // Width determined by progress
+                                            .background(
+                                                color = MaterialTheme.colorScheme.secondary,
+                                                shape = RoundedCornerShape(8.dp) // Apply shape to the progress itself
+                                            )
+                                            .clip(RoundedCornerShape(8.dp)) // Ensure content is clipped to the shape
+                                    )
+                                }
+
+
+                            } else {
                                 Text(text = installButtonText)
                             }
                         }
                     }
 
                     if (openAndUninstallRowVisible) {
-                        // This Spacer is used to mimic the marginStart for buttonLayout in the old XML
-                        if (mainActionButtonVisible) {
-                           // Spacer is handled by Arrangement.spacedBy if both are visible
-                        } else {
-                            // If only Open/Uninstall is visible, no extra space needed as Row is centered
-                        }
-
                         Button(
                             onClick = { onOpen(storeItem) },
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(40.dp)
+                                .height(40.dp),
+                            enabled = storeItem.state != AppEntryState.DOWNLOADING // Optionally disable if downloading
                         ) {
                             Text(text = context.getString(R.string.open))
                         }
-                        Spacer(modifier = Modifier.width(4.dp)) // Spacing between Open and Uninstall
+                        Spacer(modifier = Modifier.width(4.dp))
                         OutlinedButton(
                             onClick = { onUninstall(storeItem) },
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier
-                                .width(72.dp) // As per old layout, uninstall is smaller
-                                .height(40.dp)
+                                .width(72.dp)
+                                .height(40.dp),
+                            enabled = storeItem.state != AppEntryState.DOWNLOADING // Optionally disable if downloading
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Delete,
@@ -259,28 +255,27 @@ fun StoreItemCell(
             }
         }
 
-        // Vertical version display (original from Compose)
-        // This is kept if the item is outdated, but horizontal one above is more like old XML
-        if (storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED &&
-            storeItem.installedVersion.isNotEmpty() && storeItem.newVersion.isNotEmpty() && !showVersionInfoHorizontal) {
-            Column(
-                modifier = Modifier
-                    .padding(start = 8.dp)
-                    .height(IntrinsicSize.Max),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "${storeItem.installedVersion}->${storeItem.newVersion}",
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier
-                        .graphicsLayer(rotationZ = -90f)
-                )
-            }
-        }
+//        if (storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED &&
+//            storeItem.installedVersion.isNotEmpty() && storeItem.newVersion.isNotEmpty() && !showVersionInfoHorizontal) {
+//            Column(
+//                modifier = Modifier
+//                    .padding(start = 8.dp)
+//                    .height(IntrinsicSize.Max),
+//                horizontalAlignment = Alignment.CenterHorizontally,
+//                verticalArrangement = Arrangement.Center
+//            ) {
+//                Text(
+//                    text = "${storeItem.installedVersion}->${storeItem.newVersion}",
+//                    textAlign = TextAlign.Center,
+//                    style = MaterialTheme.typography.bodySmall,
+//                    modifier = Modifier
+//                        .graphicsLayer(rotationZ = -90f)
+//                )
+//            }
+//        }
     } // End Row
 }
+
 
 // Dummy StoreItem for Preview, assuming iconPath exists
 @Preview(showBackground = true, name = "Not Installed", widthDp = 380)
@@ -359,7 +354,7 @@ private fun StoreItemCellPreviewOutdated() {
                 nameMap = hashMapOf("en" to "Old But Gold App (Update Available!)"),
                 packageName = "com.sample.app.outdated",
                 githubUrl = "",
-                iconPath = "@mipmap/ic_launcher" 
+                iconPath = "@mipmap/ic_launcher"
             ).apply {
                 state = AppEntryState.INSTALLED_AND_OUTDATED
                 installedVersion = "1.0.0"
