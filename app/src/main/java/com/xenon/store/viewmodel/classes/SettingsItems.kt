@@ -100,9 +100,11 @@ fun SettingsItems(
     else RoundedCornerShape(NoCornerRadius)
 
     val showDummyProfile by devSettingsViewModel.showDummyProfileState.collectAsState()
-    val isDeveloperModeEnabled by devSettingsViewModel.devModeToggleState.collectAsState() // This seems to be from DevSettingsViewModel, ensure it's the correct one for overall dev mode visibility
+    // Renamed for clarity, as this controls the dummy profile tile specifically.
+    val showDummyProfileTile by devSettingsViewModel.devModeToggleState.collectAsState() 
 
-    if (isDeveloperModeEnabled && showDummyProfile) { // Assuming isDeveloperModeEnabled from devSettingsViewModel is the primary toggle for the dummy profile
+    // This condition uses showDummyProfileTile (from DevSettingsViewModel)
+    if (developerModeEnabled && showDummyProfileTile) { 
         SettingsGoogleTile(
             title = "Your Name",
             subtitle = "your.email@gmail.com",
@@ -191,7 +193,7 @@ fun SettingsItems(
         switchColors = switchColorsOverride ?: defaultSwitchColors
     )
 
-    Spacer(Modifier.height(outerGroupSpacing))
+    Spacer(Modifier.height(actualOuterGroupSpacing))
 
     SettingsTile(
         title = stringResource(R.string.language),
@@ -204,7 +206,8 @@ fun SettingsItems(
                 tint = tileSubtitleColor
             )
         },
-        shape = tileShapeOverride ?: standaloneShape,
+        // Language is now top of a new group with Pre-release
+        shape = tileShapeOverride ?: topShape, 
         backgroundColor = tileBackgroundColor,
         contentColor = tileContentColor,
         subtitleColor = tileSubtitleColor,
@@ -212,8 +215,31 @@ fun SettingsItems(
         verticalPadding = tileVerticalPadding
     )
     LaunchedEffect(Unit) { viewModel.updateCurrentLanguage() }
+    Spacer(Modifier.height(actualInnerGroupSpacing)) // Spacer between Language and Pre-release switch
+    SettingsSwitchTile(
+        title = "Check for pre-releases", // TODO: Replace with stringResource
+        subtitle = "Include pre-release versions when checking for updates", // TODO: Replace with stringResource
+        checked = checkForPreReleases,
+        onCheckedChange = { viewModel.setCheckForPreReleases(it) },
+        onClick = { viewModel.setCheckForPreReleases(!checkForPreReleases) },
+        icon = {
+            Icon(
+                painterResource(R.drawable.developer), // TODO: Replace with actual pre-release/beta icon
+                contentDescription = "Check for pre-releases", // TODO: Replace with stringResource
+                tint = tileSubtitleColor
+            )
+        },
+        // This tile is now the bottom of a group of two
+        shape = tileShapeOverride ?: bottomShape,
+        backgroundColor = tileBackgroundColor,
+        contentColor = tileContentColor,
+        subtitleColor = tileSubtitleColor,
+        horizontalPadding = tileHorizontalPadding,
+        verticalPadding = tileVerticalPadding,
+        switchColors = switchColorsOverride ?: defaultSwitchColors
+    )
 
-    Spacer(Modifier.height(outerGroupSpacing))
+    Spacer(Modifier.height(actualOuterGroupSpacing))
 
     SettingsTile(
         title = stringResource(R.string.clear_data),
@@ -277,7 +303,7 @@ fun SettingsItems(
         verticalPadding = tileVerticalPadding
     )
 
-    // Use developerModeEnabled from SettingsViewModel for controlling visibility of this section
+    // Developer Options section - developerModeEnabled from SettingsViewModel controls its visibility
     if (developerModeEnabled) {
         Spacer(Modifier.height(actualOuterGroupSpacing))
         SettingsTile(
@@ -297,36 +323,13 @@ fun SettingsItems(
                     tint = tileSubtitleColor
                 )
             },
-            // This tile is now the top of a group of two
-            shape = tileShapeOverride ?: topShape, 
+            // If this is the only item in dev options, it's standalone
+            shape = tileShapeOverride ?: standaloneShape, 
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
             horizontalPadding = tileHorizontalPadding,
             verticalPadding = tileVerticalPadding
-        )
-        Spacer(Modifier.height(actualInnerGroupSpacing)) // Spacer between dev options and pre-release switch
-        SettingsSwitchTile(
-            title = "Check for pre-releases", // TODO: Replace with stringResource
-            subtitle = "Include pre-release versions when checking for updates", // TODO: Replace with stringResource
-            checked = checkForPreReleases,
-            onCheckedChange = { viewModel.setCheckForPreReleases(it) },
-            onClick = { viewModel.setCheckForPreReleases(!checkForPreReleases) },
-            icon = {
-                Icon(
-                    painterResource(R.drawable.developer), // TODO: Replace with actual pre-release/beta icon
-                    contentDescription = "Check for pre-releases", // TODO: Replace with stringResource
-                    tint = tileSubtitleColor
-                )
-            },
-            // This tile is now the bottom of a group of two
-            shape = tileShapeOverride ?: bottomShape,
-            backgroundColor = tileBackgroundColor,
-            contentColor = tileContentColor,
-            subtitleColor = tileSubtitleColor,
-            horizontalPadding = tileHorizontalPadding,
-            verticalPadding = tileVerticalPadding,
-            switchColors = switchColorsOverride ?: defaultSwitchColors
         )
     }
 }

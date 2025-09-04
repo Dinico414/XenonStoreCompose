@@ -65,6 +65,8 @@ android {
 
 dependencies {
 
+    implementation(libs.coil.compose) // latest version
+
     implementation(libs.xenon.commons)
     implementation(libs.androidx.material3.window.size.class1.android)
     implementation(libs.androidx.material3.adaptive)
@@ -72,8 +74,8 @@ dependencies {
     implementation(composeBom)
     androidTestImplementation(composeBom)
     implementation(libs.haze)
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation(libs.okhttp)
+    implementation(libs.logging.interceptor)
     implementation(libs.androidx.animation.graphics)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.haze.materials)
