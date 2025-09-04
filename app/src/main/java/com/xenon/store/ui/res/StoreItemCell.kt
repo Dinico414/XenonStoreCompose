@@ -1,6 +1,9 @@
 package com.xenon.store.ui.res
 
-import android.graphics.Paint
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.AdaptiveIconDrawable
+import android.os.Build
 import android.util.Log
 import android.view.View
 import android.widget.ImageView
@@ -8,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -20,19 +22,25 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.res.ResourcesCompat
@@ -42,6 +50,11 @@ import com.xenon.store.ui.values.MediumPadding
 import com.xenon.store.util.Util
 import com.xenon.store.viewmodel.classes.AppEntryState
 import com.xenon.store.viewmodel.classes.StoreItem
+
+// Helper extension function to convert Dp to Px
+private fun Dp.toPx(context: android.content.Context): Float {
+    return this.value * context.resources.displayMetrics.density
+}
 
 // Helper function to get mipmap name from GitHub URL (fallback)
 private fun getRepoMipmapName(githubUrl: String): String {
@@ -113,15 +126,58 @@ fun StoreItemCell(
 
                     if (iconResId != 0) {
                         AndroidView(
-                            factory = { ctx -> ImageView(ctx) },
+                            factory = { ctx ->
+                                ImageView(ctx).apply {
+                                    scaleType = ImageView.ScaleType.CENTER_CROP
+                                }
+                            },
                             modifier = Modifier
-                                .size(48.dp)
-                                .clip(MaterialTheme.shapes.small),
+                                .size(56.dp)
+                                .clip(RoundedCornerShape(16.dp)), // Updated clipping
                             update = { imageView ->
                                 try {
-                                    val drawable = ResourcesCompat.getDrawable(context.resources, iconResId, null)
-                                    imageView.setImageDrawable(drawable)
-                                    imageView.visibility = View.VISIBLE
+                                    val originalDrawable = ResourcesCompat.getDrawable(context.resources, iconResId, null)
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && originalDrawable is AdaptiveIconDrawable) {
+                                        val iconSizePx = 48.dp.toPx(context).toInt()
+                                        if (iconSizePx > 0) {
+                                            val bitmap = Bitmap.createBitmap(iconSizePx, iconSizePx, Bitmap.Config.ARGB_8888)
+                                            val canvas = Canvas(bitmap)
+
+                                            // Calculate the scaled bounds to "zoom in" on the safe zone
+                                            val scaleFactor = 1.5f // Standard factor: 108dp icon / 72dp safe zone = 1.5
+                                            val scaledWidth = iconSizePx * scaleFactor
+                                            val scaledHeight = iconSizePx * scaleFactor
+                                            
+                                            // Calculate offsets to center the scaled drawable on the canvas
+                                            val offsetWidth = (scaledWidth - iconSizePx) / 2f
+                                            val offsetHeight = (scaledHeight - iconSizePx) / 2f
+
+                                            val scaledLeft = (-offsetWidth).toInt()
+                                            val scaledTop = (-offsetHeight).toInt()
+                                            val scaledRight = (iconSizePx + offsetWidth).toInt()
+                                            val scaledBottom = (iconSizePx + offsetHeight).toInt()
+
+                                            // Draw background layer
+                                            originalDrawable.background?.let {
+                                                it.setBounds(scaledLeft, scaledTop, scaledRight, scaledBottom)
+                                                it.draw(canvas)
+                                            }
+                                            // Draw foreground layer
+                                            originalDrawable.foreground?.let {
+                                                it.setBounds(scaledLeft, scaledTop, scaledRight, scaledBottom)
+                                                it.draw(canvas)
+                                            }
+                                            imageView.setImageBitmap(bitmap)
+                                            imageView.visibility = View.VISIBLE
+                                        } else {
+                                            Log.w("StoreItemCell", "ImageView dimensions for ${storeItem.packageName} are invalid ($iconSizePx x $iconSizePx), falling back to direct drawable.")
+                                            imageView.setImageDrawable(originalDrawable)
+                                            imageView.visibility = View.VISIBLE
+                                        }
+                                    } else {
+                                        imageView.setImageDrawable(originalDrawable)
+                                        imageView.visibility = View.VISIBLE
+                                    }
                                 } catch (e: Exception) {
                                     Log.e("StoreItemCell", "Error loading drawable ID: $iconResId for ${storeItem.packageName}", e)
                                     imageView.visibility = View.GONE // Hide if error
@@ -254,25 +310,6 @@ fun StoreItemCell(
                 }
             }
         }
-
-//        if (storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED &&
-//            storeItem.installedVersion.isNotEmpty() && storeItem.newVersion.isNotEmpty() && !showVersionInfoHorizontal) {
-//            Column(
-//                modifier = Modifier
-//                    .padding(start = 8.dp)
-//                    .height(IntrinsicSize.Max),
-//                horizontalAlignment = Alignment.CenterHorizontally,
-//                verticalArrangement = Arrangement.Center
-//            ) {
-//                Text(
-//                    text = "${storeItem.installedVersion}->${storeItem.newVersion}",
-//                    textAlign = TextAlign.Center,
-//                    style = MaterialTheme.typography.bodySmall,
-//                    modifier = Modifier
-//                        .graphicsLayer(rotationZ = -90f)
-//                )
-//            }
-//        }
     } // End Row
 }
 
