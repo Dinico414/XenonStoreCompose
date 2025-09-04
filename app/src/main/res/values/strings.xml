@@ -122,4 +122,10 @@
     <string name="open">open</string>
     <string name="version_with_prefix">Version: %s</string>
     <string name="uninstall">uninstall</string>
+
+    <string name="share_store_title">Share Store</string>
+    <string name="share_store_description">Choose a way to share the Xenon Store:</string>
+    <string name="share_via_file">File</string>
+    <string name="share_via_link">Link</string>
+    <string name="share_store_action">Share Store</string>
 </resources>

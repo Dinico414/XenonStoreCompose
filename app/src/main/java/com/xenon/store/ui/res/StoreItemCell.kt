@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -277,7 +278,7 @@ fun StoreItemCell(
                                         .fillMaxHeight()
                                         .padding(8.dp)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .background(Color.Transparent)
                                 ) {
                                     val progress = if (storeItem.fileSize > 0) {
                                         storeItem.bytesDownloaded.toFloat() / storeItem.fileSize.toFloat()

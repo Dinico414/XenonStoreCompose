@@ -1,13 +1,7 @@
 package com.xenon.store.ui.res
 
-// import androidx.compose.foundation.layout.RowScope // Not strictly needed for this fix
-// import androidx.compose.foundation.ScrollState // REMOVE THIS IMPORT
-// import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass // Not used
-// import androidx.compose.ui.unit.IntSize // Not used directly here
-// import com.xenon.store.viewmodel.LayoutType // Not used
 import android.annotation.SuppressLint
 import android.os.Build
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -31,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -86,6 +81,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import com.xenon.store.R
+import com.xenon.store.ui.dialogs.ShareStoreDialog
 import com.xenon.store.ui.values.LargePadding
 import com.xenon.store.ui.values.SmallElevation
 import dev.chrisbanes.haze.HazeState
@@ -98,7 +94,6 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
-// Helper data class to capture relevant LazyListState properties for snapshotFlow
 private data class ScrollState(
     val firstVisibleItemIndex: Int,
     val firstVisibleItemScrollOffset: Int,
@@ -120,14 +115,18 @@ fun FloatingToolbarContent(
     currentSearchQuery: String,
     lazyListState: LazyListState,
     allowToolbarScrollBehavior: Boolean,
+    // TODO: Add hasUpdate and onDownloadUpdateClick parameters here
+    // hasUpdate: Boolean,
+    // onDownloadUpdateClick: () -> Unit,
 ) {
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     var showActionIconsExceptSearch by rememberSaveable { mutableStateOf(true) }
     var canShowTextField by rememberSaveable { mutableStateOf(false) }
+    var showShareDialog by rememberSaveable { mutableStateOf(false) } // Added state for dialog
 
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
-    val localContext = LocalContext.current // <-- Declare localContext
+     val localContext = LocalContext.current // Not directly needed now
 
     val iconsAlphaDuration = 500
     val iconGroupExitAnimationDuration = 100
@@ -152,6 +151,10 @@ fun FloatingToolbarContent(
     val maxTextFieldWidth = (screenWidthDp - totalSubtractionInDp).coerceIn(0.dp, 280.dp)
 
     var toolbarVisibleState by rememberSaveable { mutableStateOf(true) }
+
+    if (showShareDialog) {
+        ShareStoreDialog(onDismissRequest = { showShareDialog = false })
+    }
 
     LaunchedEffect(lazyListState, isSearchActive, allowToolbarScrollBehavior) {
         if (isSearchActive || !allowToolbarScrollBehavior) {
@@ -261,17 +264,13 @@ fun FloatingToolbarContent(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
-                // Apply the animated offset here as well if the whole toolbar should move
-                // For now, assuming only the content inside HorizontalFloatingToolbar animates its Y position
-                // If the whole Box should move, you'd add .offset(y = animatedToolbarOffset) here
-                // and adjust padding.
-                bottom = animatedBottomPadding, // Use animated padding for IME
+                bottom = animatedBottomPadding,
             ), contentAlignment = Alignment.Center
     ) {
         HorizontalFloatingToolbar(
             modifier = Modifier
                 .height(toolbarHeight)
-                .padding(bottom = animatedToolbarOffset), // Apply Y offset for hide/show animation
+                .offset(y = animatedToolbarOffset),
             expanded = true,
             floatingActionButton = {
                 Box(contentAlignment = Alignment.Center) {
@@ -325,7 +324,7 @@ fun FloatingToolbarContent(
                     val rotationAngle = remember { Animatable(0f) }
                     LaunchedEffect(isSearchActive) {
                         if (isSearchActive) {
-                            delay(700) // Consider making this delay a constant
+                            delay(700)
                             rotationAngle.animateTo(
                                 targetValue = 45f, animationSpec = spring(
                                     dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -374,7 +373,7 @@ fun FloatingToolbarContent(
             },
             colors = FloatingToolbarDefaults.standardFloatingToolbarColors(colorScheme.surfaceDim),
             contentPadding = FloatingToolbarDefaults.ContentPadding,
-        ) { // This is HorizontalFloatingToolbarScope -> RowScope implicitly
+        ) {
             IconButton(onClick = {
                 isSearchActive = true
             }) {
@@ -410,23 +409,25 @@ fun FloatingToolbarContent(
                                 targetValue = iconAlphaTarget, animationSpec = tween(
                                     durationMillis = iconsAlphaDuration,
                                     delayMillis = if (isSearchActive) 0 else 0
-                                ), label = "SortIconAlpha"
+                                ), label = "UpdateIconAlpha"
                             )
-                            FilledIconButton(
-                                onClick = {
-                                    Toast.makeText(
-                                        localContext, // Use declared localContext
-                                        "Coming soon", Toast.LENGTH_SHORT
-                                    ).show()
-                                },
-                                modifier = Modifier.alpha(updateIconAlpha),
-                                enabled = !isSearchActive && showActionIconsExceptSearch
-                            ) {
-                                Icon(
-                                    Icons.Filled.Download,
-                                    contentDescription = stringResource(R.string.sort_tasks_description),
-                                    tint = colorScheme.onPrimaryContainer
-                                )
+                            val hasUpdate = true
+                            val onDownloadUpdateClick = { /* Placeholder */ }
+
+                            if (hasUpdate) {
+                                FilledIconButton(
+                                    onClick = {
+                                        onDownloadUpdateClick()
+                                    },
+                                    modifier = Modifier.alpha(updateIconAlpha),
+                                    enabled = !isSearchActive && showActionIconsExceptSearch
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Download,
+                                        contentDescription = "Download update",
+                                        tint = colorScheme.onPrimary
+                                    )
+                                }
                             }
                             val shareIconAlpha by animateFloatAsState(
                                 targetValue = iconAlphaTarget, animationSpec = tween(
@@ -435,18 +436,13 @@ fun FloatingToolbarContent(
                                 ), label = "FilterIconAlpha"
                             )
                             IconButton(
-                                onClick = {
-                                    Toast.makeText(
-                                        localContext, // Use declared localContext
-                                        "Coming soon", Toast.LENGTH_SHORT
-                                    ).show()
-                                },
+                                onClick = { showShareDialog = true },
                                 modifier = Modifier.alpha(shareIconAlpha),
                                 enabled = !isSearchActive && showActionIconsExceptSearch
                             ) {
                                 Icon(
                                     Icons.Filled.Share,
-                                    contentDescription = stringResource(R.string.filter_tasks_description),
+                                    contentDescription = stringResource(R.string.share_store_action),
                                     tint = colorScheme.onSurface
                                 )
                             }
