@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
@@ -20,7 +21,6 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
@@ -69,12 +70,38 @@ fun CompactStore(
     devSettingsViewModel: DevSettingsViewModel = viewModel(),
     layoutType: LayoutType,
     onOpenSettings: () -> Unit,
-    widthSizeClass: WindowWidthSizeClass,
-) {
+    isLandscape: Boolean,
+    appSize: IntSize,
+
+    ) {
     val context = LocalContext.current
     val storeItems by storeViewModel.storeItems.collectAsState()
     val errorMessage by storeViewModel.error.collectAsState()
     val currentActionInfo by storeViewModel.currentActionInfo.collectAsState()
+
+    val density = LocalDensity.current
+    val appWidthDp = with(density) { appSize.width.toDp() }
+    val appHeightDp = with(density) { appSize.height.toDp() }
+
+    val currentAspectRatio = if (isLandscape) {
+        appWidthDp / appHeightDp
+    } else {
+        appHeightDp / appWidthDp
+    }
+
+    val aspectRatioConditionMet = if (isLandscape) {
+        currentAspectRatio > 0.5625f
+    } else {
+        currentAspectRatio < 1.77f
+    }
+
+    val isAppBarCollapsible = when (layoutType) {
+        LayoutType.COVER -> false
+        LayoutType.SMALL -> false
+        LayoutType.COMPACT -> !isLandscape || !aspectRatioConditionMet
+        LayoutType.MEDIUM -> true
+        LayoutType.EXPANDED -> true
+    }
 
     val hazeState = rememberHazeState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -91,6 +118,8 @@ fun CompactStore(
             isMainIconPresent || isExtraIconPresent
         }
     }
+    val lazyListState = rememberLazyListState()
+
 
     LaunchedEffect(Unit) {
         storeViewModel.error.collectLatest { errorMsg ->
@@ -126,12 +155,11 @@ fun CompactStore(
                 hazeState = hazeState,
                 onOpenSettings = onOpenSettings,
                 currentSearchQuery = currentSearchQuery,
-                widthSizeClass = widthSizeClass,
-                layoutType = layoutType,
                 onSearchQueryChanged = { newQuery ->
                     currentSearchQuery = newQuery
                 },
-                appSize = appWindowSize
+                lazyListState = lazyListState,
+                allowToolbarScrollBehavior = !isAppBarCollapsible
             )
         },
 
@@ -145,6 +173,8 @@ fun CompactStore(
                     appWindowSize = newSize
                 },
             titleText = stringResource(id = R.string.app_name),
+            expandable = isAppBarCollapsible,
+
             navigationIconStartPadding = if (shouldShowNavigationElements) SmallPadding else 0.dp,
             navigationIconPadding = if (shouldShowNavigationElements) {
                 if (isDeveloperModeEnabled && showDummyProfile) SmallPadding else MediumPadding
@@ -213,6 +243,7 @@ fun CompactStore(
                         }
                     } else {
                         LazyColumn(
+                            state = lazyListState,
                             modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(
                                 top = LargestPadding,

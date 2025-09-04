@@ -7,11 +7,11 @@ import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
-import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.IntSize
 import androidx.core.view.WindowCompat
 import com.xenon.store.ui.layouts.StoreLayout
 import com.xenon.store.ui.theme.ScreenEnvironment
@@ -43,11 +43,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
 
-            val windowSizeClassValue = calculateWindowSizeClass(this)
-
-            val currentWidthSizeClass = windowSizeClassValue.widthSizeClass
 
             val currentContext = LocalContext.current
+            val currentContainerSize = LocalWindowInfo.current.containerSize // Use LocalWindowInfo
 
             ScreenEnvironment(
                 lastAppliedTheme,
@@ -61,8 +59,9 @@ class MainActivity : ComponentActivity() {
                         val intent = Intent(currentContext, SettingsActivity::class.java)
                         currentContext.startActivity(intent)
                     },
-                    widthSizeClass = currentWidthSizeClass
-                )
+                    isLandscape = isLandscape,
+                    appSize = currentContainerSize,
+                    )
             }
         }
     }
@@ -103,12 +102,15 @@ class MainActivity : ComponentActivity() {
 fun XenonStoreApp(
     layoutType: LayoutType,
     onOpenSettings: () -> Unit,
-    widthSizeClass: WindowWidthSizeClass,
+    isLandscape: Boolean = false,
+    appSize: IntSize,
+
     ) {
     StoreLayout(
         layoutType = layoutType,
         onOpenSettings = onOpenSettings,
         modifier = Modifier.fillMaxSize(),
-        widthSizeClass = widthSizeClass
+        isLandscape = isLandscape,
+        appSize = appSize
     )
 }

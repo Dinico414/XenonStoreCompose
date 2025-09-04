@@ -2,9 +2,9 @@ package com.xenon.store.ui.layouts
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntSize
 import com.xenon.store.ui.layouts.store.CompactStore
 import com.xenon.store.viewmodel.LayoutType
 
@@ -13,7 +13,8 @@ fun StoreLayout(
     modifier: Modifier = Modifier,
     layoutType: LayoutType,
     onOpenSettings: () -> Unit,
-    widthSizeClass: WindowWidthSizeClass,
+    isLandscape: Boolean,
+    appSize: IntSize,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (layoutType) {
@@ -21,7 +22,9 @@ fun StoreLayout(
                 CompactStore(
                     onOpenSettings = onOpenSettings,
                     layoutType = layoutType,
-                    widthSizeClass = widthSizeClass
+                    isLandscape = true,
+                    appSize = appSize,
+
                 )
             }
 
@@ -29,7 +32,8 @@ fun StoreLayout(
                 CompactStore(
                     onOpenSettings = onOpenSettings,
                     layoutType = layoutType,
-                    widthSizeClass = widthSizeClass
+                    isLandscape = true,
+                    appSize = appSize,
                 )
             }
         }
