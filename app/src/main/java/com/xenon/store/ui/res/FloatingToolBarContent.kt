@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
@@ -30,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -38,9 +41,9 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.FloatingToolbarDefaults
@@ -415,20 +418,46 @@ fun FloatingToolbarContent(
                             val onDownloadUpdateClick = { /* Placeholder */ }
 
                             if (hasUpdate) {
-                                FilledIconButton(
-                                    onClick = {
-                                        onDownloadUpdateClick()
-                                    },
-                                    modifier = Modifier.alpha(updateIconAlpha),
-                                    enabled = !isSearchActive && showActionIconsExceptSearch
+                                val downloadProgress = 0.0f
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight(),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        Icons.Filled.Download,
-                                        contentDescription = "Download update",
-                                        tint = colorScheme.onPrimary
-                                    )
+                                    Box(contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                        .size(40.dp)
+                                        .alpha(updateIconAlpha)
+                                        .clip(RoundedCornerShape(100f))
+                                        .background(colorScheme.primary)
+                                        .clickable(
+                                            enabled = !isSearchActive && showActionIconsExceptSearch,
+                                            onClick = {
+                                                onDownloadUpdateClick()
+                                            }
+                                        ),
+                                        ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Download,
+                                            contentDescription = "Download update",
+                                            tint = colorScheme.onPrimary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        if (downloadProgress > 0f && downloadProgress < 1f) {
+                                            CircularProgressIndicator(
+                                                progress = { downloadProgress },
+                                                modifier = Modifier.size(36.dp),
+                                                color = colorScheme.onPrimary,
+                                                trackColor = Color.Transparent,
+                                                strokeWidth = 5.dp
+                                            )
+                                        }
+                                    }
                                 }
                             }
+
+
                             val shareIconAlpha by animateFloatAsState(
                                 targetValue = iconAlphaTarget, animationSpec = tween(
                                     durationMillis = iconsAlphaDuration,

@@ -249,7 +249,7 @@ fun CompactStore(
                                 top = LargestPadding,
                                 bottom = scaffoldPadding.calculateBottomPadding() + MediumPadding
                             ),
-                            verticalArrangement = Arrangement.spacedBy(LargestPadding)
+                            verticalArrangement = Arrangement.spacedBy(MediumPadding)
                         ) {
                             itemsIndexed(storeItems, key = { _, item -> item.packageName }) { _, storeItem ->
                                 StoreItemCell(
