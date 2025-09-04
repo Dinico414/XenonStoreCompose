@@ -13,11 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xenon.store.ui.layouts.StoreLayout
-import com.xenon.store.viewmodel.LayoutType
 import com.xenon.store.ui.theme.ScreenEnvironment
-import com.xenon.store.viewmodel.StoreViewModel
+import com.xenon.store.viewmodel.LayoutType
 
 class MainActivity : ComponentActivity() {
 
@@ -59,7 +57,6 @@ class MainActivity : ComponentActivity() {
                 ) { layoutType, isLandscape ->
                 XenonStoreApp(
                     layoutType = layoutType,
-                    isLandscape = isLandscape,
                     onOpenSettings = {
                         val intent = Intent(currentContext, SettingsActivity::class.java)
                         currentContext.startActivity(intent)
@@ -105,14 +102,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun XenonStoreApp(
     layoutType: LayoutType,
-    isLandscape: Boolean,
     onOpenSettings: () -> Unit,
     widthSizeClass: WindowWidthSizeClass,
-    viewModel: StoreViewModel = viewModel()
     ) {
     StoreLayout(
-        viewModel = viewModel,
-        isLandscape = isLandscape,
         layoutType = layoutType,
         onOpenSettings = onOpenSettings,
         modifier = Modifier.fillMaxSize(),

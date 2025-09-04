@@ -37,13 +37,12 @@ import com.xenon.store.ui.res.DialogThemeSelection
 import com.xenon.store.ui.values.LargestPadding
 import com.xenon.store.ui.values.MediumPadding
 import com.xenon.store.ui.values.NoSpacing
-import com.xenon.store.viewmodel.classes.SettingsItems
 import com.xenon.store.viewmodel.LayoutType
 import com.xenon.store.viewmodel.SettingsViewModel
+import com.xenon.store.viewmodel.classes.SettingsItems
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import kotlin.text.get
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -125,7 +124,7 @@ fun DefaultSettings(
         navigationIconStartPadding = MediumPadding,
         navigationIconPadding = MediumPadding,
         navigationIconSpacing = NoSpacing,
-        navigationIconContent = {
+        navigationIcon = {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = stringResource(R.string.navigate_back_description),
@@ -134,7 +133,7 @@ fun DefaultSettings(
         },
         onNavigationIconClick = onNavigateBack,
         hasNavigationIconExtraContent = false,
-        appBarActions = {},
+        actions = {},
         // isAppBarCollapsible = isAppBarCollapsible,
         modifier = Modifier.hazeSource(hazeState),
         content = { _ ->

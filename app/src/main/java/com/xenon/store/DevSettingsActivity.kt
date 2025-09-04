@@ -51,7 +51,6 @@ class DevSettingsActivity : ComponentActivity() {
                 DevSettingsLayout(
                     onNavigateBack = { finish() },
                     viewModel = devSettingsViewModel,
-                    isLandscape = isLandscape,
                     layoutType = layoutType
                 )
             }

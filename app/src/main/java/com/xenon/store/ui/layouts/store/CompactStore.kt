@@ -2,12 +2,33 @@ package com.xenon.store.ui.layouts.store
 
 import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -23,7 +44,11 @@ import com.xenon.store.ui.res.FloatingToolbarContent
 import com.xenon.store.ui.res.GoogleProfilBorder
 import com.xenon.store.ui.res.StoreItemCell
 import com.xenon.store.ui.res.XenonSnackbar
-import com.xenon.store.ui.values.*
+import com.xenon.store.ui.values.ExtraLargeSpacing
+import com.xenon.store.ui.values.LargestPadding
+import com.xenon.store.ui.values.MediumPadding
+import com.xenon.store.ui.values.NoSpacing
+import com.xenon.store.ui.values.SmallPadding
 import com.xenon.store.viewmodel.DevSettingsViewModel
 import com.xenon.store.viewmodel.LayoutType
 import com.xenon.store.viewmodel.StoreViewModel
@@ -43,7 +68,6 @@ fun CompactStore(
     storeViewModel: StoreViewModel = viewModel(),
     devSettingsViewModel: DevSettingsViewModel = viewModel(),
     layoutType: LayoutType,
-    isLandscape: Boolean,
     onOpenSettings: () -> Unit,
     widthSizeClass: WindowWidthSizeClass,
 ) {
@@ -129,7 +153,7 @@ fun CompactStore(
             },
             navigationIconSpacing = if (shouldShowNavigationElements) NoSpacing else 0.dp,
 
-            navigationIconContent = null,
+            navigationIcon = {},
 
             hasNavigationIconExtraContent = if (shouldShowNavigationElements) {
                 isDeveloperModeEnabled && showDummyProfile
@@ -155,8 +179,7 @@ fun CompactStore(
             } else {
                 {}
             },
-            appBarActions = {},
-            appBarSecondaryActionIcon = {},
+          actions = {},
             content = { _ ->
                 Column(
                     modifier = Modifier

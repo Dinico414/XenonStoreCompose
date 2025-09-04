@@ -13,7 +13,6 @@ import com.xenon.store.viewmodel.LayoutType
 fun DevSettingsLayout(
     onNavigateBack: () -> Unit,
     viewModel: DevSettingsViewModel,
-    isLandscape: Boolean,
     layoutType: LayoutType,
     modifier: Modifier = Modifier,
 ) {
@@ -29,8 +28,6 @@ fun DevSettingsLayout(
                 DevDefaultSettings(
                     onNavigateBack = onNavigateBack,
                     viewModel = viewModel,
-                    layoutType = layoutType,
-                    isLandscape = isLandscape
                 )
             }
         }

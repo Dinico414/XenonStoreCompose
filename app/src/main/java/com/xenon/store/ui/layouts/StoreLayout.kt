@@ -7,12 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.xenon.store.ui.layouts.store.CompactStore
 import com.xenon.store.viewmodel.LayoutType
-import com.xenon.store.viewmodel.StoreViewModel
 
 @Composable
 fun StoreLayout(
-    viewModel: StoreViewModel,
-    isLandscape: Boolean,
     modifier: Modifier = Modifier,
     layoutType: LayoutType,
     onOpenSettings: () -> Unit,
@@ -24,7 +21,6 @@ fun StoreLayout(
                 CompactStore(
                     onOpenSettings = onOpenSettings,
                     layoutType = layoutType,
-                    isLandscape = true,
                     widthSizeClass = widthSizeClass
                 )
             }
@@ -33,7 +29,6 @@ fun StoreLayout(
                 CompactStore(
                     onOpenSettings = onOpenSettings,
                     layoutType = layoutType,
-                    isLandscape = true,
                     widthSizeClass = widthSizeClass
                 )
             }

@@ -16,9 +16,6 @@ import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -29,7 +26,6 @@ import com.xenon.store.ui.values.LargestPadding
 import com.xenon.store.ui.values.MediumPadding
 import com.xenon.store.ui.values.NoSpacing
 import com.xenon.store.viewmodel.DevSettingsViewModel
-import com.xenon.store.viewmodel.LayoutType
 import com.xenon.store.viewmodel.classes.DevSettingsItems
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -38,8 +34,6 @@ import dev.chrisbanes.haze.rememberHazeState
 fun DevDefaultSettings(
     onNavigateBack: () -> Unit,
     viewModel: DevSettingsViewModel,
-    layoutType: LayoutType,
-    isLandscape: Boolean,
 ) {
     val hazeState = rememberHazeState()
     val context = LocalContext.current
@@ -50,7 +44,7 @@ fun DevDefaultSettings(
         navigationIconStartPadding = MediumPadding,
         navigationIconPadding = MediumPadding,
         navigationIconSpacing = NoSpacing,
-        navigationIconContent = {
+        navigationIcon = {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = stringResource(R.string.navigate_back_description),
@@ -59,7 +53,7 @@ fun DevDefaultSettings(
         },
         onNavigationIconClick = onNavigateBack,
         hasNavigationIconExtraContent = false,
-        appBarActions = {
+        actions = {
             IconButton(onClick = {
                 val packageManager = context.packageManager
                 val intent = packageManager.getLaunchIntentForPackage(context.packageName)

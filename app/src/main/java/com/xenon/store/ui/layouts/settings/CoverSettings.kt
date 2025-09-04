@@ -36,8 +36,8 @@ import com.xenon.store.ui.res.DialogThemeSelection
 import com.xenon.store.ui.values.MediumPadding
 import com.xenon.store.ui.values.NoCornerRadius
 import com.xenon.store.ui.values.NoSpacing
-import com.xenon.store.viewmodel.classes.SettingsItems
 import com.xenon.store.viewmodel.SettingsViewModel
+import com.xenon.store.viewmodel.classes.SettingsItems
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -104,7 +104,7 @@ fun CoverSettings(
         navigationIconPadding = MediumPadding,
         navigationIconSpacing = NoSpacing,
 
-        navigationIconContent = {
+        navigationIcon = {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = stringResource(R.string.navigate_back_description),
@@ -114,7 +114,7 @@ fun CoverSettings(
 
         onNavigationIconClick = onNavigateBack,
         hasNavigationIconExtraContent = false,
-        appBarActions = {},
+        actions = {},
         // isAppBarCollapsible = false,
         screenBackgroundColor = coverScreenBackgroundColor,
         contentBackgroundColor = coverScreenBackgroundColor,
