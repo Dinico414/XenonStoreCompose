@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.FloatingToolbarDefaults
@@ -296,17 +297,14 @@ fun FloatingToolbarContent(
                             tint = colorScheme.onSurface
                         )
                     }
-                    // Action icons are always visible in this branch (showActionIconsExceptSearch will be true)
-                    // You can keep AnimatedVisibility for their individual fade in/out if desired,
-                    // but the group's visibility is controlled by the outer if/else.
                     Row {
-                        IconButton(
+                        FilledIconButton(
                             onClick = { Toast.makeText(localContext, "Coming soon", Toast.LENGTH_SHORT).show() }
                         ) {
                             Icon(
                                 Icons.Filled.Download,
                                 contentDescription = stringResource(R.string.sort_tasks_description),
-                                tint = colorScheme.onSurface
+                                tint = colorScheme.onPrimary
                             )
                         }
                         IconButton(
