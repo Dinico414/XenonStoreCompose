@@ -67,7 +67,7 @@ fun XenonDialog(
     containerColor: Color = MaterialTheme.colorScheme.surface,
     tonalElevation: Dp = 6.dp,
 
-    dialogPadding: PaddingValues = PaddingValues(DialogPadding),
+    dialogPadding: PaddingValues = PaddingValues(DialogPadding/2),
     dialogTitleRowPadding: PaddingValues = PaddingValues(
         start = DialogPadding, end = DialogPadding, top = 0.dp, bottom = LargestPadding
     ),

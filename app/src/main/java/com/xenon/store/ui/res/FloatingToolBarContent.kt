@@ -84,7 +84,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import com.xenon.store.R
-import com.xenon.store.ui.dialogs.ShareStoreDialog
 import com.xenon.store.ui.values.LargePadding
 import com.xenon.store.ui.values.SmallElevation
 import dev.chrisbanes.haze.HazeState
