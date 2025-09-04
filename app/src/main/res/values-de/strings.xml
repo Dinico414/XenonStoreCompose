@@ -123,4 +123,8 @@
     <string name="version_with_prefix">Version: %s</string>
     <string name="uninstall">uninstall</string>
 
+    <string name="share_store_title">Share</string>
+    <string name="share_via_file">Datei</string>
+    <string name="share_via_link">Link</string>
+    <string name="share_store_action">Teilen</string>
 </resources>
