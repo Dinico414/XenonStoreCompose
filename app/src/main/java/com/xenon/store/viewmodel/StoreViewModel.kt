@@ -46,6 +46,9 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private val _xenonStoreUpdateInfo = MutableStateFlow<GithubReleaseInfo?>(null)
     val xenonStoreUpdateInfo: StateFlow<GithubReleaseInfo?> = _xenonStoreUpdateInfo.asStateFlow()
 
+    private val _xenonStoreDownloadProgress = MutableStateFlow(0f)
+    val xenonStoreDownloadProgress: StateFlow<Float> = _xenonStoreDownloadProgress.asStateFlow()
+
     private val client: OkHttpClient
     private val sharedPreferenceManager = SharedPreferenceManager(application)
 
@@ -54,7 +57,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         const val TAG = "StoreViewModel"
         const val XENON_STORE_PACKAGE_NAME = "com.xenon.store" // Your app's package name
         const val XENON_STORE_OWNER = "Dinico414" // GitHub owner
-        const val XENON_STORE_REPO = "XenonStoreCompose" // GitHub repo
+        const val XENON_STORE_REPO = "XenonStore" // GitHub repo
     }
 
     private var cachedJsonHash: Int = 0
@@ -240,7 +243,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to get GitHub release for $owner/$repo (URL: $url): ${e.message}")
                 throw e
             }
         }
@@ -253,19 +255,17 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val installedVersion = getInstalledAppVersion(XENON_STORE_PACKAGE_NAME)
                 if (installedVersion == null) {
-                    Log.d(TAG, "XenonStore not found or version couldn't be determined.")
                     _xenonStoreUpdateInfo.value = null // Or fetch latest if it's a first install scenario
                     return@launch
                 }
 
                 val latestReleaseInfo = getNewReleaseVersionGithubBlocking(XENON_STORE_OWNER, XENON_STORE_REPO)
+                
 
                 if (Util.isNewerVersion(installedVersion, latestReleaseInfo.version)) {
                     _xenonStoreUpdateInfo.value = latestReleaseInfo
-                    Log.d(TAG, "XenonStore update available: ${latestReleaseInfo.version}")
                 } else {
                     _xenonStoreUpdateInfo.value = null
-                    Log.d(TAG, "XenonStore is up to date (Installed: $installedVersion, Latest: ${latestReleaseInfo.version})")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to check for XenonStore update: ${e.message}")
@@ -279,27 +279,34 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         val updateInfo = _xenonStoreUpdateInfo.value ?: return
         viewModelScope.launch {
             _currentActionInfo.value = "Downloading XenonStore update ${updateInfo.version}..."
-            Log.d(TAG, "Downloading XenonStore update from: ${updateInfo.downloadUrl}")
+            _xenonStoreDownloadProgress.value = 0.01f // Indicate starting
 
             val fileName = "XenonStore_${updateInfo.version}.apk"
             val destinationFile = File(context.getExternalFilesDir(null), fileName)
 
-            // No specific progress update for self-update in UI for now, just action info
             downloadFile(updateInfo.downloadUrl, destinationFile,
                 onProgress = { bytesDownloaded, fileSize ->
-                    // Log progress for now, could potentially update a specific state for XenonStore download
-                    Log.d(TAG, "XenonStore Update Download Progress: $bytesDownloaded / $fileSize")
+                    val progress = if (fileSize > 0) {
+                        (bytesDownloaded.toFloat() / fileSize.toFloat()).coerceIn(0f, 1f)
+                    } else {
+                        0.01f // Minimal progress if fileSize is unknown
+                    }
+                    _xenonStoreDownloadProgress.value = progress
                 },
                 onCompleted = {
                     _currentActionInfo.value = "XenonStore download complete. Starting installation..."
+                    _xenonStoreDownloadProgress.value = 1f // Show 100%
                     initiateInstall(destinationFile, context, XENON_STORE_PACKAGE_NAME)
-                    // After starting install, clear the update info as user will handle it via system UI
                     _xenonStoreUpdateInfo.value = null
+                    viewModelScope.launch {
+                        kotlinx.coroutines.delay(500) // Brief moment for UI to show 100%
+                        _xenonStoreDownloadProgress.value = 0f // Reset
+                    }
                 },
                 onFailure = { errorMsg ->
                     _error.value = "XenonStore download failed: $errorMsg"
                     _currentActionInfo.value = null
-                    // Keep _xenonStoreUpdateInfo so user can try again
+                    _xenonStoreDownloadProgress.value = 0f // Reset progress
                 }
             )
         }
@@ -360,9 +367,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     context.startActivity(settingsIntent)
-                    // If this was a regular app install, we'd update its state.
-                    // For XenonStore self-update, the app might restart or close, so state update here is less critical.
-                    // If it was another app, you'd do: updateItemState(packageName, AppEntryState.NOT_INSTALLED)
                     _currentActionInfo.value = null
                     return
                 }
@@ -370,14 +374,9 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             context.startActivity(intent)
             Log.d(TAG, "Installation intent started for ${apkFile.name}")
             _currentActionInfo.value = "Installation process started by system."
-             // If it was a regular app and not XenonStore itself, we might refresh its state after a delay.
-            // For self-update, this is usually not necessary as the app will likely restart.
         } catch (e: Exception) {
             _error.value = "Failed to start installation: ${e.message}"
             Log.e(TAG, "Error initiating install: ", e)
-            // if (packageName != XENON_STORE_PACKAGE_NAME) { // Only update state for other apps
-            // updateItemState(packageName, AppEntryState.NOT_INSTALLED)
-            // }
             _currentActionInfo.value = null
         }
     }
@@ -472,8 +471,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         onFailure: (errorMsg: String) -> Unit
     ) {
         val request = Request.Builder().url(url).build()
-        // For self-update, always fetch fresh, do not rely on OkHttp default cache for the APK itself.
-        val freshClient = OkHttpClient.Builder().cache(null).build() // Ensures no HTTP caching for this specific call
+        val freshClient = OkHttpClient.Builder().cache(null).build()
 
         freshClient.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {

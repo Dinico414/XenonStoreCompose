@@ -1,6 +1,5 @@
 package com.xenon.store.ui.layouts.store
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -118,6 +117,9 @@ fun CompactStore(
             isMainIconPresent || isExtraIconPresent
         }
     }
+    val xenonStoreUpdateInfo by storeViewModel.xenonStoreUpdateInfo.collectAsState()
+    val xenonStoreDownloadProgress by storeViewModel.xenonStoreDownloadProgress.collectAsState()
+
     val lazyListState = rememberLazyListState()
 
 
@@ -135,7 +137,6 @@ fun CompactStore(
     LaunchedEffect(Unit) {
         storeViewModel.currentActionInfo.collectLatest { infoMsg ->
             if (infoMsg != null) {
-                Toast.makeText(context, infoMsg, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -159,7 +160,12 @@ fun CompactStore(
                     currentSearchQuery = newQuery
                 },
                 lazyListState = lazyListState,
-                allowToolbarScrollBehavior = !isAppBarCollapsible
+                allowToolbarScrollBehavior = !isAppBarCollapsible,
+                hasUpdate = xenonStoreUpdateInfo != null,
+                onDownloadUpdateClick = {
+                    storeViewModel.downloadAndInstallXenonStoreUpdate(context)
+                },
+                xenonStoreDownloadProgress = xenonStoreDownloadProgress
             )
         },
 
@@ -249,7 +255,7 @@ fun CompactStore(
                                 top = LargestPadding,
                                 bottom = scaffoldPadding.calculateBottomPadding() + MediumPadding
                             ),
-                            verticalArrangement = Arrangement.spacedBy(MediumPadding)
+                            verticalArrangement = Arrangement.spacedBy(LargestPadding)
                         ) {
                             itemsIndexed(storeItems, key = { _, item -> item.packageName }) { _, storeItem ->
                                 StoreItemCell(

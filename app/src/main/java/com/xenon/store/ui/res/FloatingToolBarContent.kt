@@ -118,9 +118,9 @@ fun FloatingToolbarContent(
     currentSearchQuery: String,
     lazyListState: LazyListState,
     allowToolbarScrollBehavior: Boolean,
-    // TODO: Add hasUpdate and onDownloadUpdateClick parameters here
-    // hasUpdate: Boolean,
-    // onDownloadUpdateClick: () -> Unit,
+    hasUpdate: Boolean,
+    onDownloadUpdateClick: () -> Unit,
+    xenonStoreDownloadProgress: Float,
 ) {
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     var showActionIconsExceptSearch by rememberSaveable { mutableStateOf(true) }
@@ -414,12 +414,8 @@ fun FloatingToolbarContent(
                                     delayMillis = if (isSearchActive) 0 else 0
                                 ), label = "UpdateIconAlpha"
                             )
-                            val hasUpdate = true
-                            val onDownloadUpdateClick = { /* Placeholder */ }
 
                             if (hasUpdate) {
-                                val downloadProgress = 0.0f
-
                                 Box(
                                     modifier = Modifier
                                         .fillMaxHeight(),
@@ -427,26 +423,24 @@ fun FloatingToolbarContent(
                                 ) {
                                     Box(contentAlignment = Alignment.Center,
                                         modifier = Modifier
-                                        .size(40.dp)
-                                        .alpha(updateIconAlpha)
-                                        .clip(RoundedCornerShape(100f))
-                                        .background(colorScheme.primary)
-                                        .clickable(
-                                            enabled = !isSearchActive && showActionIconsExceptSearch,
-                                            onClick = {
-                                                onDownloadUpdateClick()
-                                            }
-                                        ),
-                                        ) {
+                                            .size(40.dp)
+                                            .alpha(updateIconAlpha)
+                                            .clip(RoundedCornerShape(100f))
+                                            .background(colorScheme.primary)
+                                            .clickable(
+                                                enabled = !isSearchActive && showActionIconsExceptSearch,
+                                                onClick = onDownloadUpdateClick
+                                            ),
+                                    ) {
                                         Icon(
                                             imageVector = Icons.Filled.Download,
-                                            contentDescription = "Download update",
+                                            contentDescription = stringResource(R.string.update),
                                             tint = colorScheme.onPrimary,
                                             modifier = Modifier.size(24.dp)
                                         )
-                                        if (downloadProgress > 0f && downloadProgress < 1f) {
+                                        if (xenonStoreDownloadProgress > 0f && xenonStoreDownloadProgress < 1f) {
                                             CircularProgressIndicator(
-                                                progress = { downloadProgress },
+                                                progress = { xenonStoreDownloadProgress },
                                                 modifier = Modifier.size(36.dp),
                                                 color = colorScheme.onPrimary,
                                                 trackColor = Color.Transparent,
