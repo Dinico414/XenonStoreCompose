@@ -113,22 +113,22 @@ private data class ScrollState(
 fun FloatingToolbarContent(
     hazeState: HazeState,
     onOpenSettings: () -> Unit,
+    hasUpdate: Boolean,
+    onDownloadUpdateClick: () -> Unit,
+    xenonStoreDownloadProgress: Float,
     onSearchQueryChanged: (String) -> Unit,
     currentSearchQuery: String,
     lazyListState: LazyListState,
     allowToolbarScrollBehavior: Boolean,
-    hasUpdate: Boolean,
-    onDownloadUpdateClick: () -> Unit,
-    xenonStoreDownloadProgress: Float,
-) {
+    ) {
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     var showActionIconsExceptSearch by rememberSaveable { mutableStateOf(true) }
     var canShowTextField by rememberSaveable { mutableStateOf(false) }
-    var showShareDialog by rememberSaveable { mutableStateOf(false) } // Added state for dialog
+    var showShareDialog by rememberSaveable { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
-     val localContext = LocalContext.current // Not directly needed now
+    LocalContext.current
 
     val iconsAlphaDuration = 500
     val iconGroupExitAnimationDuration = 100
@@ -251,7 +251,6 @@ fun FloatingToolbarContent(
         label = "bottomPaddingAnimation"
     )
 
-
     val toolbarHeight = 64.dp
     val toolbarOffsetTarget =
         if (toolbarVisibleState) 0.dp else toolbarHeight + LargePadding + 50.dp
@@ -265,14 +264,11 @@ fun FloatingToolbarContent(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(
-                bottom = animatedBottomPadding,
-            ), contentAlignment = Alignment.Center
+            .padding(bottom = animatedBottomPadding)
+            .offset(y = animatedToolbarOffset), contentAlignment = Alignment.Center
     ) {
         HorizontalFloatingToolbar(
-            modifier = Modifier
-                .height(toolbarHeight)
-                .offset(y = animatedToolbarOffset),
+            modifier = Modifier.height(toolbarHeight),
             expanded = true,
             floatingActionButton = {
                 Box(contentAlignment = Alignment.Center) {
@@ -348,7 +344,6 @@ fun FloatingToolbarContent(
                             onSearchQueryChanged("")
                             keyboardController?.hide()
                             isSearchActive = false
-
                         },
                         containerColor = Color.Transparent,
                         shape = fabShape,
