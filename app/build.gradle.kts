@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.xenon.store"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.xenon.store"

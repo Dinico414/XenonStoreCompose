@@ -111,8 +111,8 @@ fun ShareOptionBox(
         modifier = modifier
             .height(150.dp)
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(4.dp),
+            .clickable(onClick = onClick)
+            .clip(RoundedCornerShape(4.dp)),
         color = MaterialTheme.colorScheme.surfaceBright
     ) {
         Column(
