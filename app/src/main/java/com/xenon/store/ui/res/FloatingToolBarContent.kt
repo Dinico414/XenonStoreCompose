@@ -14,6 +14,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -110,7 +112,8 @@ private data class ScrollState(
 @OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalHazeMaterialsApi::class,
-    ExperimentalMaterial3ExpressiveApi::class, FlowPreview::class
+    ExperimentalMaterial3ExpressiveApi::class,
+    FlowPreview::class
 )
 @Composable
 fun FloatingToolbarContent(
@@ -176,9 +179,7 @@ fun FloatingToolbarContent(
                     isScrollInProgress = lazyListState.isScrollInProgress,
                     canScrollForward = lazyListState.canScrollForward
                 )
-            }
-                .distinctUntilChanged()
-                .map { currentState ->
+            }.distinctUntilChanged().map { currentState ->
                     val isAtBottom = !currentState.canScrollForward
                     val scrollingUp = if (currentState.firstVisibleItemIndex < previousIndex) {
                         true
@@ -191,8 +192,7 @@ fun FloatingToolbarContent(
                     previousIndex = currentState.firstVisibleItemIndex
 
                     Triple(scrollingUp, currentState.isScrollInProgress, isAtBottom)
-                }
-                .collect { (scrollingUp, isScrolling, isAtBottom) ->
+                }.collect { (scrollingUp, isScrolling, isAtBottom) ->
                     if (isScrolling) {
                         toolbarVisibleState = scrollingUp
                     }
@@ -204,8 +204,7 @@ fun FloatingToolbarContent(
     }
     LaunchedEffect(lazyListState, allowToolbarScrollBehavior, isSearchActive) {
         if (!isSearchActive && allowToolbarScrollBehavior) {
-            snapshotFlow { lazyListState.isScrollInProgress }
-                .debounce(2000L)
+            snapshotFlow { lazyListState.isScrollInProgress }.debounce(2000L)
                 .collect { isScrolling ->
                     if (!isScrolling) {
                         toolbarVisibleState = true
@@ -247,12 +246,9 @@ fun FloatingToolbarContent(
     }
 
     val animatedBottomPadding by animateDpAsState(
-        targetValue = targetBottomPadding,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "bottomPaddingAnimation"
+        targetValue = targetBottomPadding, animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow
+        ), label = "bottomPaddingAnimation"
     )
 
     val toolbarHeight = 64.dp
@@ -275,100 +271,108 @@ fun FloatingToolbarContent(
             modifier = Modifier.height(toolbarHeight),
             expanded = true,
             floatingActionButton = {
-                Box(contentAlignment = Alignment.Center) {
-                    val fabShape = FloatingActionButtonDefaults.shape
-                    val interactionSource = remember { MutableInteractionSource() }
-                    val isPressed by interactionSource.collectIsPressedAsState()
-                    val isHovered by interactionSource.collectIsHoveredAsState()
+                AnimatedVisibility(
+                    visible = isSearchActive,
+                    enter = slideInHorizontally { fullWidth -> -fullWidth / 2 } + fadeIn(),
+                    exit = slideOutHorizontally { fullWidth -> -fullWidth / 2 } + fadeOut()) {
+                    Box(contentAlignment = Alignment.Center) {
+                        val fabShape = FloatingActionButtonDefaults.shape
+                        val interactionSource = remember { MutableInteractionSource() }
+                        val isPressed by interactionSource.collectIsPressedAsState()
+                        val isHovered by interactionSource.collectIsHoveredAsState()
 
-                    val fabIconTint = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        colorScheme.onPrimaryContainer
-                    } else {
-                        colorScheme.onPrimary
-                    }
-                    val hazeThinColor = colorScheme.primary
-                    val smallElevationPx = with(density) { SmallElevation.toPx() }
-                    val baseShadowAlpha = 0.7f
-                    val interactiveShadowAlpha = 0.9f
-                    val currentShadowRadius =
-                        if (isPressed || isHovered) smallElevationPx * 1.5f else smallElevationPx
-                    val currentShadowAlpha =
-                        if (isPressed || isHovered) interactiveShadowAlpha else baseShadowAlpha
-                    val currentShadowColor = colorScheme.scrim.copy(alpha = currentShadowAlpha)
-                    val currentYOffsetPx = with(density) { 1.dp.toPx() }
+                        val fabIconTint = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            colorScheme.onPrimaryContainer
+                        } else {
+                            colorScheme.onPrimary
+                        }
+                        val hazeThinColor = colorScheme.primary
+                        val smallElevationPx = with(density) { SmallElevation.toPx() }
+                        val baseShadowAlpha = 0.7f
+                        val interactiveShadowAlpha = 0.9f
+                        val currentShadowRadius =
+                            if (isPressed || isHovered) smallElevationPx * 1.5f else smallElevationPx
+                        val currentShadowAlpha =
+                            if (isPressed || isHovered) interactiveShadowAlpha else baseShadowAlpha
+                        val currentShadowColor = colorScheme.scrim.copy(alpha = currentShadowAlpha)
+                        val currentYOffsetPx = with(density) { 1.dp.toPx() }
 
-                    Canvas(
-                        modifier = Modifier.size(
-                            FloatingActionButtonDefaults.LargeIconSize + 24.dp + if (isPressed || isHovered) 8.dp else 5.dp
-                        )
-                    ) {
-                        val outline = fabShape.createOutline(this.size, layoutDirection, density)
-                        val composePath = Path().apply { addOutline(outline) }
-                        drawIntoCanvas { canvas ->
-                            val frameworkPaint = Paint().asFrameworkPaint().apply {
-                                isAntiAlias = true
-                                style = android.graphics.Paint.Style.STROKE
-                                strokeWidth = with(this@Canvas) { 0.5.dp.toPx() }
-                                color = Color.Transparent.toArgb()
-                                setShadowLayer(
-                                    currentShadowRadius,
-                                    0f,
-                                    currentYOffsetPx,
-                                    currentShadowColor.toArgb()
+                        Canvas(
+                            modifier = Modifier.size(
+                                FloatingActionButtonDefaults.LargeIconSize + 24.dp + if (isPressed || isHovered) 8.dp else 5.dp
+                            )
+                        ) {
+                            val outline =
+                                fabShape.createOutline(this.size, layoutDirection, density)
+                            val composePath = Path().apply { addOutline(outline) }
+                            drawIntoCanvas { canvas ->
+                                val frameworkPaint = Paint().asFrameworkPaint().apply {
+                                    isAntiAlias = true
+                                    style = android.graphics.Paint.Style.STROKE
+                                    strokeWidth = with(this@Canvas) { 0.5.dp.toPx() }
+                                    color = Color.Transparent.toArgb()
+                                    setShadowLayer(
+                                        currentShadowRadius,
+                                        0f,
+                                        currentYOffsetPx,
+                                        currentShadowColor.toArgb()
+                                    )
+                                }
+                                canvas.nativeCanvas.drawPath(
+                                    composePath.asAndroidPath(), frameworkPaint
                                 )
                             }
-                            canvas.nativeCanvas.drawPath(
-                                composePath.asAndroidPath(), frameworkPaint
+                        }
+
+                        val rotationAngle = remember { Animatable(0f) }
+                        LaunchedEffect(isSearchActive) {
+                            if (isSearchActive) {
+                                delay(700)
+                                rotationAngle.animateTo(
+                                    targetValue = 45f, animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow,
+                                    )
+                                )
+                            } else {
+                                rotationAngle.animateTo(
+                                    targetValue = 0f, animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow,
+                                    )
+                                )
+                            }
+                        }
+
+                        FloatingActionButton(
+                            onClick = {
+                                onSearchQueryChanged("")
+                                keyboardController?.hide()
+                                isSearchActive = false
+                            },
+                            containerColor = Color.Transparent,
+                            shape = fabShape,
+                            elevation = FloatingActionButtonDefaults.elevation(
+                                0.dp, 0.dp, 0.dp, 0.dp
+                            ),
+                            interactionSource = interactionSource,
+                            modifier = Modifier
+                                .clip(FloatingActionButtonDefaults.shape)
+                                .background(colorScheme.primary)
+                                .hazeEffect(
+                                    state = hazeState,
+                                    style = HazeMaterials.ultraThin(hazeThinColor),
+                                )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = if (isSearchActive) stringResource(R.string.cancel) else stringResource(
+                                    R.string.add_task_description
+                                ),
+                                tint = fabIconTint,
+                                modifier = Modifier.rotate(rotationAngle.value)
                             )
                         }
-                    }
-
-                    val rotationAngle = remember { Animatable(0f) }
-                    LaunchedEffect(isSearchActive) {
-                        if (isSearchActive) {
-                            delay(700)
-                            rotationAngle.animateTo(
-                                targetValue = 45f, animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessLow,
-                                )
-                            )
-                        } else {
-                            rotationAngle.animateTo(
-                                targetValue = 0f, animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessLow,
-                                )
-                            )
-                        }
-                    }
-
-                    FloatingActionButton(
-                        onClick = {
-                            onSearchQueryChanged("")
-                            keyboardController?.hide()
-                            isSearchActive = false
-                        },
-                        containerColor = Color.Transparent,
-                        shape = fabShape,
-                        elevation = FloatingActionButtonDefaults.elevation(
-                            0.dp, 0.dp, 0.dp, 0.dp
-                        ),
-                        interactionSource = interactionSource,
-                        modifier = Modifier
-                            .clip(FloatingActionButtonDefaults.shape)
-                            .background(colorScheme.primary)
-                            .hazeEffect(
-                                state = hazeState,
-                                style = HazeMaterials.ultraThin(hazeThinColor),
-                            )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = if (isSearchActive) stringResource(R.string.cancel) else stringResource(
-                                R.string.add_task_description
-                            ), tint = fabIconTint, modifier = Modifier.rotate(rotationAngle.value)
-                        )
                     }
                 }
             },
@@ -406,32 +410,34 @@ fun FloatingToolbarContent(
                         Row {
                             val iconAlphaTarget = if (isSearchActive) 0f else 1f
 
-                            // --- Start of Update Button Animation ---
+                            val updateIconAlpha by animateFloatAsState(
+                                targetValue = iconAlphaTarget, animationSpec = tween(
+                                    durationMillis = iconsAlphaDuration,
+                                    delayMillis = if (isSearchActive) 0 else 0
+                                ), label = "FilterIconAlpha"
+                            )
                             AnimatedVisibility(
                                 visible = hasUpdate,
-                                enter = fadeIn(animationSpec = tween(durationMillis = updateButtonAnimationDuration)) +
-                                        scaleIn(
-                                            animationSpec = tween(durationMillis = updateButtonAnimationDuration),
-                                            initialScale = 0.8f, // Start slightly smaller
-                                            transformOrigin = TransformOrigin.Center // Scale from the center
-                                        ),
-                                exit = fadeOut(animationSpec = tween(durationMillis = updateButtonAnimationDuration)) +
-                                        scaleOut(
-                                            animationSpec = tween(durationMillis = updateButtonAnimationDuration),
-                                            targetScale = 0.8f, // End slightly smaller
-                                            transformOrigin = TransformOrigin.Center // Scale towards the center
-                                        )
+                                enter = fadeIn(animationSpec = tween(durationMillis = updateButtonAnimationDuration)) + scaleIn(
+                                    animationSpec = tween(durationMillis = updateButtonAnimationDuration),
+                                    initialScale = 0.8f,
+                                    transformOrigin = TransformOrigin.Center
+                                ),
+                                exit = fadeOut(animationSpec = tween(durationMillis = updateButtonAnimationDuration)) + scaleOut(
+                                    animationSpec = tween(durationMillis = updateButtonAnimationDuration),
+                                    targetScale = 0.8f,
+                                    transformOrigin = TransformOrigin.Center
+                                )
                             ) {
                                 Box(
-                                    modifier = Modifier
-                                        .fillMaxHeight(),
+                                    modifier = Modifier.fillMaxHeight(),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Box(
                                         contentAlignment = Alignment.Center,
                                         modifier = Modifier
                                             .size(40.dp)
-                                            //.alpha(updateIconAlpha) // Alpha is handled by AnimatedVisibility now
+                                            .alpha(updateIconAlpha)
                                             .clip(RoundedCornerShape(100f))
                                             .background(colorScheme.primary)
                                             .clickable(
@@ -457,8 +463,6 @@ fun FloatingToolbarContent(
                                     }
                                 }
                             }
-                            // --- End of Update Button Animation ---
-
 
                             val shareIconAlpha by animateFloatAsState(
                                 targetValue = iconAlphaTarget, animationSpec = tween(
