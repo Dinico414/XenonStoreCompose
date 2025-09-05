@@ -110,7 +110,7 @@
     <string name="task_name">Task Name</string>
     <string name="developer_options_title">Developer Options</string>
     <string name="dev_settings_description">Enable Alpha and Beta State Features</string>
-    <string name="developer_options">Developer Settings</string>
+    <string name="developer_options">Developer Options</string>
     <string name="already_in_developer_mode">You are already in developer mode</string>
     <string name="developer_mode_enabled">Developer mode enabled!</string>
     <string name="taps_remaining_to_developer">You are now %d steps away from being a developer.</string>
@@ -123,8 +123,11 @@
     <string name="version_with_prefix">Version: %s</string>
     <string name="uninstall">uninstall</string>
 
-    <string name="share_store_title">Share Store</string>
+    <string name="share_store_title">Share as</string>
     <string name="share_via_file">File</string>
     <string name="share_via_link">Link</string>
-    <string name="share_store_action">Share</string>
+    <string name="share_store_action">Share Store</string>
+    <string name="recommended">(recommended)</string>
+    <string name="check_pre_release">Check for pre-releases</string>
+    <string name="check_pre_release_describtion">Include pre-release versions when checking for updates</string>
 </resources>

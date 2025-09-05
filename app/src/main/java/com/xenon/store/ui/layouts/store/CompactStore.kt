@@ -75,8 +75,6 @@ fun CompactStore(
     ) {
     val context = LocalContext.current
     val storeItems by storeViewModel.storeItems.collectAsState()
-    val errorMessage by storeViewModel.error.collectAsState()
-    val currentActionInfo by storeViewModel.currentActionInfo.collectAsState()
 
     val density = LocalDensity.current
     val appWidthDp = with(density) { appSize.width.toDp() }
@@ -105,7 +103,6 @@ fun CompactStore(
     val hazeState = rememberHazeState()
     val snackbarHostState = remember { SnackbarHostState() }
     var currentSearchQuery by remember { mutableStateOf("") }
-    var appWindowSize by remember { mutableStateOf(IntSize.Zero) }
 
     val showDummyProfile by devSettingsViewModel.showDummyProfileState.collectAsState()
     val isDeveloperModeEnabled by devSettingsViewModel.devModeToggleState.collectAsState()
@@ -127,8 +124,7 @@ fun CompactStore(
         storeViewModel.error.collectLatest { errorMsg ->
             if (errorMsg != null) {
                 snackbarHostState.showSnackbar(
-                    message = errorMsg,
-                    duration = SnackbarDuration.Long
+                    message = errorMsg, duration = SnackbarDuration.Long
                 )
                 storeViewModel.clearError()
             }
@@ -176,7 +172,6 @@ fun CompactStore(
                 .padding()
                 .hazeSource(hazeState)
                 .onSizeChanged { newSize ->
-                    appWindowSize = newSize
                 },
             titleText = stringResource(id = R.string.app_name),
             expandable = isAppBarCollapsible,
@@ -215,27 +210,14 @@ fun CompactStore(
             } else {
                 {}
             },
-          actions = {},
+            actions = {},
             content = { _ ->
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = ExtraLargeSpacing)
                 ) {
-                    if (errorMessage != null) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = errorMessage!!,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    } else if (storeItems.isEmpty()) {
+                    if (storeItems.isEmpty()) {
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -255,21 +237,17 @@ fun CompactStore(
                                 top = LargestPadding,
                                 bottom = scaffoldPadding.calculateBottomPadding() + MediumPadding
                             ),
-                            verticalArrangement = Arrangement.spacedBy(LargestPadding)
+                            verticalArrangement = Arrangement.spacedBy(MediumPadding)
                         ) {
-                            itemsIndexed(storeItems, key = { _, item -> item.packageName }) { _, storeItem ->
-                                StoreItemCell(
-                                    storeItem = storeItem,
-                                    onInstall = { item ->
-                                        storeViewModel.installApp(item, context)
-                                    },
-                                    onUninstall = { item ->
-                                        storeViewModel.uninstallApp(item, context)
-                                    },
-                                    onOpen = { item ->
-                                        storeViewModel.openApp(item, context)
-                                    }
-                                )
+                            itemsIndexed(
+                                storeItems, key = { _, item -> item.packageName }) { _, storeItem ->
+                                StoreItemCell(storeItem = storeItem, onInstall = { item ->
+                                    storeViewModel.installApp(item, context)
+                                }, onUninstall = { item ->
+                                    storeViewModel.uninstallApp(item, context)
+                                }, onOpen = { item ->
+                                    storeViewModel.openApp(item, context)
+                                })
                             }
                         }
                     }

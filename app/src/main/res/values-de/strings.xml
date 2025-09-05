@@ -107,24 +107,27 @@
     <string name="task_text">Aufgabe</string>
     <string name="deleted_text">gelöscht</string>
     <string name="task_name">Task Name</string>
-    <string name="developer_options_title">Developer Options</string>
-    <string name="dev_settings_description">Enable Alpha and Beta State Features</string>
-    <string name="developer_options">Developer Settings</string>
-    <string name="already_in_developer_mode">You are already in developer mode</string>
-    <string name="developer_mode_enabled">Developer mode enabled!</string>
-    <string name="taps_remaining_to_developer">You are now %d steps away from being a developer.</string>
-    <string name="show_dummy_profile_title">Enable Fake Google Profile</string>
-    <string name="restart_app_description">restart app</string>
-    <string name="nothing_in_store_yet">Nothing in store yet</string>
+    <string name="developer_options_title">Developer Einstellungen</string>
+    <string name="dev_settings_description">Aktiviere Alpha und Beta Funktionen</string>
+    <string name="developer_options">Developer Einstellungen</string>
+    <string name="already_in_developer_mode">Du bist bereits im Developer Modus</string>
+    <string name="developer_mode_enabled">Developer mode aktive!</string>
+    <string name="taps_remaining_to_developer">Du bist nun %d schritten entfernt ein developer zu sein.</string>
+    <string name="show_dummy_profile_title">Einschalten von Fake Google Profil</string>
+    <string name="restart_app_description">App neu starten</string>
+    <string name="nothing_in_store_yet">Hier ist nichts zu finden</string>
 
-    <string name="install">install</string>
-    <string name="update">update</string>
-    <string name="open">open</string>
+    <string name="install">Installieren</string>
+    <string name="update">Update</string>
+    <string name="open">Öffnen</string>
     <string name="version_with_prefix">Version: %s</string>
-    <string name="uninstall">uninstall</string>
+    <string name="uninstall">deinstallieren</string>
 
-    <string name="share_store_title">Share</string>
+    <string name="share_store_title">Teilen als</string>
     <string name="share_via_file">Datei</string>
     <string name="share_via_link">Link</string>
-    <string name="share_store_action">Teilen</string>
+    <string name="share_store_action">Store teilen</string>
+    <string name="recommended">(empfohlen)</string>
+    <string name="check_pre_release">Suche nach Pre-Release</string>
+    <string name="check_pre_release_describtion">Pre-Release bei der Suche nach Updates einbeziehen</string>
 </resources>

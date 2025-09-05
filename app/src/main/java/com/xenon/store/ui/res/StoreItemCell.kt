@@ -10,9 +10,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -34,7 +36,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,11 +88,17 @@ fun StoreItemCell(
     val installButtonText = when (storeItem.state) {
         AppEntryState.NOT_INSTALLED -> context.getString(R.string.install)
         AppEntryState.INSTALLED_AND_OUTDATED -> context.getString(R.string.update)
-        else -> context.getString(R.string.install)
+        AppEntryState.INSTALLING -> { // Show previous text but button will be disabled
+            if (storeItem.installedVersion.isNotEmpty()) context.getString(R.string.update)
+            else context.getString(R.string.install)
+        }
+        else -> context.getString(R.string.install) // Default for DOWNLOADING, though content changes
     }
 
     val showVersionInfoHorizontal =
-        storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated())
+        storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED ||
+                (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated()) ||
+                (storeItem.state == AppEntryState.INSTALLING && storeItem.isOutdated())
 
     Row(
         modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
@@ -244,90 +251,110 @@ fun StoreItemCell(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                val mainActionButtonVisible =
-                    storeItem.state == AppEntryState.NOT_INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || storeItem.state == AppEntryState.DOWNLOADING
+                val mainActionButtonVisible = storeItem.state == AppEntryState.NOT_INSTALLED ||
+                                              storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED ||
+                                              storeItem.state == AppEntryState.DOWNLOADING ||
+                                              storeItem.state == AppEntryState.INSTALLING
 
-                val openAndUninstallRowVisible =
-                    storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated())
+                val openAndUninstallRowVisible = storeItem.state == AppEntryState.INSTALLED ||
+                                                 storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED ||
+                                                 (storeItem.installedVersion.isNotEmpty() && (storeItem.state == AppEntryState.DOWNLOADING || storeItem.state == AppEntryState.INSTALLING))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = if (mainActionButtonVisible && openAndUninstallRowVisible) Arrangement.SpaceBetween else Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (mainActionButtonVisible) {
                         Button(
                             onClick = {
-                                if (storeItem.state != AppEntryState.DOWNLOADING) onInstall(
-                                    storeItem
-                                )
+                                if (storeItem.state == AppEntryState.NOT_INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED) {
+                                    onInstall(storeItem)
+                                }
                             },
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier
-                                .weight(1f)
+                                .weight(if (openAndUninstallRowVisible) 0.5f else 1f)
                                 .height(40.dp),
-                            enabled = storeItem.state != AppEntryState.DOWNLOADING,
-                            contentPadding = if (storeItem.state == AppEntryState.DOWNLOADING) androidx.compose.foundation.layout.PaddingValues(
-                                0.dp
-                            ) else ButtonDefaults.ContentPadding
+                            enabled = storeItem.state == AppEntryState.NOT_INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED,
+                            contentPadding = if (storeItem.state == AppEntryState.DOWNLOADING) PaddingValues(0.dp) else ButtonDefaults.ContentPadding
                         ) {
-                            if (storeItem.state == AppEntryState.DOWNLOADING) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .fillMaxHeight()
-                                        .padding(8.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Color.Transparent)
-                                ) {
-                                    val progress = if (storeItem.fileSize > 0) {
-                                        storeItem.bytesDownloaded.toFloat() / storeItem.fileSize.toFloat()
-                                    } else {
-                                        0f
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxHeight()
-                                            .fillMaxWidth(fraction = progress)
-                                            .background(
-                                                color = MaterialTheme.colorScheme.secondary,
-                                                shape = RoundedCornerShape(8.dp)
+                            when (storeItem.state) {
+                                AppEntryState.DOWNLOADING -> {
+                                    Box( // Fills the Button content area due to PaddingValues(0.dp)
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        val progress = if (storeItem.fileSize > 0) {
+                                            (storeItem.bytesDownloaded.toFloat() / storeItem.fileSize.toFloat()).coerceIn(0f, 1f)
+                                        } else {
+                                            0f // Indeterminate or initial state before fileSize is known
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(horizontal = 4.dp, vertical = 4.dp) 
+                                                .clip(RoundedCornerShape(12.dp)) 
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxHeight()
+                                                    .fillMaxWidth(fraction = progress)
+                                                    .background(
+                                                        color = MaterialTheme.colorScheme.tertiary,
+                                                        shape = RoundedCornerShape(12.dp)
+                                                    )
                                             )
-                                            .clip(RoundedCornerShape(8.dp))
-                                    )
+                                        }
+                                        // NO TEXT OVERLAY FOR DOWNLOAD PROGRESS AS PER REQUEST
+                                    }
                                 }
-                            } else {
-                                Text(text = installButtonText)
+                                else -> { // NOT_INSTALLED, INSTALLED_AND_OUTDATED, INSTALLING
+                                    Text(text = installButtonText)
+                                }
                             }
                         }
-                        Spacer(modifier = Modifier.width(4.dp))
-
+                        // Spacer only if main action is visible AND open/uninstall is NOT (to push main action to the end)
+                        // Or if both are visible, the Arrangement.SpaceBetween should handle it.
+                        if (mainActionButtonVisible && !openAndUninstallRowVisible && (Modifier.weight(1f).equals(1f))) {
+                           // No spacer needed if it takes full width
+                        } else if (mainActionButtonVisible && !openAndUninstallRowVisible) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
                     }
 
                     if (openAndUninstallRowVisible) {
+                        if (mainActionButtonVisible) { // Add spacer if both button types are visible
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
                         Button(
                             onClick = { onOpen(storeItem) },
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier
-                                .weight(1f)
+                                .weight(if (mainActionButtonVisible) 0.5f else 1f) 
                                 .height(40.dp),
-                            enabled = storeItem.state != AppEntryState.DOWNLOADING
+                            enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED // Only enabled if truly installed
                         ) {
                             Text(text = context.getString(R.string.open))
                         }
 
                         Spacer(modifier = Modifier.width(4.dp))
 
-                        Box(modifier = Modifier.width(52.dp),
-                            contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier.width(52.dp), 
+                            contentAlignment = Alignment.Center
+                        ) {
                             OutlinedButton(
                                 onClick = { onUninstall(storeItem) },
                                 modifier = Modifier
                                     .width(52.dp)
                                     .height(40.dp),
-                                enabled = storeItem.state != AppEntryState.DOWNLOADING,
-                                shape = RoundedCornerShape(16.dp)
-                            ) {}
+                                enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED, // Only enabled if truly installed
+                                shape = RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(0.dp) 
+                            ) {
+                                // Icon is overlaid
+                            }
                             Icon(
                                 imageVector = Icons.Filled.Delete,
                                 contentDescription = context.getString(R.string.uninstall),
@@ -360,25 +387,82 @@ private fun StoreItemCellPreviewNotInstalled() {
     }
 }
 
-@Preview(showBackground = true, name = "Downloading", widthDp = 380)
+@Preview(showBackground = true, name = "Downloading New", widthDp = 380)
 @Composable
-private fun StoreItemCellPreviewDownloading() {
+private fun StoreItemCellPreviewDownloadingNew() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
             nameMap = hashMapOf("en" to "Super Downloader App"),
-            packageName = "com.sample.app.downloading",
+            packageName = "com.sample.app.downloadingnew",
             githubUrl = "Dinico414/downloader",
             iconPath = "@mipmap/ic_launcher_round"
         ).apply {
             state = AppEntryState.DOWNLOADING
             bytesDownloaded = 50 * 1024 * 1024 // 50MB
             fileSize = 100 * 1024 * 1024      // 100MB
-            installedVersion = "1.0.0" // For isOutdated() check during download
             newVersion = "2.1.0"
+            // installedVersion is empty, so Open/Uninstall shouldn't show
         }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
+
+@Preview(showBackground = true, name = "Downloading Update", widthDp = 380)
+@Composable
+private fun StoreItemCellPreviewDownloadingUpdate() {
+    MaterialTheme {
+        StoreItemCell(
+            storeItem = StoreItem(
+            nameMap = hashMapOf("en" to "My Awesome App (Updating)"),
+            packageName = "com.sample.app.downloadingupdate",
+            githubUrl = "Dinico414/updater",
+            iconPath = "@mipmap/ic_launcher_round"
+        ).apply {
+            state = AppEntryState.DOWNLOADING
+            installedVersion = "1.0.0" // Important: app is already installed
+            newVersion = "1.1.0"
+            bytesDownloaded = 30 * 1024 * 1024
+            fileSize = 60 * 1024 * 1024
+        }, onInstall = {}, onUninstall = {}, onOpen = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Installing New", widthDp = 380)
+@Composable
+private fun StoreItemCellPreviewInstallingNew() {
+    MaterialTheme {
+        StoreItemCell(
+            storeItem = StoreItem(
+            nameMap = hashMapOf("en" to "Fantastic Installer (New)"),
+            packageName = "com.sample.app.installingnew",
+            githubUrl = "Dinico414/installer",
+            iconPath = "@mipmap/ic_launcher"
+        ).apply {
+            state = AppEntryState.INSTALLING
+            newVersion = "1.0.0"
+             // installedVersion is empty
+        }, onInstall = {}, onUninstall = {}, onOpen = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Installing Update", widthDp = 380)
+@Composable
+private fun StoreItemCellPreviewInstallingUpdate() {
+    MaterialTheme {
+        StoreItemCell(
+            storeItem = StoreItem(
+            nameMap = hashMapOf("en" to "Fantastic Installer (Update)"),
+            packageName = "com.sample.app.installingupdate",
+            githubUrl = "Dinico414/installer",
+            iconPath = "@mipmap/ic_launcher"
+        ).apply {
+            state = AppEntryState.INSTALLING
+            installedVersion = "1.0.0" // Important: app is already installed
+            newVersion = "1.1.0" 
+        }, onInstall = {}, onUninstall = {}, onOpen = {})
+    }
+}
+
 
 @Preview(showBackground = true, name = "Installed", widthDp = 380)
 @Composable

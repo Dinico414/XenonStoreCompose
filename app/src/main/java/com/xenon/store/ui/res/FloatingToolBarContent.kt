@@ -155,7 +155,7 @@ fun FloatingToolbarContent(
     var toolbarVisibleState by rememberSaveable { mutableStateOf(true) }
 
     if (showShareDialog) {
-        ShareStoreDialog(onDismissRequest = { showShareDialog = false })
+        DialogShareSelector(onDismissRequest = { showShareDialog = false })
     }
 
     LaunchedEffect(lazyListState, isSearchActive, allowToolbarScrollBehavior) {

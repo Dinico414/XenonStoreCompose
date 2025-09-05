@@ -215,17 +215,19 @@ fun SettingsItems(
         verticalPadding = tileVerticalPadding
     )
     LaunchedEffect(Unit) { viewModel.updateCurrentLanguage() }
-    Spacer(Modifier.height(actualInnerGroupSpacing)) // Spacer between Language and Pre-release switch
+
+    Spacer(Modifier.height(actualInnerGroupSpacing))
+
     SettingsSwitchTile(
-        title = "Check for pre-releases", // TODO: Replace with stringResource
-        subtitle = "Include pre-release versions when checking for updates", // TODO: Replace with stringResource
+        title = stringResource(R.string.check_pre_release),
+        subtitle = stringResource(R.string.check_pre_release_describtion),
         checked = checkForPreReleases,
         onCheckedChange = { viewModel.setCheckForPreReleases(it) },
         onClick = { viewModel.setCheckForPreReleases(!checkForPreReleases) },
         icon = {
             Icon(
-                painterResource(R.drawable.developer), // TODO: Replace with actual pre-release/beta icon
-                contentDescription = "Check for pre-releases", // TODO: Replace with stringResource
+                painterResource(R.drawable.pre_release),
+                contentDescription = stringResource(R.string.check_pre_release),
                 tint = tileSubtitleColor
             )
         },

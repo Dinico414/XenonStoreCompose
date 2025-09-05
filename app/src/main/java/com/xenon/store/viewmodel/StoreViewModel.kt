@@ -1,8 +1,10 @@
 package com.xenon.store.viewmodel
 
 import android.app.Application
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -31,7 +33,6 @@ import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 
-// You'll need to provide the Application context via ViewModelFactory or Hilt
 class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _storeItems = MutableStateFlow<List<StoreItem>>(emptyList())
@@ -51,22 +52,60 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     private val client: OkHttpClient
     private val sharedPreferenceManager = SharedPreferenceManager(application)
+    private val packageInstallReceiver: PackageInstallReceiver
 
     private companion object {
         const val APP_LIST_PROTOCOL_VERSION = "v0.1"
         const val TAG = "StoreViewModel"
-        const val XENON_STORE_PACKAGE_NAME = "com.xenon.store" // Your app's package name
-        const val XENON_STORE_OWNER = "Dinico414" // GitHub owner
-        const val XENON_STORE_REPO = "XenonStore" // GitHub repo
+        const val XENON_STORE_PACKAGE_NAME = "com.xenon.store"
+        const val XENON_STORE_OWNER = "Dinico414"
+        const val XENON_STORE_REPO = "XenonStore"
     }
 
     private var cachedJsonHash: Int = 0
 
     init {
-        val clientBuilder = OkHttpClient.Builder()
-        client = clientBuilder.build()
+        client = OkHttpClient.Builder().build()
         fetchAndRefreshAppList()
         checkForXenonStoreUpdate()
+
+        packageInstallReceiver = PackageInstallReceiver()
+        val intentFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        getApplication<Application>().registerReceiver(packageInstallReceiver, intentFilter)
+    }
+
+    private inner class PackageInstallReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val packageName = intent?.data?.schemeSpecificPart ?: return
+            Log.d(TAG, "Package event: ${intent.action} for $packageName")
+            handlePackageChanged(packageName)
+        }
+    }
+
+    fun handlePackageChanged(packageName: String) {
+        viewModelScope.launch {
+            val currentList = _storeItems.value
+            val itemIndex = currentList.indexOfFirst { it.packageName == packageName }
+            if (itemIndex != -1) {
+                val itemToRefresh = currentList[itemIndex]
+                val refreshedItem = refreshAppItemBlocking(
+                    itemToRefresh.copy(),
+                    githubInfoUseCache = true, // Avoid unnecessary GitHub fetches for version info unless needed
+                    forceStateReEvaluation = true // Crucial: ensure state is fully re-evaluated after package change
+                )
+                val newList = currentList.toMutableList()
+                newList[itemIndex] = refreshedItem
+                _storeItems.value = newList.toList()
+                Log.d(TAG, "Refreshed item $packageName (state: ${refreshedItem.state}) due to package change.")
+            } else if (packageName == XENON_STORE_PACKAGE_NAME) {
+                checkForXenonStoreUpdate()
+            }
+        }
     }
 
     fun fetchAndRefreshAppList(useCache: Boolean = true) {
@@ -87,7 +126,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     Log.d(TAG, "Parsing new app list JSON or cache miss/invalidated.")
                     val appList = parseAppListJson(result)
                     _storeItems.value = appList
-                    refreshAllAppItemsStates(false)
+                    refreshAllAppItemsStates(false) // Fetch GitHub info for new list
                     _currentActionInfo.value = "App list updated."
                 }
 
@@ -102,15 +141,21 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private fun refreshAllAppItemsStates(useCache: Boolean) {
         viewModelScope.launch {
             val updatedList = _storeItems.value.map { item ->
-                refreshAppItemBlocking(item.copy(), useCache)
+                refreshAppItemBlocking(item.copy(), githubInfoUseCache = useCache, forceStateReEvaluation = false)
             }
             _storeItems.value = updatedList
         }
     }
 
-    private suspend fun refreshAppItemBlocking(appItem: StoreItem, githubInfoUseCache: Boolean): StoreItem {
+    private suspend fun refreshAppItemBlocking(
+        appItem: StoreItem,
+        githubInfoUseCache: Boolean,
+        forceStateReEvaluation: Boolean = false // Default to false for general refreshes
+    ): StoreItem {
         return withContext(Dispatchers.IO) {
-            val currentAppItem = appItem
+            val currentAppItem = appItem.copy() // Work on a copy
+
+            // Always get the current installed version
             currentAppItem.installedVersion = getInstalledAppVersion(currentAppItem.packageName) ?: ""
 
             val shouldFetchFromGitHub = currentAppItem.newVersion.isEmpty() ||
@@ -126,18 +171,29 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to get release info for ${currentAppItem.packageName}: ${e.message}")
                 }
-            } else {
-                Log.d(TAG, "Skipping GitHub release fetch for ${currentAppItem.packageName} due to cache preference and existing data.")
             }
 
-            if (currentAppItem.state != AppEntryState.DOWNLOADING) {
-                if (currentAppItem.isOutdated()) {
-                    currentAppItem.state = AppEntryState.INSTALLED_AND_OUTDATED
-                } else if (currentAppItem.installedVersion.isNotEmpty()) {
-                    currentAppItem.state = AppEntryState.INSTALLED
+            val previousState = currentAppItem.state // State before re-evaluation
+
+            // If forced, or if not in a transient download/install state, determine final state.
+            if (forceStateReEvaluation || (previousState != AppEntryState.DOWNLOADING && previousState != AppEntryState.INSTALLING)) {
+                if (currentAppItem.installedVersion.isNotEmpty()) {
+                    if (currentAppItem.isOutdated()) { // Compares installedVersion with newVersion
+                        currentAppItem.state = AppEntryState.INSTALLED_AND_OUTDATED
+                    } else {
+                        currentAppItem.state = AppEntryState.INSTALLED
+                    }
                 } else {
                     currentAppItem.state = AppEntryState.NOT_INSTALLED
                 }
+            }
+            // If previousState was DOWNLOADING or INSTALLING and not forceStateReEvaluation, it remains unchanged by the block above.
+
+            // If the (potentially new) state is no longer DOWNLOADING, reset progress fields.
+            // This ensures progress is cleared after install or if download is cancelled/failed then refreshed.
+            if (currentAppItem.state != AppEntryState.DOWNLOADING) {
+                currentAppItem.bytesDownloaded = 0
+                currentAppItem.fileSize = 0
             }
             currentAppItem
         }
@@ -160,27 +216,22 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         return try {
             val json = JSONObject(jsonString)
             val appList = ArrayList<StoreItem>()
-
             val version = json.optString("protocolVersion", "v0.0")
             if (Util.isNewerVersion(APP_LIST_PROTOCOL_VERSION, version)) {
                 _error.value = "App store client is outdated. Please update XenonStore."
-                // Potentially trigger XenonStore update check here as well or show a more prominent error
                 return emptyList()
             }
-
             val list = json.getJSONArray("appList")
             for (i in 0 until list.length()) {
                 val el = list.getJSONObject(i)
                 val nameMap = HashMap<String, String>()
                 val defaultName = el.optString("name")
                 if (defaultName.isNotEmpty()) nameMap["en"] = defaultName
-
                 el.optJSONObject("names")?.let { namesObj ->
                     namesObj.keys().forEach { langKey ->
                         nameMap[langKey] = namesObj.getString(langKey)
                     }
                 }
-
                 val appItem = StoreItem(
                     nameMap = nameMap,
                     iconPath = el.getString("icon"),
@@ -205,44 +256,41 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             "https://api.github.com/repos/$owner/$repo/releases/latest"
         }
         val request = Request.Builder().url(url).build()
-
         return withContext(Dispatchers.IO) {
             try {
                 val response = client.newCall(request).execute()
                 if (!response.isSuccessful) throw IOException("Unexpected code $response for $url")
-
                 val responseBody = response.body?.string()
                 if (responseBody.isNullOrEmpty()) throw IOException("Empty response body from $url")
-
                 if (checkForPreReleases) {
                     val releasesArray = JSONArray(responseBody)
                     if (releasesArray.length() == 0) throw IOException("No releases found (pre-releases enabled) for $owner/$repo")
-                    // Iterate to find the first non-draft release with assets
                     for (i in 0 until releasesArray.length()) {
                         val releaseNode = releasesArray.getJSONObject(i)
                         val isDraft = releaseNode.optBoolean("draft", false)
                         if (!isDraft) {
                             val assets = releaseNode.getJSONArray("assets")
                             if (assets.length() > 0) {
-                                val asset = assets.getJSONObject(0) // Assuming the first asset is the APK
+                                val asset = assets.getJSONObject(0)
                                 val newVersion = releaseNode.getString("tag_name")
                                 return@withContext GithubReleaseInfo(newVersion, asset.getString("browser_download_url"))
                             }
                         }
                     }
                     throw IOException("No suitable non-draft release with assets found in /releases endpoint for $owner/$repo")
-                } else { // Not checking for pre-releases, so /latest endpoint was used
+                } else {
                     val latestRelease = JSONObject(responseBody)
                     val newVersion = latestRelease.getString("tag_name")
                     val assets = latestRelease.getJSONArray("assets")
                     if (assets.length() > 0) {
-                        val asset = assets.getJSONObject(0) // Assuming the first asset is the APK
+                        val asset = assets.getJSONObject(0)
                         GithubReleaseInfo(newVersion, asset.getString("browser_download_url"))
                     } else {
                         throw IOException("No assets found in the latest release for $owner/$repo")
                     }
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "GitHub API error for $owner/$repo: ${e.message}")
                 throw e
             }
         }
@@ -255,13 +303,11 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val installedVersion = getInstalledAppVersion(XENON_STORE_PACKAGE_NAME)
                 if (installedVersion == null) {
-                    _xenonStoreUpdateInfo.value = null // Or fetch latest if it's a first install scenario
+                    Log.d(TAG, "XenonStore not installed, skipping update check.")
+                    _xenonStoreUpdateInfo.value = null
                     return@launch
                 }
-
                 val latestReleaseInfo = getNewReleaseVersionGithubBlocking(XENON_STORE_OWNER, XENON_STORE_REPO)
-                
-
                 if (Util.isNewerVersion(installedVersion, latestReleaseInfo.version)) {
                     _xenonStoreUpdateInfo.value = latestReleaseInfo
                 } else {
@@ -270,7 +316,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to check for XenonStore update: ${e.message}")
                 _xenonStoreUpdateInfo.value = null
-                // Optionally set _error.value if this check is critical
             }
         }
     }
@@ -279,86 +324,86 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         val updateInfo = _xenonStoreUpdateInfo.value ?: return
         viewModelScope.launch {
             _currentActionInfo.value = "Downloading XenonStore update ${updateInfo.version}..."
-            _xenonStoreDownloadProgress.value = 0.01f // Indicate starting
-
+            _xenonStoreDownloadProgress.value = 0.01f
             val fileName = "XenonStore_${updateInfo.version}.apk"
             val destinationFile = File(context.getExternalFilesDir(null), fileName)
-
             downloadFile(updateInfo.downloadUrl, destinationFile,
                 onProgress = { bytesDownloaded, fileSize ->
-                    val progress = if (fileSize > 0) {
-                        (bytesDownloaded.toFloat() / fileSize.toFloat()).coerceIn(0f, 1f)
-                    } else {
-                        0.01f // Minimal progress if fileSize is unknown
-                    }
+                    val progress = if (fileSize > 0) (bytesDownloaded.toFloat() / fileSize.toFloat()).coerceIn(0f, 1f) else 0.01f
                     _xenonStoreDownloadProgress.value = progress
                 },
                 onCompleted = {
                     _currentActionInfo.value = "XenonStore download complete. Starting installation..."
-                    _xenonStoreDownloadProgress.value = 1f // Show 100%
+                    _xenonStoreDownloadProgress.value = 1f
                     initiateInstall(destinationFile, context, XENON_STORE_PACKAGE_NAME)
+                    _xenonStoreDownloadProgress.value = 0f // Reset after handing off
                     _xenonStoreUpdateInfo.value = null
-                    viewModelScope.launch {
-                        kotlinx.coroutines.delay(500) // Brief moment for UI to show 100%
-                        _xenonStoreDownloadProgress.value = 0f // Reset
-                    }
                 },
                 onFailure = { errorMsg ->
                     _error.value = "XenonStore download failed: $errorMsg"
                     _currentActionInfo.value = null
-                    _xenonStoreDownloadProgress.value = 0f // Reset progress
+                    _xenonStoreDownloadProgress.value = 0f
                 }
             )
         }
     }
 
-
     fun installApp(storeItem: StoreItem, context: Context) {
         viewModelScope.launch {
             _currentActionInfo.value = "Preparing to install ${storeItem.getName(Util.getCurrentLanguage(context.resources))}..."
             Log.d(TAG, "Install/Update clicked for: ${storeItem.packageName}")
-
             if (storeItem.downloadUrl.isEmpty()) {
-                _error.value = "No download URL available for ${storeItem.getName(Util.getCurrentLanguage(context.resources))}."
+                _error.value = "No download URL for ${storeItem.getName(Util.getCurrentLanguage(context.resources))}. Refreshing..."
                 _currentActionInfo.value = null
+                // Attempt to refresh the specific item to get download URL
+                val refreshedItem = refreshAppItemBlocking(storeItem.copy(), githubInfoUseCache = false, forceStateReEvaluation = true)
+                updateItemInList(refreshedItem) // Update the list with potentially new URL
+                if (refreshedItem.downloadUrl.isEmpty()) {
+                    _error.value = "Still no download URL for ${storeItem.getName(Util.getCurrentLanguage(context.resources))} after refresh."
+                    return@launch
+                }
+                 // Re-call installApp with the item that now hopefully has a downloadUrl
+                installApp(refreshedItem, context)
                 return@launch
             }
-
             val fileName = "${storeItem.packageName}_${storeItem.newVersion}.apk"
             val destinationFile = File(context.getExternalFilesDir(null), fileName)
-
-            updateItemState(storeItem.packageName, AppEntryState.DOWNLOADING, bytesDownloaded = 0, fileSize = 100) // Placeholder fileSize
-
+            updateItemState(storeItem.packageName, AppEntryState.DOWNLOADING, bytesDownloaded = 0, fileSize = 1) // Initial fileSize > 0 for indeterminate
             downloadFile(storeItem.downloadUrl, destinationFile,
                 onProgress = { bytesDownloaded, fileSize ->
                     updateItemState(storeItem.packageName, AppEntryState.DOWNLOADING, bytesDownloaded, fileSize)
                 },
                 onCompleted = {
-                    _currentActionInfo.value = "Download complete. Starting installation..."
+                    _currentActionInfo.value = "Download complete for ${storeItem.getName(Util.getCurrentLanguage(context.resources))}. Starting installation..."
+                    updateItemState(storeItem.packageName, AppEntryState.INSTALLING, 0, 0)
                     initiateInstall(destinationFile, context, storeItem.packageName)
                 },
                 onFailure = { errorMsg ->
-                    _error.value = "Download failed: $errorMsg"
-                    updateItemState(storeItem.packageName, AppEntryState.NOT_INSTALLED) // Or previous state
+                    _error.value = "Download failed for ${storeItem.getName(Util.getCurrentLanguage(context.resources))}: $errorMsg"
+                    handlePackageChanged(storeItem.packageName) // Revert to a non-downloading state by forcing re-evaluation
                     _currentActionInfo.value = null
                 }
             )
+        }
+    }
+    
+    private fun updateItemInList(updatedItem: StoreItem) {
+        val currentList = _storeItems.value
+        val itemIndex = currentList.indexOfFirst { it.packageName == updatedItem.packageName }
+        if (itemIndex != -1) {
+            val newList = currentList.toMutableList()
+            newList[itemIndex] = updatedItem
+            _storeItems.value = newList.toList()
         }
     }
 
     private fun initiateInstall(apkFile: File, context: Context, packageName: String) {
         try {
             val intent = Intent(Intent.ACTION_VIEW)
-            val fileUri: Uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.provider", // Ensure this matches your FileProvider authority
-                apkFile
-            )
-
+            val fileUri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", apkFile)
             intent.setDataAndType(fileUri, "application/vnd.android.package-archive")
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 if (!context.packageManager.canRequestPackageInstalls()) {
                     _error.value = "Permission needed to install apps. Please enable in settings."
@@ -368,19 +413,29 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     }
                     context.startActivity(settingsIntent)
                     _currentActionInfo.value = null
+                    if (packageName != XENON_STORE_PACKAGE_NAME) {
+                         handlePackageChanged(packageName) // Revert state if permission denied
+                    } else {
+                         _xenonStoreDownloadProgress.value = 0f
+                    }
                     return
                 }
             }
             context.startActivity(intent)
             Log.d(TAG, "Installation intent started for ${apkFile.name}")
-            _currentActionInfo.value = "Installation process started by system."
+            _currentActionInfo.value = "Installation for $packageName started by system."
         } catch (e: Exception) {
-            _error.value = "Failed to start installation: ${e.message}"
+            _error.value = "Failed to start installation for $packageName: ${e.message}"
             Log.e(TAG, "Error initiating install: ", e)
             _currentActionInfo.value = null
+            if (packageName != XENON_STORE_PACKAGE_NAME) {
+                handlePackageChanged(packageName) // Revert state on failure
+            } else {
+                _xenonStoreDownloadProgress.value = 0f
+                checkForXenonStoreUpdate()
+            }
         }
     }
-
 
     fun uninstallApp(storeItem: StoreItem, context: Context) {
         Log.d(TAG, "Uninstall clicked for: ${storeItem.packageName}")
@@ -391,9 +446,9 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-            _currentActionInfo.value = "Uninstallation process started by system."
+            _currentActionInfo.value = "Uninstallation for ${storeItem.getName(Util.getCurrentLanguage(context.resources))} started by system."
         } catch (e: Exception) {
-            _error.value = "Failed to start uninstall: ${e.message}"
+            _error.value = "Failed to start uninstall for ${storeItem.getName(Util.getCurrentLanguage(context.resources))}: ${e.message}"
             Log.e(TAG, "Error starting uninstall intent for ${storeItem.packageName}", e)
             _currentActionInfo.value = null
         }
@@ -425,10 +480,11 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             val currentList = _storeItems.value
             val itemIndex = currentList.indexOfFirst { it.packageName == packageName }
             if (itemIndex != -1) {
-                val updatedItem = currentList[itemIndex].copy(
+                val currentItem = currentList[itemIndex]
+                val updatedItem = currentItem.copy(
                     state = newState,
-                    bytesDownloaded = bytesDownloaded,
-                    fileSize = if (fileSize > 0) fileSize else currentList[itemIndex].fileSize
+                    bytesDownloaded = if (newState == AppEntryState.DOWNLOADING) bytesDownloaded else 0,
+                    fileSize = if (newState == AppEntryState.DOWNLOADING && fileSize > 0) fileSize else if (newState == AppEntryState.DOWNLOADING) currentItem.fileSize else 0
                 )
                 val newList = currentList.toMutableList()
                 newList[itemIndex] = updatedItem
@@ -437,58 +493,39 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private interface DownloadListener<T> {
+        fun onCompleted(result: T)
+        fun onFailure(error: String)
+    }
 
-    private fun downloadToString(
-        url: String,
-        listener: DownloadListener<String>,
-        useCache: Boolean = true,
-    ) {
+    private fun downloadToString(url: String, listener: DownloadListener<String>, useCache: Boolean = true) {
         val request = Request.Builder().url(url).build()
-        val currentClient = if (useCache) client else OkHttpClient()
-
+        val currentClient = if (useCache) client else OkHttpClient.Builder().cache(null).build()
         currentClient.newCall(request).enqueue(object : Callback {
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
                     listener.onFailure("Response error code: ${response.code} from $url")
                     return
                 }
-                response.body?.string()?.let {
-                    listener.onCompleted(it)
-                } ?: listener.onFailure("Empty body from $url")
+                response.body?.string()?.let { listener.onCompleted(it) } ?: listener.onFailure("Empty body from $url")
             }
-
-            override fun onFailure(call: Call, e: IOException) {
-                listener.onFailure("Download failed for $url: ${e.message}")
-            }
+            override fun onFailure(call: Call, e: IOException) { listener.onFailure("Download failed for $url: ${e.message}") }
         })
     }
 
     private fun downloadFile(
-        url: String,
-        destinationFile: File,
+        url: String, destinationFile: File,
         onProgress: (bytesDownloaded: Long, fileSize: Long) -> Unit,
-        onCompleted: () -> Unit,
-        onFailure: (errorMsg: String) -> Unit
+        onCompleted: () -> Unit, onFailure: (errorMsg: String) -> Unit
     ) {
         val request = Request.Builder().url(url).build()
         val freshClient = OkHttpClient.Builder().cache(null).build()
-
         freshClient.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                viewModelScope.launch { onFailure("Network error: ${e.message}") }
-            }
-
+            override fun onFailure(call: Call, e: IOException) { viewModelScope.launch { onFailure("Network error: ${e.message}") } }
             override fun onResponse(call: Call, response: Response) {
-                if (!response.isSuccessful) {
-                    viewModelScope.launch { onFailure("Server error: ${response.code}") }
-                    return
-                }
+                if (!response.isSuccessful) { viewModelScope.launch { onFailure("Server error: ${response.code} for $url") }; return }
                 val body = response.body
-                if (body == null) {
-                    viewModelScope.launch { onFailure("Empty response body") }
-                    return
-                }
-
+                if (body == null) { viewModelScope.launch { onFailure("Empty response body for $url") }; return }
                 val fileSize = body.contentLength()
                 var bytesCopied: Long = 0
                 try {
@@ -499,43 +536,25 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                             while (bytes >= 0) {
                                 outputStream.write(buffer, 0, bytes)
                                 bytesCopied += bytes
-                                if (fileSize > 0) {
-                                    viewModelScope.launch { onProgress(bytesCopied, fileSize) }
-                                }
+                                viewModelScope.launch { onProgress(bytesCopied, fileSize) }
                                 bytes = inputStream.read(buffer)
                             }
                         }
                     }
-                    if (bytesCopied > 0) {
-                        viewModelScope.launch { onCompleted() }
-                    } else {
-                        viewModelScope.launch { onFailure("Zero bytes downloaded.") }
-                    }
-                } catch (e: IOException) {
-                    viewModelScope.launch { onFailure("File I/O error: ${e.message}") }
-                } finally {
-                    body.close()
-                }
+                    if (bytesCopied > 0 || fileSize == 0L) { viewModelScope.launch { onCompleted() } }
+                    else { viewModelScope.launch { onFailure("Zero bytes downloaded from $url.") } }
+                } catch (e: IOException) { viewModelScope.launch { onFailure("File I/O error for $url: ${e.message}") } }
+                finally { body.close() }
             }
         })
     }
 
-
-    interface DownloadListener<T> {
-        fun onCompleted(result: T)
-        fun onFailure(error: String)
-    }
-
-    fun clearError() {
-        _error.value = null
-    }
-
-    fun clearActionInfo() {
-        _currentActionInfo.value = null
-    }
+    fun clearError() { _error.value = null }
+    fun clearActionInfo() { _currentActionInfo.value = null }
 
     override fun onCleared() {
         super.onCleared()
+        getApplication<Application>().unregisterReceiver(packageInstallReceiver)
         client.dispatcher.executorService.shutdown()
         client.connectionPool.evictAll()
     }

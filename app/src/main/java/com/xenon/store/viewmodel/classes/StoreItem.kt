@@ -7,6 +7,7 @@ import com.xenon.store.util.Util // Assuming Util.getCurrentLanguage
 enum class AppEntryState {
     NOT_INSTALLED,
     DOWNLOADING,
+    INSTALLING, // Added this state
     INSTALLED,
     INSTALLED_AND_OUTDATED
 }
