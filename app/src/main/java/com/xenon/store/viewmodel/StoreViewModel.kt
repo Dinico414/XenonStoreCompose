@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Call
@@ -95,8 +96,8 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 val itemToRefresh = currentList[itemIndex]
                 val refreshedItem = refreshAppItemBlocking(
                     itemToRefresh.copy(),
-                    githubInfoUseCache = true, // Avoid unnecessary GitHub fetches for version info unless needed
-                    forceStateReEvaluation = true // Crucial: ensure state is fully re-evaluated after package change
+                    githubInfoUseCache = true, 
+                    forceStateReEvaluation = true 
                 )
                 val newList = currentList.toMutableList()
                 newList[itemIndex] = refreshedItem
@@ -107,6 +108,47 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+    
+    fun verifyAndRefreshPendingInstallations() {
+        viewModelScope.launch {
+            val itemsToCheck = _storeItems.value.filter { it.state == AppEntryState.INSTALLING }
+            if (itemsToCheck.isEmpty()) return@launch
+
+            Log.d(TAG, "Verifying ${itemsToCheck.size} items in INSTALLING state.")
+            var listChanged = false
+            val currentList = _storeItems.value.toMutableList()
+
+            itemsToCheck.forEach { item ->
+                val installedVersion = getInstalledAppVersion(item.packageName)
+                // If it was a new install, newVersion would be the target. If an update, also newVersion.
+                // If installedVersion is null (not installed) OR installedVersion is not the newVersion we aimed for.
+                if (installedVersion == null || (item.newVersion.isNotEmpty() && installedVersion != item.newVersion)) {
+                    Log.d(TAG, "Installation for ${item.packageName} likely cancelled or failed. Current installed: $installedVersion, Target: ${item.newVersion}. Reverting state.")
+                    // Re-evaluate its state fully, which will set it to NOT_INSTALLED or INSTALLED_AND_OUTDATED (if old version exists)
+                    val refreshedItem = refreshAppItemBlocking(item.copy(), githubInfoUseCache = true, forceStateReEvaluation = true)
+                    val itemIndex = currentList.indexOfFirst { it.packageName == item.packageName }
+                    if (itemIndex != -1 && currentList[itemIndex].state != refreshedItem.state) {
+                        currentList[itemIndex] = refreshedItem
+                        listChanged = true
+                    }
+                } else {
+                    // It seems the app was installed/updated correctly, but the broadcast might have been missed or is pending.
+                    // Let's force a refresh just in case to get it to INSTALLED state.
+                    Log.d(TAG, "Item ${item.packageName} is in INSTALLING state, but version check ($installedVersion vs ${item.newVersion}) suggests it might be installed. Refreshing.")
+                    val refreshedItem = refreshAppItemBlocking(item.copy(), githubInfoUseCache = true, forceStateReEvaluation = true)
+                     val itemIndex = currentList.indexOfFirst { it.packageName == item.packageName }
+                    if (itemIndex != -1 && currentList[itemIndex].state != refreshedItem.state) {
+                        currentList[itemIndex] = refreshedItem
+                        listChanged = true
+                    }
+                }
+            }
+            if (listChanged) {
+                _storeItems.value = currentList.toList()
+            }
+        }
+    }
+
 
     fun fetchAndRefreshAppList(useCache: Boolean = true) {
         viewModelScope.launch {
@@ -126,7 +168,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     Log.d(TAG, "Parsing new app list JSON or cache miss/invalidated.")
                     val appList = parseAppListJson(result)
                     _storeItems.value = appList
-                    refreshAllAppItemsStates(false) // Fetch GitHub info for new list
+                    refreshAllAppItemsStates(false) 
                     _currentActionInfo.value = "App list updated."
                 }
 
@@ -150,12 +192,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun refreshAppItemBlocking(
         appItem: StoreItem,
         githubInfoUseCache: Boolean,
-        forceStateReEvaluation: Boolean = false // Default to false for general refreshes
+        forceStateReEvaluation: Boolean = false 
     ): StoreItem {
         return withContext(Dispatchers.IO) {
-            val currentAppItem = appItem.copy() // Work on a copy
-
-            // Always get the current installed version
+            val currentAppItem = appItem.copy() 
             currentAppItem.installedVersion = getInstalledAppVersion(currentAppItem.packageName) ?: ""
 
             val shouldFetchFromGitHub = currentAppItem.newVersion.isEmpty() ||
@@ -173,12 +213,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            val previousState = currentAppItem.state // State before re-evaluation
-
-            // If forced, or if not in a transient download/install state, determine final state.
+            val previousState = currentAppItem.state
             if (forceStateReEvaluation || (previousState != AppEntryState.DOWNLOADING && previousState != AppEntryState.INSTALLING)) {
                 if (currentAppItem.installedVersion.isNotEmpty()) {
-                    if (currentAppItem.isOutdated()) { // Compares installedVersion with newVersion
+                    if (currentAppItem.isOutdated()) { 
                         currentAppItem.state = AppEntryState.INSTALLED_AND_OUTDATED
                     } else {
                         currentAppItem.state = AppEntryState.INSTALLED
@@ -187,10 +225,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     currentAppItem.state = AppEntryState.NOT_INSTALLED
                 }
             }
-            // If previousState was DOWNLOADING or INSTALLING and not forceStateReEvaluation, it remains unchanged by the block above.
-
-            // If the (potentially new) state is no longer DOWNLOADING, reset progress fields.
-            // This ensures progress is cleared after install or if download is cancelled/failed then refreshed.
+            
             if (currentAppItem.state != AppEntryState.DOWNLOADING) {
                 currentAppItem.bytesDownloaded = 0
                 currentAppItem.fileSize = 0
@@ -336,8 +371,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     _currentActionInfo.value = "XenonStore download complete. Starting installation..."
                     _xenonStoreDownloadProgress.value = 1f
                     initiateInstall(destinationFile, context, XENON_STORE_PACKAGE_NAME)
-                    _xenonStoreDownloadProgress.value = 0f // Reset after handing off
-                    _xenonStoreUpdateInfo.value = null
+                    // Don't reset progress immediately, let UI show 100% briefly if needed
+                    // The verifyAndRefreshPendingInstallations or package receiver will handle final state.
+                    // _xenonStoreDownloadProgress.value = 0f 
+                    // _xenonStoreUpdateInfo.value = null 
                 },
                 onFailure = { errorMsg ->
                     _error.value = "XenonStore download failed: $errorMsg"
@@ -350,37 +387,45 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     fun installApp(storeItem: StoreItem, context: Context) {
         viewModelScope.launch {
-            _currentActionInfo.value = "Preparing to install ${storeItem.getName(Util.getCurrentLanguage(context.resources))}..."
-            Log.d(TAG, "Install/Update clicked for: ${storeItem.packageName}")
-            if (storeItem.downloadUrl.isEmpty()) {
-                _error.value = "No download URL for ${storeItem.getName(Util.getCurrentLanguage(context.resources))}. Refreshing..."
-                _currentActionInfo.value = null
-                // Attempt to refresh the specific item to get download URL
-                val refreshedItem = refreshAppItemBlocking(storeItem.copy(), githubInfoUseCache = false, forceStateReEvaluation = true)
-                updateItemInList(refreshedItem) // Update the list with potentially new URL
-                if (refreshedItem.downloadUrl.isEmpty()) {
-                    _error.value = "Still no download URL for ${storeItem.getName(Util.getCurrentLanguage(context.resources))} after refresh."
+            val currentItemState = _storeItems.value.firstOrNull { it.packageName == storeItem.packageName }
+            val itemToInstall = currentItemState?.copy() ?: storeItem.copy()
+
+            _currentActionInfo.value = "Preparing to install ${itemToInstall.getName(Util.getCurrentLanguage(context.resources))}..."
+            Log.d(TAG, "Install/Update clicked for: ${itemToInstall.packageName}")
+
+            // Ensure we have the latest download URL, especially if it was missing before
+            if (itemToInstall.downloadUrl.isEmpty() || itemToInstall.newVersion.isEmpty()) {
+                 Log.d(TAG, "Missing downloadUrl or newVersion for ${itemToInstall.packageName}. Attempting refresh.")
+                val refreshedItem = refreshAppItemBlocking(itemToInstall, githubInfoUseCache = false, forceStateReEvaluation = false)
+                updateItemInList(refreshedItem)
+                if (refreshedItem.downloadUrl.isEmpty() || refreshedItem.newVersion.isEmpty()) {
+                    _error.value = "No download URL or version for ${refreshedItem.getName(Util.getCurrentLanguage(context.resources))} after refresh."
+                    _currentActionInfo.value = null
+                     // Make sure to reset to a definitive state if we can't proceed
+                    handlePackageChanged(refreshedItem.packageName)
                     return@launch
                 }
-                 // Re-call installApp with the item that now hopefully has a downloadUrl
+                // Retry with the refreshed item
                 installApp(refreshedItem, context)
                 return@launch
             }
-            val fileName = "${storeItem.packageName}_${storeItem.newVersion}.apk"
+
+            val fileName = "${itemToInstall.packageName}_${itemToInstall.newVersion}.apk"
             val destinationFile = File(context.getExternalFilesDir(null), fileName)
-            updateItemState(storeItem.packageName, AppEntryState.DOWNLOADING, bytesDownloaded = 0, fileSize = 1) // Initial fileSize > 0 for indeterminate
-            downloadFile(storeItem.downloadUrl, destinationFile,
+
+            updateItemState(itemToInstall.packageName, AppEntryState.DOWNLOADING, bytesDownloaded = 0, fileSize = 1) 
+            downloadFile(itemToInstall.downloadUrl, destinationFile,
                 onProgress = { bytesDownloaded, fileSize ->
-                    updateItemState(storeItem.packageName, AppEntryState.DOWNLOADING, bytesDownloaded, fileSize)
+                    updateItemState(itemToInstall.packageName, AppEntryState.DOWNLOADING, bytesDownloaded, fileSize)
                 },
                 onCompleted = {
-                    _currentActionInfo.value = "Download complete for ${storeItem.getName(Util.getCurrentLanguage(context.resources))}. Starting installation..."
-                    updateItemState(storeItem.packageName, AppEntryState.INSTALLING, 0, 0)
-                    initiateInstall(destinationFile, context, storeItem.packageName)
+                    _currentActionInfo.value = "Download complete for ${itemToInstall.getName(Util.getCurrentLanguage(context.resources))}. Starting installation..."
+                    updateItemState(itemToInstall.packageName, AppEntryState.INSTALLING, 0, 0)
+                    initiateInstall(destinationFile, context, itemToInstall.packageName)
                 },
                 onFailure = { errorMsg ->
-                    _error.value = "Download failed for ${storeItem.getName(Util.getCurrentLanguage(context.resources))}: $errorMsg"
-                    handlePackageChanged(storeItem.packageName) // Revert to a non-downloading state by forcing re-evaluation
+                    _error.value = "Download failed for ${itemToInstall.getName(Util.getCurrentLanguage(context.resources))}: $errorMsg"
+                    handlePackageChanged(itemToInstall.packageName) 
                     _currentActionInfo.value = null
                 }
             )
@@ -388,12 +433,17 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     private fun updateItemInList(updatedItem: StoreItem) {
-        val currentList = _storeItems.value
-        val itemIndex = currentList.indexOfFirst { it.packageName == updatedItem.packageName }
-        if (itemIndex != -1) {
-            val newList = currentList.toMutableList()
-            newList[itemIndex] = updatedItem
-            _storeItems.value = newList.toList()
+        viewModelScope.launch {
+            val currentList = _storeItems.value.toMutableList()
+            val itemIndex = currentList.indexOfFirst { it.packageName == updatedItem.packageName }
+            if (itemIndex != -1) {
+                currentList[itemIndex] = updatedItem
+                _storeItems.value = currentList.toList()
+            } else {
+                // Should not happen if called after a refresh of an existing item
+                // but as a safeguard, could add it if it's truly new, though refresh logic implies it exists.
+                 Log.w(TAG, "updateItemInList called for an item not in the list: ${updatedItem.packageName}")
+            }
         }
     }
 
@@ -414,25 +464,28 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     context.startActivity(settingsIntent)
                     _currentActionInfo.value = null
                     if (packageName != XENON_STORE_PACKAGE_NAME) {
-                         handlePackageChanged(packageName) // Revert state if permission denied
+                         handlePackageChanged(packageName) 
                     } else {
                          _xenonStoreDownloadProgress.value = 0f
+                         // User needs to grant permission, then try again. Update info should remain.
                     }
                     return
                 }
             }
             context.startActivity(intent)
-            Log.d(TAG, "Installation intent started for ${apkFile.name}")
+            Log.d(TAG, "Installation intent started for ${apkFile.name}. Item state: INSTALLING.")
             _currentActionInfo.value = "Installation for $packageName started by system."
+            // Item state is already INSTALLING. Broadcast receiver or verifyAndRefreshPendingInstallations will handle next state.
         } catch (e: Exception) {
             _error.value = "Failed to start installation for $packageName: ${e.message}"
             Log.e(TAG, "Error initiating install: ", e)
             _currentActionInfo.value = null
             if (packageName != XENON_STORE_PACKAGE_NAME) {
-                handlePackageChanged(packageName) // Revert state on failure
+                handlePackageChanged(packageName) 
             } else {
                 _xenonStoreDownloadProgress.value = 0f
-                checkForXenonStoreUpdate()
+                // If XenonStore install failed to even start, re-check for its update to restore button
+                checkForXenonStoreUpdate() 
             }
         }
     }
@@ -477,18 +530,21 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun updateItemState(packageName: String, newState: AppEntryState, bytesDownloaded: Long = 0, fileSize: Long = 0) {
         viewModelScope.launch {
-            val currentList = _storeItems.value
+            val currentList = _storeItems.value.toMutableList()
             val itemIndex = currentList.indexOfFirst { it.packageName == packageName }
             if (itemIndex != -1) {
                 val currentItem = currentList[itemIndex]
                 val updatedItem = currentItem.copy(
                     state = newState,
                     bytesDownloaded = if (newState == AppEntryState.DOWNLOADING) bytesDownloaded else 0,
-                    fileSize = if (newState == AppEntryState.DOWNLOADING && fileSize > 0) fileSize else if (newState == AppEntryState.DOWNLOADING) currentItem.fileSize else 0
+                    fileSize = if (newState == AppEntryState.DOWNLOADING && fileSize > 0) fileSize 
+                               else if (newState == AppEntryState.DOWNLOADING && currentItem.fileSize > 0) currentItem.fileSize // Preserve old if new is 0
+                               else 0
                 )
-                val newList = currentList.toMutableList()
-                newList[itemIndex] = updatedItem
-                _storeItems.value = newList.toList()
+                if (currentList[itemIndex] != updatedItem) { // Only update flow if actual change
+                    currentList[itemIndex] = updatedItem
+                    _storeItems.value = currentList.toList()
+                }
             }
         }
     }

@@ -13,13 +13,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntSize
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.ViewModelProvider
 import com.xenon.store.ui.layouts.StoreLayout
 import com.xenon.store.ui.theme.ScreenEnvironment
 import com.xenon.store.viewmodel.LayoutType
+import com.xenon.store.viewmodel.StoreViewModel
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var sharedPreferenceManager: SharedPreferenceManager
+    private lateinit var storeViewModel: StoreViewModel
 
     private var lastAppliedTheme: Int = -1
     private var lastAppliedCoverThemeEnabled: Boolean = false
@@ -30,6 +33,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         sharedPreferenceManager = SharedPreferenceManager(applicationContext)
+        storeViewModel = ViewModelProvider(this).get(StoreViewModel::class.java)
 
         val initialThemePref = sharedPreferenceManager.theme
         val initialCoverThemeEnabled = sharedPreferenceManager.coverThemeEnabled
@@ -42,8 +46,6 @@ class MainActivity : ComponentActivity() {
         lastAppliedBlackedOutMode = initialBlackedOutMode
 
         setContent {
-
-
             val currentContext = LocalContext.current
             val currentContainerSize = LocalWindowInfo.current.containerSize // Use LocalWindowInfo
 
@@ -61,6 +63,7 @@ class MainActivity : ComponentActivity() {
                     },
                     isLandscape = isLandscape,
                     appSize = currentContainerSize,
+                    storeViewModel = storeViewModel // Pass ViewModel to Composable if needed there
                     )
             }
         }
@@ -68,6 +71,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        storeViewModel.verifyAndRefreshPendingInstallations()
 
         val currentThemePref = sharedPreferenceManager.theme
         val currentCoverThemeEnabled = sharedPreferenceManager.coverThemeEnabled
@@ -104,13 +108,14 @@ fun XenonStoreApp(
     onOpenSettings: () -> Unit,
     isLandscape: Boolean = false,
     appSize: IntSize,
-
+    storeViewModel: StoreViewModel // Added ViewModel parameter
     ) {
     StoreLayout(
         layoutType = layoutType,
         onOpenSettings = onOpenSettings,
         modifier = Modifier.fillMaxSize(),
         isLandscape = isLandscape,
-        appSize = appSize
+        appSize = appSize,
+        storeViewModel = storeViewModel // Pass ViewModel to StoreLayout
     )
 }
