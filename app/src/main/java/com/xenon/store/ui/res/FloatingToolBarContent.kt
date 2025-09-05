@@ -11,6 +11,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -70,6 +72,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -120,7 +123,7 @@ fun FloatingToolbarContent(
     currentSearchQuery: String,
     lazyListState: LazyListState,
     allowToolbarScrollBehavior: Boolean,
-    ) {
+) {
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     var showActionIconsExceptSearch by rememberSaveable { mutableStateOf(true) }
     var canShowTextField by rememberSaveable { mutableStateOf(false) }
@@ -135,6 +138,7 @@ fun FloatingToolbarContent(
     val iconsClearanceTime = iconsAlphaDuration + 200
     val textFieldExistenceDelay = iconsAlphaDuration - 100
     val textFieldAnimationDuration = 500
+    val updateButtonAnimationDuration = 300 // Added for update button animation
 
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp.dp
@@ -402,23 +406,32 @@ fun FloatingToolbarContent(
                         Row {
                             val iconAlphaTarget = if (isSearchActive) 0f else 1f
 
-                            val updateIconAlpha by animateFloatAsState(
-                                targetValue = iconAlphaTarget, animationSpec = tween(
-                                    durationMillis = iconsAlphaDuration,
-                                    delayMillis = if (isSearchActive) 0 else 0
-                                ), label = "UpdateIconAlpha"
-                            )
-
-                            if (hasUpdate) {
+                            // --- Start of Update Button Animation ---
+                            AnimatedVisibility(
+                                visible = hasUpdate,
+                                enter = fadeIn(animationSpec = tween(durationMillis = updateButtonAnimationDuration)) +
+                                        scaleIn(
+                                            animationSpec = tween(durationMillis = updateButtonAnimationDuration),
+                                            initialScale = 0.8f, // Start slightly smaller
+                                            transformOrigin = TransformOrigin.Center // Scale from the center
+                                        ),
+                                exit = fadeOut(animationSpec = tween(durationMillis = updateButtonAnimationDuration)) +
+                                        scaleOut(
+                                            animationSpec = tween(durationMillis = updateButtonAnimationDuration),
+                                            targetScale = 0.8f, // End slightly smaller
+                                            transformOrigin = TransformOrigin.Center // Scale towards the center
+                                        )
+                            ) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxHeight(),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Box(contentAlignment = Alignment.Center,
+                                    Box(
+                                        contentAlignment = Alignment.Center,
                                         modifier = Modifier
                                             .size(40.dp)
-                                            .alpha(updateIconAlpha)
+                                            //.alpha(updateIconAlpha) // Alpha is handled by AnimatedVisibility now
                                             .clip(RoundedCornerShape(100f))
                                             .background(colorScheme.primary)
                                             .clickable(
@@ -444,6 +457,7 @@ fun FloatingToolbarContent(
                                     }
                                 }
                             }
+                            // --- End of Update Button Animation ---
 
 
                             val shareIconAlpha by animateFloatAsState(
@@ -486,7 +500,8 @@ fun FloatingToolbarContent(
 
                 val fraction by animateFloatAsState(
                     targetValue = if (canShowTextField) 1F else 0F,
-                    animationSpec = tween(durationMillis = textFieldAnimationDuration)
+                    animationSpec = tween(durationMillis = textFieldAnimationDuration),
+                    label = "textFieldFraction"
                 )
                 XenonTextFieldV2(
                     value = currentSearchQuery,
