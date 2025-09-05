@@ -273,7 +273,8 @@ fun FloatingToolbarContent(
             floatingActionButton = {
                 AnimatedVisibility(
                     visible = isSearchActive,
-                    enter = slideInHorizontally { fullWidth -> -fullWidth / 2 } + fadeIn(),
+                    enter = slideInHorizontally { fullWidth -> -fullWidth / 2 } +
+                            fadeIn(animationSpec = tween(delayMillis = 600)),
                     exit = slideOutHorizontally { fullWidth -> -fullWidth / 2 } + fadeOut()) {
                     Box(contentAlignment = Alignment.Center) {
                         val fabShape = FloatingActionButtonDefaults.shape
