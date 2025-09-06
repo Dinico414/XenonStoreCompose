@@ -431,7 +431,8 @@ fun FloatingToolbarContent(
                                 )
                             ) {
                                 Box(
-                                    modifier = Modifier.fillMaxHeight(),
+                                    modifier = Modifier.fillMaxHeight()
+                                        .padding(horizontal = 4.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Box(
