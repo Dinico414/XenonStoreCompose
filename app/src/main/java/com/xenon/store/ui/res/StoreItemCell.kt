@@ -306,39 +306,34 @@ fun StoreItemCell(
                                                     )
                                             )
                                         }
-                                        // NO TEXT OVERLAY FOR DOWNLOAD PROGRESS AS PER REQUEST
                                     }
                                 }
-                                else -> { // NOT_INSTALLED, INSTALLED_AND_OUTDATED, INSTALLING
+                                else -> {
                                     Text(text = installButtonText)
                                 }
                             }
                         }
-                        // Spacer only if main action is visible AND open/uninstall is NOT (to push main action to the end)
-                        // Or if both are visible, the Arrangement.SpaceBetween should handle it.
                         if (mainActionButtonVisible && !openAndUninstallRowVisible && (Modifier.weight(1f).equals(1f))) {
-                           // No spacer needed if it takes full width
                         } else if (mainActionButtonVisible && !openAndUninstallRowVisible) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                        }
+                            Spacer(modifier = Modifier.width(8.dp))
                     }
 
                     if (openAndUninstallRowVisible) {
-                        if (mainActionButtonVisible) { // Add spacer if both button types are visible
+                        if (mainActionButtonVisible) { 
                             Spacer(modifier = Modifier.width(8.dp))
                         }
                         Button(
                             onClick = { onOpen(storeItem) },
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(bottomStart = 16.dp, topStart = 16.dp, topEnd = 4.dp, bottomEnd = 4.dp),
                             modifier = Modifier
                                 .weight(if (mainActionButtonVisible) 0.5f else 1f) 
                                 .height(40.dp),
-                            enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED // Only enabled if truly installed
+                            enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED
                         ) {
                             Text(text = context.getString(R.string.open))
                         }
 
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(2.dp))
 
                         Box(
                             modifier = Modifier.width(52.dp), 
@@ -349,12 +344,10 @@ fun StoreItemCell(
                                 modifier = Modifier
                                     .width(52.dp)
                                     .height(40.dp),
-                                enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED, // Only enabled if truly installed
-                                shape = RoundedCornerShape(16.dp),
+                                enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED,
+                                shape = RoundedCornerShape(bottomStart = 4.dp, topStart = 4.dp, topEnd = 16.dp, bottomEnd = 16.dp),
                                 contentPadding = PaddingValues(0.dp) 
-                            ) {
-                                // Icon is overlaid
-                            }
+                            ) {}
                             Icon(
                                 imageVector = Icons.Filled.Delete,
                                 contentDescription = context.getString(R.string.uninstall),
