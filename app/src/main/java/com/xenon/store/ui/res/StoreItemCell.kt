@@ -281,14 +281,14 @@ fun StoreItemCell(
                         ) {
                             when (storeItem.state) {
                                 AppEntryState.DOWNLOADING -> {
-                                    Box( // Fills the Button content area due to PaddingValues(0.dp)
+                                    Box(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         val progress = if (storeItem.fileSize > 0) {
                                             (storeItem.bytesDownloaded.toFloat() / storeItem.fileSize.toFloat()).coerceIn(0f, 1f)
                                         } else {
-                                            0f // Indeterminate or initial state before fileSize is known
+                                            0f
                                         }
                                         Box(
                                             modifier = Modifier
@@ -313,13 +313,18 @@ fun StoreItemCell(
                                 }
                             }
                         }
-                        if (mainActionButtonVisible && !openAndUninstallRowVisible && (Modifier.weight(1f).equals(1f))) {
-                        } else if (mainActionButtonVisible && !openAndUninstallRowVisible) {
-                            Spacer(modifier = Modifier.width(8.dp))
+                        val buttonShouldTakeFullWidth =
+                            (storeItem.state == AppEntryState.NOT_INSTALLED && storeItem.newVersion.isNotEmpty()) ||
+                            (storeItem.state == AppEntryState.INSTALLING && storeItem.installedVersion.isEmpty()) ||
+                            (storeItem.state == AppEntryState.DOWNLOADING && storeItem.installedVersion.isEmpty())
+
+                        if (!openAndUninstallRowVisible && !buttonShouldTakeFullWidth) {
+                            Spacer(modifier = Modifier.width(16.dp))
+                        }
                     }
 
                     if (openAndUninstallRowVisible) {
-                        if (mainActionButtonVisible) { 
+                        if (mainActionButtonVisible) {
                             Spacer(modifier = Modifier.width(8.dp))
                         }
                         Button(
