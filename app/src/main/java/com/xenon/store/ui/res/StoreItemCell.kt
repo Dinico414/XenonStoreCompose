@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -92,13 +93,12 @@ fun StoreItemCell(
             if (storeItem.installedVersion.isNotEmpty()) context.getString(R.string.update)
             else context.getString(R.string.install)
         }
+
         else -> context.getString(R.string.install) // Default for DOWNLOADING, though content changes
     }
 
     val showVersionInfoHorizontal =
-        storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED ||
-                (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated()) ||
-                (storeItem.state == AppEntryState.INSTALLING && storeItem.isOutdated())
+        storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.isOutdated())
 
     Row(
         modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
@@ -251,14 +251,11 @@ fun StoreItemCell(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                val mainActionButtonVisible = storeItem.state == AppEntryState.NOT_INSTALLED ||
-                                              storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED ||
-                                              storeItem.state == AppEntryState.DOWNLOADING ||
-                                              storeItem.state == AppEntryState.INSTALLING
+                val mainActionButtonVisible =
+                    storeItem.state == AppEntryState.NOT_INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || storeItem.state == AppEntryState.DOWNLOADING || storeItem.state == AppEntryState.INSTALLING
 
-                val openAndUninstallRowVisible = storeItem.state == AppEntryState.INSTALLED ||
-                                                 storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED ||
-                                                 (storeItem.installedVersion.isNotEmpty() && (storeItem.state == AppEntryState.DOWNLOADING || storeItem.state == AppEntryState.INSTALLING))
+                val openAndUninstallRowVisible =
+                    storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.installedVersion.isNotEmpty() && (storeItem.state == AppEntryState.DOWNLOADING || storeItem.state == AppEntryState.INSTALLING))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -277,7 +274,9 @@ fun StoreItemCell(
                                 .weight(if (openAndUninstallRowVisible) 0.5f else 1f)
                                 .height(40.dp),
                             enabled = storeItem.state == AppEntryState.NOT_INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED,
-                            contentPadding = if (storeItem.state == AppEntryState.DOWNLOADING) PaddingValues(0.dp) else ButtonDefaults.ContentPadding
+                            contentPadding = if (storeItem.state == AppEntryState.DOWNLOADING) PaddingValues(
+                                0.dp
+                            ) else ButtonDefaults.ContentPadding
                         ) {
                             when (storeItem.state) {
                                 AppEntryState.DOWNLOADING -> {
@@ -286,15 +285,17 @@ fun StoreItemCell(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         val progress = if (storeItem.fileSize > 0) {
-                                            (storeItem.bytesDownloaded.toFloat() / storeItem.fileSize.toFloat()).coerceIn(0f, 1f)
+                                            (storeItem.bytesDownloaded.toFloat() / storeItem.fileSize.toFloat()).coerceIn(
+                                                0f, 1f
+                                            )
                                         } else {
                                             0f
                                         }
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxSize()
-                                                .padding(horizontal = 4.dp, vertical = 4.dp) 
-                                                .clip(RoundedCornerShape(12.dp)) 
+                                                .padding(horizontal = 4.dp, vertical = 4.dp)
+                                                .clip(RoundedCornerShape(12.dp))
                                         ) {
                                             Box(
                                                 modifier = Modifier
@@ -308,15 +309,14 @@ fun StoreItemCell(
                                         }
                                     }
                                 }
+
                                 else -> {
                                     Text(text = installButtonText)
                                 }
                             }
                         }
                         val buttonShouldTakeFullWidth =
-                            (storeItem.state == AppEntryState.NOT_INSTALLED && storeItem.newVersion.isNotEmpty()) ||
-                            (storeItem.state == AppEntryState.INSTALLING && storeItem.installedVersion.isEmpty()) ||
-                            (storeItem.state == AppEntryState.DOWNLOADING && storeItem.installedVersion.isEmpty())
+                            (storeItem.state == AppEntryState.NOT_INSTALLED && storeItem.newVersion.isNotEmpty()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.installedVersion.isEmpty()) || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.installedVersion.isEmpty())
 
                         if (!openAndUninstallRowVisible && !buttonShouldTakeFullWidth) {
                             Spacer(modifier = Modifier.width(16.dp))
@@ -329,9 +329,14 @@ fun StoreItemCell(
                         }
                         Button(
                             onClick = { onOpen(storeItem) },
-                            shape = RoundedCornerShape(bottomStart = 16.dp, topStart = 16.dp, topEnd = 4.dp, bottomEnd = 4.dp),
+                            shape = RoundedCornerShape(
+                                bottomStart = 16.dp,
+                                topStart = 16.dp,
+                                topEnd = 4.dp,
+                                bottomEnd = 4.dp
+                            ),
                             modifier = Modifier
-                                .weight(if (mainActionButtonVisible) 0.5f else 1f) 
+                                .weight(if (mainActionButtonVisible) 0.5f else 1f)
                                 .height(40.dp),
                             enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED
                         ) {
@@ -341,8 +346,7 @@ fun StoreItemCell(
                         Spacer(modifier = Modifier.width(2.dp))
 
                         Box(
-                            modifier = Modifier.width(52.dp), 
-                            contentAlignment = Alignment.Center
+                            modifier = Modifier.width(52.dp), contentAlignment = Alignment.Center
                         ) {
                             OutlinedButton(
                                 onClick = { onUninstall(storeItem) },
@@ -350,8 +354,16 @@ fun StoreItemCell(
                                     .width(52.dp)
                                     .height(40.dp),
                                 enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED,
-                                shape = RoundedCornerShape(bottomStart = 4.dp, topStart = 4.dp, topEnd = 16.dp, bottomEnd = 16.dp),
-                                contentPadding = PaddingValues(0.dp) 
+                                shape = RoundedCornerShape(
+                                    bottomStart = 4.dp,
+                                    topStart = 4.dp,
+                                    topEnd = 16.dp,
+                                    bottomEnd = 16.dp
+                                ),
+                                contentPadding = PaddingValues(0.dp),
+                                border = ButtonDefaults.outlinedButtonBorder.copy(
+                                    brush = SolidColor(MaterialTheme.colorScheme.primary)
+                                )
                             ) {}
                             Icon(
                                 imageVector = Icons.Filled.Delete,
@@ -374,14 +386,14 @@ private fun StoreItemCellPreviewNotInstalled() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-            nameMap = hashMapOf("en" to "Amazing New Application"),
-            packageName = "com.sample.app.notinstalled",
-            githubUrl = "Dinico414/Xenon-App",
-            iconPath = "@mipmap/ic_launcher" // Example iconPath
-        ).apply {
-            state = AppEntryState.NOT_INSTALLED
-            newVersion = "1.0.0"
-        }, onInstall = {}, onUninstall = {}, onOpen = {})
+                nameMap = hashMapOf("en" to "Amazing New Application"),
+                packageName = "com.sample.app.notinstalled",
+                githubUrl = "Dinico414/Xenon-App",
+                iconPath = "@mipmap/ic_launcher" // Example iconPath
+            ).apply {
+                state = AppEntryState.NOT_INSTALLED
+                newVersion = "1.0.0"
+            }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
 
@@ -391,17 +403,17 @@ private fun StoreItemCellPreviewDownloadingNew() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-            nameMap = hashMapOf("en" to "Super Downloader App"),
-            packageName = "com.sample.app.downloadingnew",
-            githubUrl = "Dinico414/downloader",
-            iconPath = "@mipmap/ic_launcher_round"
-        ).apply {
-            state = AppEntryState.DOWNLOADING
-            bytesDownloaded = 50 * 1024 * 1024 // 50MB
-            fileSize = 100 * 1024 * 1024      // 100MB
-            newVersion = "2.1.0"
-            // installedVersion is empty, so Open/Uninstall shouldn't show
-        }, onInstall = {}, onUninstall = {}, onOpen = {})
+                nameMap = hashMapOf("en" to "Super Downloader App"),
+                packageName = "com.sample.app.downloadingnew",
+                githubUrl = "Dinico414/downloader",
+                iconPath = "@mipmap/ic_launcher_round"
+            ).apply {
+                state = AppEntryState.DOWNLOADING
+                bytesDownloaded = 50 * 1024 * 1024 // 50MB
+                fileSize = 100 * 1024 * 1024      // 100MB
+                newVersion = "2.1.0"
+                // installedVersion is empty, so Open/Uninstall shouldn't show
+            }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
 
@@ -411,17 +423,17 @@ private fun StoreItemCellPreviewDownloadingUpdate() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-            nameMap = hashMapOf("en" to "My Awesome App (Updating)"),
-            packageName = "com.sample.app.downloadingupdate",
-            githubUrl = "Dinico414/updater",
-            iconPath = "@mipmap/ic_launcher_round"
-        ).apply {
-            state = AppEntryState.DOWNLOADING
-            installedVersion = "1.0.0" // Important: app is already installed
-            newVersion = "1.1.0"
-            bytesDownloaded = 30 * 1024 * 1024
-            fileSize = 60 * 1024 * 1024
-        }, onInstall = {}, onUninstall = {}, onOpen = {})
+                nameMap = hashMapOf("en" to "My Awesome App (Updating)"),
+                packageName = "com.sample.app.downloadingupdate",
+                githubUrl = "Dinico414/updater",
+                iconPath = "@mipmap/ic_launcher_round"
+            ).apply {
+                state = AppEntryState.DOWNLOADING
+                installedVersion = "1.0.0" // Important: app is already installed
+                newVersion = "1.1.0"
+                bytesDownloaded = 30 * 1024 * 1024
+                fileSize = 60 * 1024 * 1024
+            }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
 
@@ -431,15 +443,15 @@ private fun StoreItemCellPreviewInstallingNew() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-            nameMap = hashMapOf("en" to "Fantastic Installer (New)"),
-            packageName = "com.sample.app.installingnew",
-            githubUrl = "Dinico414/installer",
-            iconPath = "@mipmap/ic_launcher"
-        ).apply {
-            state = AppEntryState.INSTALLING
-            newVersion = "1.0.0"
-             // installedVersion is empty
-        }, onInstall = {}, onUninstall = {}, onOpen = {})
+                nameMap = hashMapOf("en" to "Fantastic Installer (New)"),
+                packageName = "com.sample.app.installingnew",
+                githubUrl = "Dinico414/installer",
+                iconPath = "@mipmap/ic_launcher"
+            ).apply {
+                state = AppEntryState.INSTALLING
+                newVersion = "1.0.0"
+                // installedVersion is empty
+            }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
 
@@ -449,15 +461,15 @@ private fun StoreItemCellPreviewInstallingUpdate() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-            nameMap = hashMapOf("en" to "Fantastic Installer (Update)"),
-            packageName = "com.sample.app.installingupdate",
-            githubUrl = "Dinico414/installer",
-            iconPath = "@mipmap/ic_launcher"
-        ).apply {
-            state = AppEntryState.INSTALLING
-            installedVersion = "1.0.0" // Important: app is already installed
-            newVersion = "1.1.0" 
-        }, onInstall = {}, onUninstall = {}, onOpen = {})
+                nameMap = hashMapOf("en" to "Fantastic Installer (Update)"),
+                packageName = "com.sample.app.installingupdate",
+                githubUrl = "Dinico414/installer",
+                iconPath = "@mipmap/ic_launcher"
+            ).apply {
+                state = AppEntryState.INSTALLING
+                installedVersion = "1.0.0" // Important: app is already installed
+                newVersion = "1.1.0"
+            }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
 
@@ -468,15 +480,15 @@ private fun StoreItemCellPreviewInstalled() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-            nameMap = hashMapOf("en" to "My Favorite Installed App"),
-            packageName = "com.sample.app.installed",
-            githubUrl = "User/My-Favorite-App.Repo",
-            iconPath = "@drawable/xenon_icon" // Example drawable path
-        ).apply {
-            state = AppEntryState.INSTALLED
-            installedVersion = "1.0.0"
-            newVersion = "1.0.0"
-        }, onInstall = {}, onUninstall = {}, onOpen = {})
+                nameMap = hashMapOf("en" to "My Favorite Installed App"),
+                packageName = "com.sample.app.installed",
+                githubUrl = "User/My-Favorite-App.Repo",
+                iconPath = "@drawable/xenon_icon" // Example drawable path
+            ).apply {
+                state = AppEntryState.INSTALLED
+                installedVersion = "1.0.0"
+                newVersion = "1.0.0"
+            }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
 
@@ -486,14 +498,14 @@ private fun StoreItemCellPreviewOutdated() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-            nameMap = hashMapOf("en" to "Old But Gold App (Update Available!)"),
-            packageName = "com.sample.app.outdated",
-            githubUrl = "",
-            iconPath = "@mipmap/ic_launcher"
-        ).apply {
-            state = AppEntryState.INSTALLED_AND_OUTDATED
-            installedVersion = "1.0.0"
-            newVersion = "1.1.0"
-        }, onInstall = {}, onUninstall = {}, onOpen = {})
+                nameMap = hashMapOf("en" to "Old But Gold App (Update Available!)"),
+                packageName = "com.sample.app.outdated",
+                githubUrl = "",
+                iconPath = "@mipmap/ic_launcher"
+            ).apply {
+                state = AppEntryState.INSTALLED_AND_OUTDATED
+                installedVersion = "1.0.0"
+                newVersion = "1.1.0"
+            }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
