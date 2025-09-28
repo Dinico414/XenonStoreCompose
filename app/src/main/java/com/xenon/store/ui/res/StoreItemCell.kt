@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,9 +37,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -234,7 +237,7 @@ fun StoreItemCell(
                                     R.string.version_with_prefix, storeItem.installedVersion
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
-                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough,
+                                textDecoration = TextDecoration.LineThrough,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -297,12 +300,33 @@ fun StoreItemCell(
                                                 .padding(horizontal = 4.dp, vertical = 4.dp)
                                                 .clip(RoundedCornerShape(12.dp))
                                         ) {
+                                            val isDarkTheme = isSystemInDarkTheme()
+                                            val tertiaryColor = MaterialTheme.colorScheme.tertiary
+                                            val adjustedTertiaryColor = if (isDarkTheme) {
+                                                tertiaryColor.copy(
+                                                    red = (tertiaryColor.red + 0.25f).coerceAtMost(1f),
+                                                    green = (tertiaryColor.green + 0.25f).coerceAtMost(1f),
+                                                    blue = (tertiaryColor.blue + 0.25f).coerceAtMost(1f)
+                                                )
+                                            } else {
+                                                tertiaryColor.copy(
+                                                    red = tertiaryColor.red * 0.75f,
+                                                    green = tertiaryColor.green * 0.75f,
+                                                    blue = tertiaryColor.blue * 0.75f
+                                                )
+                                            }
+
                                             Box(
                                                 modifier = Modifier
                                                     .fillMaxHeight()
                                                     .fillMaxWidth(fraction = progress)
                                                     .background(
-                                                        color = MaterialTheme.colorScheme.tertiary,
+                                                        brush = Brush.horizontalGradient(
+                                                            colors = listOf(
+                                                                tertiaryColor,
+                                                                adjustedTertiaryColor
+                                                            )
+                                                        ),
                                                         shape = RoundedCornerShape(12.dp)
                                                     )
                                             )
