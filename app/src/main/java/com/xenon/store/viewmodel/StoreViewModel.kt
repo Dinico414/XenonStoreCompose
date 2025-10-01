@@ -13,6 +13,7 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.xenon.store.InstallMethod
 import com.xenon.store.SharedPreferenceManager
 import com.xenon.store.util.Util
 import com.xenon.store.viewmodel.classes.AppEntryState
@@ -21,7 +22,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Call
@@ -31,8 +31,10 @@ import okhttp3.Request
 import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
+import java.io.InputStreamReader
 
 class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -120,11 +122,8 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
             itemsToCheck.forEach { item ->
                 val installedVersion = getInstalledAppVersion(item.packageName)
-                // If it was a new install, newVersion would be the target. If an update, also newVersion.
-                // If installedVersion is null (not installed) OR installedVersion is not the newVersion we aimed for.
                 if (installedVersion == null || (item.newVersion.isNotEmpty() && installedVersion != item.newVersion)) {
                     Log.d(TAG, "Installation for ${item.packageName} likely cancelled or failed. Current installed: $installedVersion, Target: ${item.newVersion}. Reverting state.")
-                    // Re-evaluate its state fully, which will set it to NOT_INSTALLED or INSTALLED_AND_OUTDATED (if old version exists)
                     val refreshedItem = refreshAppItemBlocking(item.copy(), githubInfoUseCache = true, forceStateReEvaluation = true)
                     val itemIndex = currentList.indexOfFirst { it.packageName == item.packageName }
                     if (itemIndex != -1 && currentList[itemIndex].state != refreshedItem.state) {
@@ -132,8 +131,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                         listChanged = true
                     }
                 } else {
-                    // It seems the app was installed/updated correctly, but the broadcast might have been missed or is pending.
-                    // Let's force a refresh just in case to get it to INSTALLED state.
                     Log.d(TAG, "Item ${item.packageName} is in INSTALLING state, but version check ($installedVersion vs ${item.newVersion}) suggests it might be installed. Refreshing.")
                     val refreshedItem = refreshAppItemBlocking(item.copy(), githubInfoUseCache = true, forceStateReEvaluation = true)
                      val itemIndex = currentList.indexOfFirst { it.packageName == item.packageName }
@@ -361,7 +358,11 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             _currentActionInfo.value = "Downloading XenonStore update ${updateInfo.version}..."
             _xenonStoreDownloadProgress.value = 0.01f
             val fileName = "XenonStore_${updateInfo.version}.apk"
-            val destinationFile = File(context.getExternalFilesDir(null), fileName)
+            val apksDir = File(context.filesDir, "apks")
+            if (!apksDir.exists()) {
+                apksDir.mkdirs()
+            }
+            val destinationFile = File(apksDir, fileName)
             downloadFile(updateInfo.downloadUrl, destinationFile,
                 onProgress = { bytesDownloaded, fileSize ->
                     val progress = if (fileSize > 0) (bytesDownloaded.toFloat() / fileSize.toFloat()).coerceIn(0f, 1f) else 0.01f
@@ -370,11 +371,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 onCompleted = {
                     _currentActionInfo.value = "XenonStore download complete. Starting installation..."
                     _xenonStoreDownloadProgress.value = 1f
-                    initiateInstall(destinationFile, context, XENON_STORE_PACKAGE_NAME)
-                    // Don't reset progress immediately, let UI show 100% briefly if needed
-                    // The verifyAndRefreshPendingInstallations or package receiver will handle final state.
-                    // _xenonStoreDownloadProgress.value = 0f 
-                    // _xenonStoreUpdateInfo.value = null 
+                    initiateInstall(destinationFile, context, XENON_STORE_PACKAGE_NAME, true) // Pass true for isXenonStoreUpdate
                 },
                 onFailure = { errorMsg ->
                     _error.value = "XenonStore download failed: $errorMsg"
@@ -393,7 +390,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             _currentActionInfo.value = "Preparing to install ${itemToInstall.getName(Util.getCurrentLanguage(context.resources))}..."
             Log.d(TAG, "Install/Update clicked for: ${itemToInstall.packageName}")
 
-            // Ensure we have the latest download URL, especially if it was missing before
             if (itemToInstall.downloadUrl.isEmpty() || itemToInstall.newVersion.isEmpty()) {
                  Log.d(TAG, "Missing downloadUrl or newVersion for ${itemToInstall.packageName}. Attempting refresh.")
                 val refreshedItem = refreshAppItemBlocking(itemToInstall, githubInfoUseCache = false, forceStateReEvaluation = false)
@@ -401,17 +397,19 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 if (refreshedItem.downloadUrl.isEmpty() || refreshedItem.newVersion.isEmpty()) {
                     _error.value = "No download URL or version for ${refreshedItem.getName(Util.getCurrentLanguage(context.resources))} after refresh."
                     _currentActionInfo.value = null
-                     // Make sure to reset to a definitive state if we can't proceed
                     handlePackageChanged(refreshedItem.packageName)
                     return@launch
                 }
-                // Retry with the refreshed item
-                installApp(refreshedItem, context)
+                installApp(refreshedItem, context) // Recursive call with the refreshed item
                 return@launch
             }
 
             val fileName = "${itemToInstall.packageName}_${itemToInstall.newVersion}.apk"
-            val destinationFile = File(context.getExternalFilesDir(null), fileName)
+            val apksDir = File(context.filesDir, "apks")
+            if (!apksDir.exists()) {
+                apksDir.mkdirs()
+            }
+            val destinationFile = File(apksDir, fileName)
 
             updateItemState(itemToInstall.packageName, AppEntryState.DOWNLOADING, bytesDownloaded = 0, fileSize = 1) 
             downloadFile(itemToInstall.downloadUrl, destinationFile,
@@ -439,60 +437,147 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             if (itemIndex != -1) {
                 currentList[itemIndex] = updatedItem
                 _storeItems.value = currentList.toList()
-            } else {
-                // Should not happen if called after a refresh of an existing item
-                // but as a safeguard, could add it if it's truly new, though refresh logic implies it exists.
-                 Log.w(TAG, "updateItemInList called for an item not in the list: ${updatedItem.packageName}")
             }
         }
     }
 
-    private fun initiateInstall(apkFile: File, context: Context, packageName: String) {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW)
-            val fileUri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", apkFile)
-            intent.setDataAndType(fileUri, "application/vnd.android.package-archive")
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (!context.packageManager.canRequestPackageInstalls()) {
-                    _error.value = "Permission needed to install apps. Please enable in settings."
-                    val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                        data = Uri.parse("package:${context.packageName}")
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    private suspend fun executeRootCommand(command: String): Pair<Boolean, String> {
+        return withContext(Dispatchers.IO) {
+            var output = ""
+            var errorOutput = ""
+            val exitCode: Int
+            try {
+                val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+
+                // Read output and error streams concurrently to prevent blocking
+                val job = viewModelScope.launch(Dispatchers.IO) { // Use viewModelScope for structured concurrency, explicitly on IO
+                    launch { // Child coroutine for stdout
+                        BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
+                            output = reader.readText()
+                        }
                     }
-                    context.startActivity(settingsIntent)
-                    _currentActionInfo.value = null
-                    if (packageName != XENON_STORE_PACKAGE_NAME) {
-                         handlePackageChanged(packageName) 
-                    } else {
-                         _xenonStoreDownloadProgress.value = 0f
-                         // User needs to grant permission, then try again. Update info should remain.
+                    launch { // Child coroutine for stderr
+                        BufferedReader(InputStreamReader(process.errorStream)).use { reader ->
+                            errorOutput = reader.readText()
+                        }
                     }
-                    return
                 }
-            }
-            context.startActivity(intent)
-            Log.d(TAG, "Installation intent started for ${apkFile.name}. Item state: INSTALLING.")
-            _currentActionInfo.value = "Installation for $packageName started by system."
-            // Item state is already INSTALLING. Broadcast receiver or verifyAndRefreshPendingInstallations will handle next state.
-        } catch (e: Exception) {
-            _error.value = "Failed to start installation for $packageName: ${e.message}"
-            Log.e(TAG, "Error initiating install: ", e)
-            _currentActionInfo.value = null
-            if (packageName != XENON_STORE_PACKAGE_NAME) {
-                handlePackageChanged(packageName) 
-            } else {
-                _xenonStoreDownloadProgress.value = 0f
-                // If XenonStore install failed to even start, re-check for its update to restore button
-                checkForXenonStoreUpdate() 
+                job.join() // Wait for stream reading to complete
+                exitCode = process.waitFor()
+                
+                val logMessage = "Root command '$command'\nExit code: $exitCode\nStdout:\n$output\nStderr:\n$errorOutput"
+                if (exitCode == 0) {
+                    Log.d(TAG, logMessage)
+                } else {
+                    Log.e(TAG, logMessage) // Log as error if exit code is non-zero
+                }
+                Pair(exitCode == 0, if (exitCode == 0) output else errorOutput.ifEmpty { output }) // Return stdout if stderr is empty but error occurred
+            } catch (e: Exception) {
+                Log.e(TAG, "Root command failed: $command", e)
+                Pair(false, e.message ?: "Exception occurred")
             }
         }
     }
+
+    private fun initiateInstall(apkFile: File, context: Context, packageName: String, isXenonStoreUpdate: Boolean = false) {
+        viewModelScope.launch {
+            val installMethod = sharedPreferenceManager.installMethod
+            _currentActionInfo.value = "Initiating install for $packageName using $installMethod method..."
+            Log.d(TAG, "Initiating install for ${apkFile.name} ($packageName) using $installMethod. APK Path: ${apkFile.absolutePath}")
+
+            try {
+                when (installMethod) {
+                    InstallMethod.ROOT -> {
+                        _currentActionInfo.value = "Attempting Root installation for $packageName..."
+                        val tempApkName = "install_${apkFile.name}" // Ensure unique temp name
+                        val tempApkPath = "/data/local/tmp/$tempApkName"
+
+                        Log.d(TAG, "Root: Original APK at ${apkFile.absolutePath}")
+                        Log.d(TAG, "Root: Will copy to $tempApkPath")
+
+                        // 1. Copy APK to /data/local/tmp/
+                        val (copySuccess, copyMessage) = executeRootCommand("cp \"${apkFile.absolutePath}\" \"$tempApkPath\"")
+                        if (!copySuccess) {
+                            _error.value = "Root: Failed to copy APK to temp: $copyMessage"
+                            Log.e(TAG, "Root: Failed to copy APK to $tempApkPath. Details: $copyMessage")
+                            if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+                            return@launch
+                        }
+                        Log.d(TAG, "Root: APK copied to $tempApkPath. Output: $copyMessage")
+
+                        // 2. Set permissions (optional but good practice)
+                        executeRootCommand("chmod 644 \"$tempApkPath\"") // Best effort
+
+                        // 3. Install from /data/local/tmp/
+                        val (installSuccess, installMessage) = executeRootCommand("pm install -g -r \"$tempApkPath\"")
+                        
+                        // 4. Delete the temp APK
+                        val (deleteSuccess, deleteMessage) = executeRootCommand("rm \"$tempApkPath\"")
+                        if (!deleteSuccess) {
+                            Log.w(TAG, "Root: Failed to delete temp APK $tempApkPath. Details: $deleteMessage")
+                        } else {
+                            Log.d(TAG, "Root: Temp APK $tempApkPath deleted. Output: $deleteMessage")
+                        }
+
+                        if (installSuccess) {
+                            _currentActionInfo.value = "Root install command for $packageName succeeded. Waiting for system update..."
+                            Log.d(TAG, "Root install for $packageName from $tempApkPath succeeded. Output: $installMessage")
+                        } else {
+                            _error.value = "Root installation failed for $packageName: $installMessage"
+                            Log.e(TAG, "Root installation from $tempApkPath failed. Details: $installMessage")
+                            if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+                        }
+                    }
+                    else -> { // Defaults to DEFAULT
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            if (!context.packageManager.canRequestPackageInstalls()) {
+                                _error.value = "Permission needed to install apps. Please enable in settings."
+                                val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(settingsIntent)
+                                _currentActionInfo.value = null
+                                if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+                                return@launch
+                            }
+                        }
+                        val intent = Intent(Intent.ACTION_VIEW)
+                        val fileUri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", apkFile)
+                        intent.setDataAndType(fileUri, "application/vnd.android.package-archive")
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        try {
+                            context.startActivity(intent)
+                            Log.d(TAG, "Default installation intent started for ${apkFile.name}. Item state: INSTALLING.")
+                            _currentActionInfo.value = "Installation for $packageName started by system (Default)."
+                        } catch (e: Exception) {
+                             _error.value = "Failed to start default install intent: ${e.message}"
+                            Log.e(TAG, "Could not start ACTION_VIEW intent for ${apkFile.absolutePath}", e)
+                            if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to start installation for $packageName: ${e.message}"
+                Log.e(TAG, "Error initiating install for $packageName with $installMethod: ", e)
+                _currentActionInfo.value = null
+                if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+            }
+        }
+    }
+
+    private fun resetXenonStoreUpdateState() {
+        _xenonStoreDownloadProgress.value = 0f
+        _currentActionInfo.value = null
+        checkForXenonStoreUpdate() // Refresh update info
+    }
+
 
     fun uninstallApp(storeItem: StoreItem, context: Context) {
         Log.d(TAG, "Uninstall clicked for: ${storeItem.packageName}")
         _currentActionInfo.value = "Uninstalling ${storeItem.getName(Util.getCurrentLanguage(context.resources))}..."
+        // TODO: Implement Shizuku/Root uninstall similar to install if desired
         try {
             val intent = Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply {
                 data = Uri.parse("package:${storeItem.packageName}")
@@ -538,10 +623,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     state = newState,
                     bytesDownloaded = if (newState == AppEntryState.DOWNLOADING) bytesDownloaded else 0,
                     fileSize = if (newState == AppEntryState.DOWNLOADING && fileSize > 0) fileSize 
-                               else if (newState == AppEntryState.DOWNLOADING && currentItem.fileSize > 0) currentItem.fileSize // Preserve old if new is 0
+                               else if (newState == AppEntryState.DOWNLOADING && currentItem.fileSize > 0) currentItem.fileSize
                                else 0
                 )
-                if (currentList[itemIndex] != updatedItem) { // Only update flow if actual change
+                if (currentList[itemIndex] != updatedItem) { 
                     currentList[itemIndex] = updatedItem
                     _storeItems.value = currentList.toList()
                 }
@@ -575,7 +660,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         onCompleted: () -> Unit, onFailure: (errorMsg: String) -> Unit
     ) {
         val request = Request.Builder().url(url).build()
-        val freshClient = OkHttpClient.Builder().cache(null).build()
+        val freshClient = OkHttpClient.Builder().cache(null).build() // Use a fresh client to bypass OkHttp caching for downloads
         freshClient.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) { viewModelScope.launch { onFailure("Network error: ${e.message}") } }
             override fun onResponse(call: Call, response: Response) {
@@ -597,8 +682,11 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                             }
                         }
                     }
-                    if (bytesCopied > 0 || fileSize == 0L) { viewModelScope.launch { onCompleted() } }
-                    else { viewModelScope.launch { onFailure("Zero bytes downloaded from $url.") } }
+                    if (bytesCopied > 0 || fileSize == 0L) { // Allow 0 byte files if server reports 0L
+                        viewModelScope.launch { onCompleted() }
+                    } else {
+                        viewModelScope.launch { onFailure("Zero bytes downloaded from $url.") }
+                    }
                 } catch (e: IOException) { viewModelScope.launch { onFailure("File I/O error for $url: ${e.message}") } }
                 finally { body.close() }
             }
@@ -611,7 +699,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         getApplication<Application>().unregisterReceiver(packageInstallReceiver)
-        client.dispatcher.executorService.shutdown()
+        client.dispatcher.executorService.shutdown() // Gracefully shutdown OkHttp
         client.connectionPool.evictAll()
     }
 }

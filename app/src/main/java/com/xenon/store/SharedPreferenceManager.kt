@@ -10,6 +10,13 @@ import kotlinx.serialization.json.Json
 import kotlin.math.max
 import kotlin.math.min
 
+// Enum for Install Method
+enum class InstallMethod {
+    DEFAULT,
+    SHIZUKU,
+    ROOT
+}
+
 class SharedPreferenceManager(context: Context) {
 
     private val prefsName = "StorePrefs"
@@ -23,9 +30,9 @@ class SharedPreferenceManager(context: Context) {
     private val dateFormatKey = "date_format_key"
     private val timeFormatKey = "time_format_key"
     private val developerModeKey = "developer_mode_enabled"
-    // New key for the dummy profile setting
     private val showDummyProfileKey = "show_dummy_profile_enabled"
-    private val checkForPreReleasesKey = "check_for_pre_releases" // Added key
+    private val checkForPreReleasesKey = "check_for_pre_releases"
+    private val installMethodKey = "install_method" // New key for install method
 
     internal val sharedPreferences: SharedPreferences =
         context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
@@ -83,9 +90,21 @@ class SharedPreferenceManager(context: Context) {
         get() = sharedPreferences.getBoolean(showDummyProfileKey, false)
         set(value) = sharedPreferences.edit { putBoolean(showDummyProfileKey, value) }
 
-    var checkForPreReleases: Boolean // Added property
+    var checkForPreReleases: Boolean
         get() = sharedPreferences.getBoolean(checkForPreReleasesKey, false)
         set(value) = sharedPreferences.edit { putBoolean(checkForPreReleasesKey, value) }
+
+    // New property for install method
+    var installMethod: InstallMethod
+        get() {
+            val methodName = sharedPreferences.getString(installMethodKey, InstallMethod.DEFAULT.name)
+            return try {
+                InstallMethod.valueOf(methodName ?: InstallMethod.DEFAULT.name)
+            } catch (e: IllegalArgumentException) {
+                InstallMethod.DEFAULT
+            }
+        }
+        set(value) = sharedPreferences.edit { putString(installMethodKey, value.name) }
 
 
     fun getBoolean(key: String, defaultValue: Boolean): Boolean {
@@ -126,7 +145,8 @@ class SharedPreferenceManager(context: Context) {
             putString(timeFormatKey, defaultTimeFormat)
             putBoolean(developerModeKey, false)
             putBoolean(showDummyProfileKey, false)
-            putBoolean(checkForPreReleasesKey, false) // Added reset
+            putBoolean(checkForPreReleasesKey, false)
+            putString(installMethodKey, InstallMethod.DEFAULT.name) // Added reset
         }
     }
 }

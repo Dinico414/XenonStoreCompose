@@ -4,6 +4,7 @@ import android.app.Application
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.xenon.store.InstallMethod
 import com.xenon.store.SharedPreferenceManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +19,9 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _showDummyProfileState = MutableStateFlow(sharedPreferenceManager.showDummyProfileEnabled)
     val showDummyProfileState: StateFlow<Boolean> = _showDummyProfileState.asStateFlow()
+
+    private val _installMethodState = MutableStateFlow(sharedPreferenceManager.installMethod)
+    val installMethodState: StateFlow<InstallMethod> = _installMethodState.asStateFlow()
 
     fun setDeveloperModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
@@ -36,6 +40,22 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
                 _showDummyProfileState.value = enabled
 
                 triggerExampleDevActionThatRequiresRestart()
+            }
+        }
+    }
+
+    fun setInstallMethod(installMethod: InstallMethod) {
+        viewModelScope.launch {
+            if (sharedPreferenceManager.installMethod != installMethod) {
+                // If Shizuku was selected but is no longer an option, revert to Default
+                val newMethod = if (installMethod == InstallMethod.SHIZUKU) InstallMethod.DEFAULT else installMethod
+                sharedPreferenceManager.installMethod = newMethod
+                _installMethodState.value = newMethod
+                Toast.makeText(
+                    getApplication(),
+                    "Install method updated to ${newMethod.name}.",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }

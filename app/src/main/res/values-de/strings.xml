@@ -130,4 +130,5 @@
     <string name="recommended">(empfohlen)</string>
     <string name="check_pre_release">Suche nach Pre-Release</string>
     <string name="check_pre_release_describtion">Pre-Release bei der Suche nach Updates einbeziehen</string>
+    <string name="select_install_method_title">Install Method</string>
 </resources>
