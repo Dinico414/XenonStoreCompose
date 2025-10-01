@@ -1,7 +1,6 @@
 package com.xenon.store.viewmodel.classes
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,11 +21,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.xenon.store.InstallMethod
 import com.xenon.store.R
 import com.xenon.store.ui.res.SettingsSwitchTile
+import com.xenon.store.ui.res.SettingsTile
 import com.xenon.store.ui.values.LargerPadding
 import com.xenon.store.ui.values.SmallSpacing
 import com.xenon.store.viewmodel.DevSettingsViewModel
@@ -39,6 +41,7 @@ fun DevSettingsItems(
     val isDeveloperModeEnabled by viewModel.devModeToggleState.collectAsState()
     val isShowDummyProfileEnabled by viewModel.showDummyProfileState.collectAsState()
     val currentInstallMethod by viewModel.installMethodState.collectAsState()
+    val haptic = LocalHapticFeedback.current
 
     var showInstallMethodDialog by remember { mutableStateOf(false) }
 
@@ -82,27 +85,14 @@ fun DevSettingsItems(
 
             Spacer(modifier = Modifier.height(SmallSpacing))
 
-            // Install Method Setting
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showInstallMethodDialog = true }
-                    .padding(vertical = LargerPadding),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.select_install_method_title),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = getInstallMethodName(currentInstallMethod),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+
+            SettingsTile(
+                title = stringResource(R.string.select_install_method_title),
+                subtitle = getInstallMethodName(currentInstallMethod),
+                onClick = { showInstallMethodDialog = true ; haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
+                icon = {
                 }
-            }
+            )
 
             if (showInstallMethodDialog) {
                 AlertDialog(
@@ -148,6 +138,6 @@ private fun getInstallMethodName(method: InstallMethod): String {
     return when (method) {
         InstallMethod.DEFAULT -> "Default"
         InstallMethod.ROOT -> "Root"
-        InstallMethod.SHIZUKU -> "Shizuku" // Keep for display if it's the saved preference
+        InstallMethod.SHIZUKU -> "Shizuku"
     }
 }
