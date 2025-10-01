@@ -13,7 +13,11 @@
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
 
+    <!-- Shizuku Permission -->
+    <uses-permission android:name="shizuku.MANAGER_APPLICATION" />
+
     <application
+        android:name=".MainApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -56,5 +60,10 @@
             android:theme="@style/Theme.XenonStore" />
 
     </application>
+
+    <!-- Queries for Shizuku service discovery -->
+    <queries>
+        <package android:name="moe.shizuku.privileged.api" />
+    </queries>
 
 </manifest>

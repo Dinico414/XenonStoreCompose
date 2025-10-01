@@ -15,6 +15,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xenon.store.InstallMethod
 import com.xenon.store.SharedPreferenceManager
+import com.xenon.store.ShizukuManager
 import com.xenon.store.util.Util
 import com.xenon.store.viewmodel.classes.AppEntryState
 import com.xenon.store.viewmodel.classes.StoreItem
@@ -22,8 +23,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
@@ -31,6 +34,7 @@ import okhttp3.Request
 import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
+import rikka.shizuku.Shizuku
 import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
@@ -63,6 +67,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         const val XENON_STORE_PACKAGE_NAME = "com.xenon.store"
         const val XENON_STORE_OWNER = "Dinico414"
         const val XENON_STORE_REPO = "XenonStore"
+        const val SHIZUKU_PERMISSION_REQUEST_CODE = 1001
     }
 
     private var cachedJsonHash: Int = 0
@@ -487,6 +492,43 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
             try {
                 when (installMethod) {
+                    InstallMethod.SHIZUKU -> {
+                        _currentActionInfo.value = "Waiting for Shizuku service..."
+                        val isReady = withTimeoutOrNull(5000L) { 
+                            ShizukuManager.isAvailable.first { it }
+                        } ?: false
+
+                        if (!isReady) {
+                            _error.value = "Shizuku service not available. Please start Shizuku and try again."
+                            Log.e(TAG, "Timed out waiting for Shizuku binder.")
+                            if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+                            return@launch
+                        }
+
+                        Log.d(TAG, "Shizuku service is ready. Proceeding with installation.")
+                        if (Shizuku.isPreV11()) {
+                            _error.value = "Shizuku version too old."
+                            Log.e(TAG, "Shizuku is pre-v11, not supported by this request method.")
+                            if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+                            return@launch
+                        }
+                        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+                            Log.i(TAG, "Shizuku permission not granted. Requesting...")
+                            _currentActionInfo.value = "Requesting Shizuku permission..."
+                            Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
+                            _error.value = "Shizuku permission required. Please grant it and try again."
+                            // TODO: IMPORTANT! The app (Activity) needs to handle the Shizuku permission result.
+                            if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+                            return@launch
+                        } else {
+                            _currentActionInfo.value = "Using Shizuku to install $packageName..."
+                            Log.d(TAG, "Shizuku permission granted. Proceeding with Shizuku installation logic.")
+                            // TODO: Implement actual Shizuku installation logic here.
+                            _error.value = "Shizuku installation not fully implemented. Install failed."
+                            Log.e(TAG, "Shizuku installation API call is a TODO.")
+                            if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+                        }
+                    }
                     InstallMethod.ROOT -> {
                         _currentActionInfo.value = "Attempting Root installation for $packageName..."
                         val tempApkName = "install_${apkFile.name}" // Ensure unique temp name
@@ -528,7 +570,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                             if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
                         }
                     }
-                    else -> { // Defaults to DEFAULT
+                    InstallMethod.DEFAULT -> {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             if (!context.packageManager.canRequestPackageInstalls()) {
                                 _error.value = "Permission needed to install apps. Please enable in settings."
@@ -577,7 +619,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     fun uninstallApp(storeItem: StoreItem, context: Context) {
         Log.d(TAG, "Uninstall clicked for: ${storeItem.packageName}")
         _currentActionInfo.value = "Uninstalling ${storeItem.getName(Util.getCurrentLanguage(context.resources))}..."
-        // TODO: Implement Shizuku/Root uninstall similar to install if desired
         try {
             val intent = Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply {
                 data = Uri.parse("package:${storeItem.packageName}")

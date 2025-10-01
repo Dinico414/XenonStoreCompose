@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-    <paths>
-        <external-files-path name="my_app_files" path="." />
+<paths>
+    <external-files-path name="my_app_files" path="." />
+    <files-path name="internal_apks" path="apks/" />
     <cache-path name="cached_files" path="." />
-    </paths>
+</paths>

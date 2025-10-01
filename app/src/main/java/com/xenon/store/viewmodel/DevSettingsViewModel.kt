@@ -6,22 +6,27 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xenon.store.InstallMethod
 import com.xenon.store.SharedPreferenceManager
+import com.xenon.store.ShizukuManager
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class DevSettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val sharedPreferenceManager = SharedPreferenceManager(application)
 
     private val _devModeToggleState = MutableStateFlow(sharedPreferenceManager.developerModeEnabled)
-    val devModeToggleState: StateFlow<Boolean> = _devModeToggleState.asStateFlow()
+    val devModeToggleState: StateFlow<Boolean> = _devModeToggleState
 
     private val _showDummyProfileState = MutableStateFlow(sharedPreferenceManager.showDummyProfileEnabled)
-    val showDummyProfileState: StateFlow<Boolean> = _showDummyProfileState.asStateFlow()
+    val showDummyProfileState: StateFlow<Boolean> = _showDummyProfileState
 
     private val _installMethodState = MutableStateFlow(sharedPreferenceManager.installMethod)
-    val installMethodState: StateFlow<InstallMethod> = _installMethodState.asStateFlow()
+    val installMethodState: StateFlow<InstallMethod> = _installMethodState
+
+    val isShizukuAvailable: StateFlow<Boolean> = ShizukuManager.isAvailable
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun setDeveloperModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
@@ -47,13 +52,11 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
     fun setInstallMethod(installMethod: InstallMethod) {
         viewModelScope.launch {
             if (sharedPreferenceManager.installMethod != installMethod) {
-                // If Shizuku was selected but is no longer an option, revert to Default
-                val newMethod = if (installMethod == InstallMethod.SHIZUKU) InstallMethod.DEFAULT else installMethod
-                sharedPreferenceManager.installMethod = newMethod
-                _installMethodState.value = newMethod
+                sharedPreferenceManager.installMethod = installMethod
+                _installMethodState.value = installMethod
                 Toast.makeText(
                     getApplication(),
-                    "Install method updated to ${newMethod.name}.",
+                    "Install method updated to ${installMethod.name}.",
                     Toast.LENGTH_SHORT
                 ).show()
             }
