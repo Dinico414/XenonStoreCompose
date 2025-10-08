@@ -1,0 +1,79 @@
+package com.xenonware.store.ui.layouts.dev_settings
+
+import android.content.Intent
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import com.xenonware.store.R
+import com.xenonware.store.ui.layouts.ActivityScreen
+import com.xenonware.store.ui.values.MediumPadding
+import com.xenonware.store.ui.values.NoSpacing
+import com.xenonware.store.viewmodel.DevSettingsViewModel
+import com.xenonware.store.viewmodel.classes.DevSettingsItems
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
+
+@Composable
+fun DevDefaultSettings(
+    onNavigateBack: () -> Unit,
+    viewModel: com.xenonware.store.viewmodel.DevSettingsViewModel,
+) {
+    val hazeState = rememberHazeState()
+    val context = LocalContext.current
+
+    _root_ide_package_.com.xenonware.store.ui.layouts.ActivityScreen(
+        titleText = stringResource(id = R.string.developer_options_title),
+
+        navigationIconStartPadding = _root_ide_package_.com.xenonware.store.ui.values.MediumPadding,
+        navigationIconPadding = _root_ide_package_.com.xenonware.store.ui.values.MediumPadding,
+        navigationIconSpacing = _root_ide_package_.com.xenonware.store.ui.values.NoSpacing,
+        navigationIcon = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.navigate_back_description),
+                modifier = Modifier.size(24.dp)
+            )
+        },
+        onNavigationIconClick = onNavigateBack,
+        hasNavigationIconExtraContent = false,
+        actions = {
+            IconButton(onClick = {
+                val packageManager = context.packageManager
+                val intent = packageManager.getLaunchIntentForPackage(context.packageName)
+                val componentName = intent?.component
+                val mainIntent = Intent.makeRestartActivityTask(componentName)
+                context.startActivity(mainIntent)
+                Runtime.getRuntime().exit(0)
+            }) {
+                Icon(
+                    imageVector = Icons.Filled.RestartAlt,
+                    contentDescription = stringResource(R.string.restart_app_description)
+                )
+            }
+        },
+        modifier = Modifier.hazeSource(hazeState),
+        content = { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                _root_ide_package_.com.xenonware.store.viewmodel.classes.DevSettingsItems(
+                    viewModel = viewModel
+                )
+            }
+        }
+    )
+}

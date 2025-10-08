@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.xenon.store"
+    namespace = "com.xenonware.store"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.xenon.store"
+        applicationId = "com.xenonware.store"
         minSdk = 29
         targetSdk = 35
         versionCode = 1
