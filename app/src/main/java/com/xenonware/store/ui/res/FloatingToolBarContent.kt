@@ -2,6 +2,7 @@ package com.xenonware.store.ui.res
 
 import android.annotation.SuppressLint
 import android.os.Build
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -58,6 +59,7 @@ import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -80,6 +82,7 @@ import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -89,8 +92,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import com.xenonware.store.R
-import com.xenonware.store.ui.values.LargePadding
-import com.xenonware.store.ui.values.SmallElevation
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
@@ -100,6 +101,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlin.math.roundToInt
 
 private data class ScrollState(
     val firstVisibleItemIndex: Int,
@@ -232,6 +234,12 @@ fun FloatingToolbarContent(
         }
     }
 
+    val textFieldFraction by animateFloatAsState(
+        targetValue = if (canShowTextField) 1F else 0F,
+        animationSpec = tween(durationMillis = textFieldAnimationDuration),
+        label = "textFieldFraction"
+    )
+
     val bottomPaddingNavigationBar =
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val imePaddingValues = WindowInsets.ime.asPaddingValues()
@@ -267,8 +275,14 @@ fun FloatingToolbarContent(
             .padding(bottom = animatedBottomPadding)
             .offset(y = animatedToolbarOffset), contentAlignment = Alignment.Center
     ) {
+
+        val floatingBtnWidth by remember {
+            derivedStateOf {
+                64.dp.times(1 - textFieldFraction)
+            }
+        }
+
         HorizontalFloatingToolbar(
-            modifier = Modifier.height(toolbarHeight),
             expanded = true,
             floatingActionButton = {
                 AnimatedVisibility(
@@ -379,6 +393,9 @@ fun FloatingToolbarContent(
             },
             colors = FloatingToolbarDefaults.standardFloatingToolbarColors(colorScheme.surfaceDim),
             contentPadding = FloatingToolbarDefaults.ContentPadding,
+            modifier = Modifier
+                .height(toolbarHeight)
+                .padding(start = floatingBtnWidth)
         ) {
             IconButton(onClick = {
                 isSearchActive = true
@@ -504,11 +521,6 @@ fun FloatingToolbarContent(
                     }
                 }
 
-                val fraction by animateFloatAsState(
-                    targetValue = if (canShowTextField) 1F else 0F,
-                    animationSpec = tween(durationMillis = textFieldAnimationDuration),
-                    label = "textFieldFraction"
-                )
                 XenonTextFieldV2(
                     value = currentSearchQuery,
                     enabled = canShowTextField,
@@ -516,8 +528,8 @@ fun FloatingToolbarContent(
                         onSearchQueryChanged(it)
                     },
                     modifier = Modifier
-                        .width(maxTextFieldWidth.times(fraction))
-                        .alpha(fraction * fraction)
+                        .width(maxTextFieldWidth.times(textFieldFraction))
+                        .alpha(textFieldFraction * textFieldFraction)
                         .focusRequester(focusRequester),
                     placeholder = { Text(stringResource(R.string.search)) },
                     singleLine = true,
