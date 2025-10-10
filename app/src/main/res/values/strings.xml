@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">XenonStore(alpha) </string>
+    <string name="app_name">XenonStore</string>
     <string name="todo_sheet_title">To-Do Lists</string>
     <string name="settings">Settings</string>
 

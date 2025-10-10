@@ -64,9 +64,9 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
         const val APP_LIST_PROTOCOL_VERSION = "v0.1"
         const val TAG = "StoreViewModel"
-        const val XENON_STORE_PACKAGE_NAME = "com.xenon.store"
+        const val XENON_STORE_PACKAGE_NAME = "com.xenonware.store"
         const val XENON_STORE_OWNER = "Dinico414"
-        const val XENON_STORE_REPO = "XenonStore"
+        const val XENON_STORE_REPO = "XenonStoreCompose"
         const val SHIZUKU_PERMISSION_REQUEST_CODE = 1001
     }
 
@@ -156,7 +156,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _currentActionInfo.value = "Refreshing app list..."
             val urlString =
-                "https://raw.githubusercontent.com/Dinico414/Xenon-Commons/master/accesspoint/src/main/java/com/xenon/commons/accesspoint/app_list.json"
+                "https://raw.githubusercontent.com/Dinico414/Xenon-Commons/master/app_list.json"
             downloadToString(urlString, object : DownloadListener<String> {
                 override fun onCompleted(result: String) {
                     val hash = result.hashCode()
