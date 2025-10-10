@@ -128,6 +128,7 @@ fun ActivityScreen(
         },
         actions = actions,
         expandable = expandable,
+        titleAlignment = Alignment.Center,
         collapsedContainerColor = screenBackgroundColor,
         expandedContainerColor = screenBackgroundColor,
         navigationIconContentColor = appBarNavigationIconContentColor,

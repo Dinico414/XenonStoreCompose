@@ -68,7 +68,7 @@ fun CollapsingAppBarLayout(
 ) {
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val expandedHeight = remember(expandable) {
-        if (expandable) (screenHeight / 100) * 30 else collapsedHeight
+        if (expandable) screenHeight * 0.3f else collapsedHeight
     }
 
     val scrollBehavior: TopAppBarScrollBehavior =
@@ -80,6 +80,7 @@ fun CollapsingAppBarLayout(
         modifier = modifier
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
+            // Dummy that consumes the scrollBehaviour
             LargeTopAppBar(
                 title = {},
                 collapsedHeight = collapsedHeight,
@@ -94,13 +95,18 @@ fun CollapsingAppBarLayout(
                 scrollBehavior = scrollBehavior
             )
 
+            // fraction: 0 -> expanded, 1 -> collapsed
             val fraction = if (expandable) scrollBehavior.state.collapsedFraction else 1f
             val curHeight = collapsedHeight.times(fraction) +
                     expandedHeight.times(1 - fraction)
             val offset = curHeight - collapsedHeight
             var boxWidth by remember { mutableIntStateOf(0) }
-            val titlePadding = sqrt(fraction) * (boxWidth / LocalDensity.current.density)
+            val titlePadding = when (titleAlignment) {
+                Alignment.CenterStart -> sqrt(fraction) * (boxWidth / LocalDensity.current.density) + 8
+                else -> 0f
+            }
 
+            // Real AppBar that uses scrollBehaviour values
             CenterAlignedTopAppBar(
                 expandedHeight = curHeight,
                 title = {
@@ -136,7 +142,7 @@ fun CollapsingAppBarLayout(
                                         Modifier.padding(top = offset)
                                     else -> Modifier
                                 }
-                                    .padding(start = titlePadding.dp + 8.dp)
+                                    .padding(start = titlePadding.dp)
                             ),
                     ) {
                         title(fraction)
@@ -157,9 +163,7 @@ fun CollapsingAppBarLayout(
                     ) {
                         Row {
                             actions()
-                            Spacer(modifier = Modifier.width(
-                                LargestPadding
-                            ))
+                            Spacer(modifier = Modifier.Companion.width(LargestPadding))
                         }
                     }
                 },
