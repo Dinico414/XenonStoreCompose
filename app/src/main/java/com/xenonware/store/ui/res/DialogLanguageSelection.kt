@@ -108,7 +108,7 @@ fun DialogLanguageSelection(
                         Text(
                             text = languageOption.displayName,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = _root_ide_package_.com.xenonware.store.ui.values.LargerPadding)
+                            modifier = Modifier.padding(start = LargerPadding)
                         )
                     }
                 }

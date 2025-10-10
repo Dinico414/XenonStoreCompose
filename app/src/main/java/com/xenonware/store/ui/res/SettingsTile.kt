@@ -37,9 +37,9 @@ fun SettingsTile(
     backgroundColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    shape: Shape = RoundedCornerShape(_root_ide_package_.com.xenonware.store.ui.values.LargeCornerRadius),
-    horizontalPadding: Dp = _root_ide_package_.com.xenonware.store.ui.values.LargestPadding,
-    verticalPadding: Dp = _root_ide_package_.com.xenonware.store.ui.values.ExtraLargePadding
+    shape: Shape = RoundedCornerShape(LargeCornerRadius),
+    horizontalPadding: Dp = LargestPadding,
+    verticalPadding: Dp = ExtraLargePadding
 ) {
     Row(
         modifier = modifier
@@ -55,7 +55,7 @@ fun SettingsTile(
             .padding(horizontal = horizontalPadding, vertical = verticalPadding)
             .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(_root_ide_package_.com.xenonware.store.ui.values.ExtraLargePadding)
+        horizontalArrangement = Arrangement.spacedBy(ExtraLargePadding)
     ) {
         icon?.let {
             it()

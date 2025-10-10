@@ -49,9 +49,9 @@ fun SettingsGoogleTile(
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     arrowColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    shape: Shape = RoundedCornerShape(_root_ide_package_.com.xenonware.store.ui.values.LargeCornerRadius),
-    horizontalPadding: Dp = _root_ide_package_.com.xenonware.store.ui.values.LargestPadding,
-    verticalPadding: Dp = _root_ide_package_.com.xenonware.store.ui.values.ExtraLargePadding
+    shape: Shape = RoundedCornerShape(LargeCornerRadius),
+    horizontalPadding: Dp = LargestPadding,
+    verticalPadding: Dp = ExtraLargePadding
 ) {
     Row(
         modifier = modifier
@@ -67,7 +67,7 @@ fun SettingsGoogleTile(
             .padding(horizontal = horizontalPadding, vertical = verticalPadding)
             .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(_root_ide_package_.com.xenonware.store.ui.values.ExtraLargePadding)
+        horizontalArrangement = Arrangement.spacedBy(ExtraLargePadding)
     ) {
         Box (
             contentAlignment = Alignment.Center,
@@ -85,7 +85,7 @@ fun SettingsGoogleTile(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium.copy(
-                    fontFamily = _root_ide_package_.com.xenonware.store.ui.layouts.QuicksandTitleVariable
+                    fontFamily = QuicksandTitleVariable
                 ),
                 color = contentColor
             )
@@ -93,7 +93,7 @@ fun SettingsGoogleTile(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        fontFamily = _root_ide_package_.com.xenonware.store.ui.layouts.QuicksandTitleVariable
+                        fontFamily = QuicksandTitleVariable
                     ),
                     color = subtitleColor
                 )

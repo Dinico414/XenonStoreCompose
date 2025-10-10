@@ -81,18 +81,18 @@ private fun getDrawableIdFromPath(context: android.content.Context, iconPath: St
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StoreItemCell(
-    storeItem: com.xenonware.store.viewmodel.classes.StoreItem,
-    onInstall: (com.xenonware.store.viewmodel.classes.StoreItem) -> Unit,
-    onUninstall: (com.xenonware.store.viewmodel.classes.StoreItem) -> Unit,
-    onOpen: (com.xenonware.store.viewmodel.classes.StoreItem) -> Unit,
+    storeItem: StoreItem,
+    onInstall: (StoreItem) -> Unit,
+    onUninstall: (StoreItem) -> Unit,
+    onOpen: (StoreItem) -> Unit,
 ) {
     val context = LocalContext.current
-    val language = _root_ide_package_.com.xenonware.store.util.Util.Companion.getCurrentLanguage(context.resources)
+    val language = Util.Companion.getCurrentLanguage(context.resources)
 
     val installButtonText = when (storeItem.state) {
-        _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.NOT_INSTALLED -> context.getString(R.string.install)
-        _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED_AND_OUTDATED -> context.getString(R.string.update)
-        _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLING -> { // Show previous text but button will be disabled
+        AppEntryState.NOT_INSTALLED -> context.getString(R.string.install)
+        AppEntryState.INSTALLED_AND_OUTDATED -> context.getString(R.string.update)
+        AppEntryState.INSTALLING -> { // Show previous text but button will be disabled
             if (storeItem.installedVersion.isNotEmpty()) context.getString(R.string.update)
             else context.getString(R.string.install)
         }
@@ -101,20 +101,20 @@ fun StoreItemCell(
     }
 
     val showVersionInfoHorizontal =
-        storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING && storeItem.isOutdated()) || (storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLING && storeItem.isOutdated())
+        storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.isOutdated())
 
     Row(
         modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
     ) {
         Card(
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(_root_ide_package_.com.xenonware.store.ui.values.MediumCornerRadius),
+            shape = RoundedCornerShape(MediumCornerRadius),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceBright
             )
         ) {
-            Column(modifier = _root_ide_package_.androidx.compose.ui.Modifier.Companion.padding(
-                _root_ide_package_.com.xenonware.store.ui.values.MediumPadding
+            Column(modifier = Modifier.Companion.padding(
+                MediumPadding
             )) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -217,14 +217,14 @@ fun StoreItemCell(
                         )
                     }
 
-                    Spacer(modifier = _root_ide_package_.androidx.compose.ui.Modifier.Companion.width(
-                        _root_ide_package_.com.xenonware.store.ui.values.LargestPadding
+                    Spacer(modifier = Modifier.Companion.width(
+                        LargestPadding
                     ))
 
                     Text(
                         text = storeItem.getName(language),
                         style = MaterialTheme.typography.titleMedium,
-                        fontFamily = _root_ide_package_.com.xenonware.store.ui.layouts.QuicksandTitleVariable,
+                        fontFamily = QuicksandTitleVariable,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -259,10 +259,10 @@ fun StoreItemCell(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val mainActionButtonVisible =
-                    storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.NOT_INSTALLED || storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED_AND_OUTDATED || storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING || storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLING
+                    storeItem.state == AppEntryState.NOT_INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || storeItem.state == AppEntryState.DOWNLOADING || storeItem.state == AppEntryState.INSTALLING
 
                 val openAndUninstallRowVisible =
-                    storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED || storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.installedVersion.isNotEmpty() && (storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING || storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLING))
+                    storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.installedVersion.isNotEmpty() && (storeItem.state == AppEntryState.DOWNLOADING || storeItem.state == AppEntryState.INSTALLING))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -272,7 +272,7 @@ fun StoreItemCell(
                     if (mainActionButtonVisible) {
                         Button(
                             onClick = {
-                                if (storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.NOT_INSTALLED || storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED_AND_OUTDATED) {
+                                if (storeItem.state == AppEntryState.NOT_INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED) {
                                     onInstall(storeItem)
                                 }
                             },
@@ -280,13 +280,13 @@ fun StoreItemCell(
                             modifier = Modifier
                                 .weight(if (openAndUninstallRowVisible) 0.5f else 1f)
                                 .height(40.dp),
-                            enabled = storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.NOT_INSTALLED || storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED_AND_OUTDATED,
-                            contentPadding = if (storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING) PaddingValues(
+                            enabled = storeItem.state == AppEntryState.NOT_INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED,
+                            contentPadding = if (storeItem.state == AppEntryState.DOWNLOADING) PaddingValues(
                                 0.dp
                             ) else ButtonDefaults.ContentPadding
                         ) {
                             when (storeItem.state) {
-                                _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING -> {
+                                AppEntryState.DOWNLOADING -> {
                                     Box(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center
@@ -344,7 +344,7 @@ fun StoreItemCell(
                             }
                         }
                         val buttonShouldTakeFullWidth =
-                            (storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.NOT_INSTALLED && storeItem.newVersion.isNotEmpty()) || (storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLING && storeItem.installedVersion.isEmpty()) || (storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING && storeItem.installedVersion.isEmpty())
+                            (storeItem.state == AppEntryState.NOT_INSTALLED && storeItem.newVersion.isNotEmpty()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.installedVersion.isEmpty()) || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.installedVersion.isEmpty())
 
                         if (!openAndUninstallRowVisible && !buttonShouldTakeFullWidth) {
                             Spacer(modifier = Modifier.width(16.dp))
@@ -366,7 +366,7 @@ fun StoreItemCell(
                             modifier = Modifier
                                 .weight(if (mainActionButtonVisible) 0.5f else 1f)
                                 .height(40.dp),
-                            enabled = storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED || storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED_AND_OUTDATED
+                            enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED
                         ) {
                             Text(text = context.getString(R.string.open))
                         }
@@ -381,7 +381,7 @@ fun StoreItemCell(
                                 modifier = Modifier
                                     .width(52.dp)
                                     .height(40.dp),
-                                enabled = storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED || storeItem.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED_AND_OUTDATED,
+                                enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED,
                                 shape = RoundedCornerShape(
                                     bottomStart = 4.dp,
                                     topStart = 4.dp,
@@ -413,13 +413,13 @@ fun StoreItemCell(
 private fun StoreItemCellPreviewNotInstalled() {
     MaterialTheme {
         StoreItemCell(
-            storeItem = _root_ide_package_.com.xenonware.store.viewmodel.classes.StoreItem(
+            storeItem = StoreItem(
                 nameMap = hashMapOf("en" to "Amazing New Application"),
                 packageName = "com.sample.app.notinstalled",
                 githubUrl = "Dinico414/Xenon-App",
                 iconPath = "@mipmap/ic_launcher" // Example iconPath
             ).apply {
-                state = _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.NOT_INSTALLED
+                state = AppEntryState.NOT_INSTALLED
                 newVersion = "1.0.0"
             }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
@@ -430,13 +430,13 @@ private fun StoreItemCellPreviewNotInstalled() {
 private fun StoreItemCellPreviewDownloadingNew() {
     MaterialTheme {
         StoreItemCell(
-            storeItem = _root_ide_package_.com.xenonware.store.viewmodel.classes.StoreItem(
+            storeItem = StoreItem(
                 nameMap = hashMapOf("en" to "Super Downloader App"),
                 packageName = "com.sample.app.downloadingnew",
                 githubUrl = "Dinico414/downloader",
                 iconPath = "@mipmap/ic_launcher_round"
             ).apply {
-                state = _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING
+                state = AppEntryState.DOWNLOADING
                 bytesDownloaded = 50 * 1024 * 1024 // 50MB
                 fileSize = 100 * 1024 * 1024      // 100MB
                 newVersion = "2.1.0"
@@ -450,13 +450,13 @@ private fun StoreItemCellPreviewDownloadingNew() {
 private fun StoreItemCellPreviewDownloadingUpdate() {
     MaterialTheme {
         StoreItemCell(
-            storeItem = _root_ide_package_.com.xenonware.store.viewmodel.classes.StoreItem(
+            storeItem = StoreItem(
                 nameMap = hashMapOf("en" to "My Awesome App (Updating)"),
                 packageName = "com.sample.app.downloadingupdate",
                 githubUrl = "Dinico414/updater",
                 iconPath = "@mipmap/ic_launcher_round"
             ).apply {
-                state = _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING
+                state = AppEntryState.DOWNLOADING
                 installedVersion = "1.0.0" // Important: app is already installed
                 newVersion = "1.1.0"
                 bytesDownloaded = 30 * 1024 * 1024
@@ -470,13 +470,13 @@ private fun StoreItemCellPreviewDownloadingUpdate() {
 private fun StoreItemCellPreviewInstallingNew() {
     MaterialTheme {
         StoreItemCell(
-            storeItem = _root_ide_package_.com.xenonware.store.viewmodel.classes.StoreItem(
+            storeItem = StoreItem(
                 nameMap = hashMapOf("en" to "Fantastic Installer (New)"),
                 packageName = "com.sample.app.installingnew",
                 githubUrl = "Dinico414/installer",
                 iconPath = "@mipmap/ic_launcher"
             ).apply {
-                state = _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLING
+                state = AppEntryState.INSTALLING
                 newVersion = "1.0.0"
                 // installedVersion is empty
             }, onInstall = {}, onUninstall = {}, onOpen = {})
@@ -488,13 +488,13 @@ private fun StoreItemCellPreviewInstallingNew() {
 private fun StoreItemCellPreviewInstallingUpdate() {
     MaterialTheme {
         StoreItemCell(
-            storeItem = _root_ide_package_.com.xenonware.store.viewmodel.classes.StoreItem(
+            storeItem = StoreItem(
                 nameMap = hashMapOf("en" to "Fantastic Installer (Update)"),
                 packageName = "com.sample.app.installingupdate",
                 githubUrl = "Dinico414/installer",
                 iconPath = "@mipmap/ic_launcher"
             ).apply {
-                state = _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLING
+                state = AppEntryState.INSTALLING
                 installedVersion = "1.0.0" // Important: app is already installed
                 newVersion = "1.1.0"
             }, onInstall = {}, onUninstall = {}, onOpen = {})
@@ -507,13 +507,13 @@ private fun StoreItemCellPreviewInstallingUpdate() {
 private fun StoreItemCellPreviewInstalled() {
     MaterialTheme {
         StoreItemCell(
-            storeItem = _root_ide_package_.com.xenonware.store.viewmodel.classes.StoreItem(
+            storeItem = StoreItem(
                 nameMap = hashMapOf("en" to "My Favorite Installed App"),
                 packageName = "com.sample.app.installed",
                 githubUrl = "User/My-Favorite-App.Repo",
                 iconPath = "@drawable/xenon_icon" // Example drawable path
             ).apply {
-                state = _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED
+                state = AppEntryState.INSTALLED
                 installedVersion = "1.0.0"
                 newVersion = "1.0.0"
             }, onInstall = {}, onUninstall = {}, onOpen = {})
@@ -525,13 +525,13 @@ private fun StoreItemCellPreviewInstalled() {
 private fun StoreItemCellPreviewOutdated() {
     MaterialTheme {
         StoreItemCell(
-            storeItem = _root_ide_package_.com.xenonware.store.viewmodel.classes.StoreItem(
+            storeItem = StoreItem(
                 nameMap = hashMapOf("en" to "Old But Gold App (Update Available!)"),
                 packageName = "com.sample.app.outdated",
                 githubUrl = "",
                 iconPath = "@mipmap/ic_launcher"
             ).apply {
-                state = _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED_AND_OUTDATED
+                state = AppEntryState.INSTALLED_AND_OUTDATED
                 installedVersion = "1.0.0"
                 newVersion = "1.1.0"
             }, onInstall = {}, onUninstall = {}, onOpen = {})

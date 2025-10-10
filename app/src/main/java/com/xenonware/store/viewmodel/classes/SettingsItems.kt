@@ -40,8 +40,8 @@ import com.xenonware.store.viewmodel.SettingsViewModel
 
 @Composable
 fun SettingsItems(
-    viewModel: com.xenonware.store.viewmodel.SettingsViewModel,
-    devSettingsViewModel: com.xenonware.store.viewmodel.DevSettingsViewModel = viewModel(),
+    viewModel: SettingsViewModel,
+    devSettingsViewModel: DevSettingsViewModel = viewModel(),
     currentThemeTitle: String,
     applyCoverTheme: Boolean,
     coverThemeEnabled: Boolean,
@@ -49,16 +49,16 @@ fun SettingsItems(
     currentFormat: String,
     appVersion: String,
     onNavigateToDeveloperOptions: () -> Unit,
-    innerGroupRadius: Dp = _root_ide_package_.com.xenonware.store.ui.values.SmallestCornerRadius,
-    outerGroupRadius: Dp = _root_ide_package_.com.xenonware.store.ui.values.MediumCornerRadius,
-    innerGroupSpacing: Dp = _root_ide_package_.com.xenonware.store.ui.values.SmallSpacing,
-    outerGroupSpacing: Dp = _root_ide_package_.com.xenonware.store.ui.values.ExtraLargeSpacing,
+    innerGroupRadius: Dp = SmallestCornerRadius,
+    outerGroupRadius: Dp = MediumCornerRadius,
+    innerGroupSpacing: Dp = SmallSpacing,
+    outerGroupSpacing: Dp = ExtraLargeSpacing,
     tileBackgroundColor: Color = MaterialTheme.colorScheme.surfaceBright,
     tileContentColor: Color = MaterialTheme.colorScheme.onSurface,
     tileSubtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     tileShapeOverride: Shape? = null,
-    tileHorizontalPadding: Dp = _root_ide_package_.com.xenonware.store.ui.values.LargerPadding,
-    tileVerticalPadding: Dp = _root_ide_package_.com.xenonware.store.ui.values.LargerPadding,
+    tileHorizontalPadding: Dp = LargerPadding,
+    tileVerticalPadding: Dp = LargerPadding,
     switchColorsOverride: SwitchColors? = null,
     useGroupStyling: Boolean = true,
 ) {
@@ -80,32 +80,31 @@ fun SettingsItems(
         bottomEnd = actualInnerGroupRadius,
         topStart = actualOuterGroupRadius,
         topEnd = actualOuterGroupRadius
-    ) else RoundedCornerShape(_root_ide_package_.com.xenonware.store.ui.values.NoCornerRadius)
+    ) else RoundedCornerShape(NoCornerRadius)
 
     val middleShape = if (useGroupStyling) RoundedCornerShape(
         topStart = actualInnerGroupRadius,
         topEnd = actualInnerGroupRadius,
         bottomStart = actualInnerGroupRadius,
         bottomEnd = actualInnerGroupRadius
-    ) else RoundedCornerShape(_root_ide_package_.com.xenonware.store.ui.values.NoCornerRadius)
+    ) else RoundedCornerShape(NoCornerRadius)
 
     val bottomShape = if (useGroupStyling) RoundedCornerShape(
         topStart = actualInnerGroupRadius,
         topEnd = actualInnerGroupRadius,
         bottomStart = actualOuterGroupRadius,
         bottomEnd = actualOuterGroupRadius
-    ) else RoundedCornerShape(_root_ide_package_.com.xenonware.store.ui.values.NoCornerRadius)
+    ) else RoundedCornerShape(NoCornerRadius)
 
     val standaloneShape = if (useGroupStyling) RoundedCornerShape(actualOuterGroupRadius)
-    else RoundedCornerShape(_root_ide_package_.com.xenonware.store.ui.values.NoCornerRadius)
+    else RoundedCornerShape(NoCornerRadius)
 
-    val showDummyProfile by devSettingsViewModel.showDummyProfileState.collectAsState()
     // Renamed for clarity, as this controls the dummy profile tile specifically.
     val showDummyProfileTile by devSettingsViewModel.devModeToggleState.collectAsState() 
 
     // This condition uses showDummyProfileTile (from DevSettingsViewModel)
     if (developerModeEnabled && showDummyProfileTile) {
-        _root_ide_package_.com.xenonware.store.ui.res.SettingsGoogleTile(
+        SettingsGoogleTile(
             title = "Your Name",
             subtitle = "your.email@gmail.com",
             onClick = {
@@ -125,7 +124,7 @@ fun SettingsItems(
         Spacer(Modifier.height(actualOuterGroupSpacing))
     }
 
-    _root_ide_package_.com.xenonware.store.ui.res.SettingsTile(
+    SettingsTile(
         title = stringResource(id = R.string.theme),
         subtitle = "${stringResource(id = R.string.current)} $currentThemeTitle",
         onClick = { viewModel.onThemeSettingClicked() },
@@ -144,7 +143,7 @@ fun SettingsItems(
         verticalPadding = tileVerticalPadding
     )
     Spacer(Modifier.height(actualInnerGroupSpacing))
-    _root_ide_package_.com.xenonware.store.ui.res.SettingsSwitchTile(
+    SettingsSwitchTile(
         title = stringResource(R.string.blacked_out),
         subtitle = stringResource(R.string.blacked_out_description),
         checked = blackedOutEnabled,
@@ -167,7 +166,7 @@ fun SettingsItems(
         switchColors = switchColorsOverride ?: defaultSwitchColors
     )
     Spacer(Modifier.height(actualInnerGroupSpacing))
-    _root_ide_package_.com.xenonware.store.ui.res.SettingsSwitchMenuTile(
+    SettingsSwitchMenuTile(
         title = stringResource(R.string.cover_screen_mode),
         subtitle = "${stringResource(R.string.cover_screen_mode_description)} (${
             if (applyCoverTheme) stringResource(
@@ -195,7 +194,7 @@ fun SettingsItems(
 
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
-    _root_ide_package_.com.xenonware.store.ui.res.SettingsTile(
+    SettingsTile(
         title = stringResource(R.string.language),
         subtitle = "${stringResource(R.string.current)} $currentLanguage",
         onClick = { viewModel.onLanguageSettingClicked(context) },
@@ -218,7 +217,7 @@ fun SettingsItems(
 
     Spacer(Modifier.height(actualInnerGroupSpacing))
 
-    _root_ide_package_.com.xenonware.store.ui.res.SettingsSwitchTile(
+    SettingsSwitchTile(
         title = stringResource(R.string.check_pre_release),
         subtitle = stringResource(R.string.check_pre_release_describtion),
         checked = checkForPreReleases,
@@ -243,7 +242,7 @@ fun SettingsItems(
 
     Spacer(Modifier.height(actualOuterGroupSpacing))
 
-    _root_ide_package_.com.xenonware.store.ui.res.SettingsTile(
+    SettingsTile(
         title = stringResource(R.string.clear_data),
         subtitle = stringResource(R.string.clear_data_description),
         onClick = { viewModel.onClearDataClicked(); haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
@@ -262,7 +261,7 @@ fun SettingsItems(
         verticalPadding = tileVerticalPadding
     )
     Spacer(Modifier.height(actualInnerGroupSpacing))
-    _root_ide_package_.com.xenonware.store.ui.res.SettingsTile(
+    SettingsTile(
         title = stringResource(R.string.reset_settings),
         subtitle = "",
         onClick = {
@@ -285,7 +284,7 @@ fun SettingsItems(
         verticalPadding = tileVerticalPadding
     )
     Spacer(Modifier.height(actualInnerGroupSpacing))
-    _root_ide_package_.com.xenonware.store.ui.res.SettingsTile(
+    SettingsTile(
         title = stringResource(R.string.version),
         subtitle = "v $appVersion" + if (developerModeEnabled) " (Developer)" else "", // developerModeEnabled from SettingsViewModel
         onClick = { viewModel.onInfoTileClicked(context) },
@@ -308,7 +307,7 @@ fun SettingsItems(
     // Developer Options section - developerModeEnabled from SettingsViewModel controls its visibility
     if (developerModeEnabled) {
         Spacer(Modifier.height(actualOuterGroupSpacing))
-        _root_ide_package_.com.xenonware.store.ui.res.SettingsTile(
+        SettingsTile(
             title = stringResource(
                 R.string.developer_options_title
             ),

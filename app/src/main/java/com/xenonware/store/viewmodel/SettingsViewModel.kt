@@ -17,6 +17,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.xenonware.store.R
+import com.xenonware.store.SharedPreferenceManager
+import com.xenonware.store.ui.res.LanguageOption
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,8 +58,7 @@ private fun getCurrentDateTimeFormatted(pattern: String): String {
 }
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-    private val sharedPreferenceManager =
-        _root_ide_package_.com.xenonware.store.SharedPreferenceManager(application)
+    private val sharedPreferenceManager = SharedPreferenceManager(application)
     val themeOptions = ThemeSetting.entries.toTypedArray()
 
     private val _blackedOutModeEnabled =
@@ -96,8 +97,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val showLanguageDialog: StateFlow<Boolean> = _showLanguageDialog.asStateFlow()
 
     private val _availableLanguages =
-        MutableStateFlow<List<com.xenonware.store.ui.res.LanguageOption>>(emptyList())
-    val availableLanguages: StateFlow<List<com.xenonware.store.ui.res.LanguageOption>> =
+        MutableStateFlow<List<LanguageOption>>(emptyList())
+    val availableLanguages: StateFlow<List<LanguageOption>> =
         _availableLanguages.asStateFlow()
 
     private val _selectedLanguageTagInDialog = MutableStateFlow(getAppLocaleTag())
@@ -437,18 +438,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private fun prepareLanguageOptions() {
         val application = getApplication<Application>()
-        val languages = mutableListOf(
-            _root_ide_package_.com.xenonware.store.ui.res.LanguageOption(
+        val languages = mutableListOf(LanguageOption(
                 application.getString(R.string.system_default), ""
             )
         )
-        val en = Locale("en"); languages.add(
-            _root_ide_package_.com.xenonware.store.ui.res.LanguageOption(
+        val en = Locale("en"); languages.add(LanguageOption(
                 en.getDisplayName(en), en.toLanguageTag()
             )
         )
-        val de = Locale("de"); languages.add(
-            _root_ide_package_.com.xenonware.store.ui.res.LanguageOption(
+        val de = Locale("de"); languages.add(LanguageOption(
                 de.getDisplayName(de), de.toLanguageTag()
             )
         )

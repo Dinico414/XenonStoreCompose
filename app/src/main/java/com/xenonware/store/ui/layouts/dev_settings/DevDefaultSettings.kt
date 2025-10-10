@@ -28,17 +28,17 @@ import dev.chrisbanes.haze.rememberHazeState
 @Composable
 fun DevDefaultSettings(
     onNavigateBack: () -> Unit,
-    viewModel: com.xenonware.store.viewmodel.DevSettingsViewModel,
+    viewModel: DevSettingsViewModel,
 ) {
     val hazeState = rememberHazeState()
     val context = LocalContext.current
 
-    _root_ide_package_.com.xenonware.store.ui.layouts.ActivityScreen(
+    ActivityScreen(
         titleText = stringResource(id = R.string.developer_options_title),
 
-        navigationIconStartPadding = _root_ide_package_.com.xenonware.store.ui.values.MediumPadding,
-        navigationIconPadding = _root_ide_package_.com.xenonware.store.ui.values.MediumPadding,
-        navigationIconSpacing = _root_ide_package_.com.xenonware.store.ui.values.NoSpacing,
+        navigationIconStartPadding = MediumPadding,
+        navigationIconPadding = MediumPadding,
+        navigationIconSpacing = NoSpacing,
         navigationIcon = {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -70,7 +70,7 @@ fun DevDefaultSettings(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
             ) {
-                _root_ide_package_.com.xenonware.store.viewmodel.classes.DevSettingsItems(
+                DevSettingsItems(
                     viewModel = viewModel
                 )
             }

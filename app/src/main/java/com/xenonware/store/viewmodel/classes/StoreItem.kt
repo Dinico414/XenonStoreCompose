@@ -36,12 +36,12 @@ data class StoreItem(
 
     fun isOutdated(): Boolean {
         if (installedVersion.isEmpty() || newVersion.isEmpty()) return false
-        return _root_ide_package_.com.xenonware.store.util.Util.Companion.isNewerVersion(installedVersion, newVersion)
+        return Util.Companion.isNewerVersion(installedVersion, newVersion)
     }
 
     fun isNewerVersion(remoteVersion: String): Boolean {
         if (newVersion.isEmpty() && remoteVersion.isNotEmpty()) return true
-        return _root_ide_package_.com.xenonware.store.util.Util.Companion.isNewerVersion(newVersion, remoteVersion)
+        return Util.Companion.isNewerVersion(newVersion, remoteVersion)
     }
 
     fun getDrawableId(context: Context): Int {

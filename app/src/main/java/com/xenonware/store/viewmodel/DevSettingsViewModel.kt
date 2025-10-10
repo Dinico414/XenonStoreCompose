@@ -14,8 +14,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class DevSettingsViewModel(application: Application) : AndroidViewModel(application) {
-    private val sharedPreferenceManager =
-        _root_ide_package_.com.xenonware.store.SharedPreferenceManager(application)
+    private val sharedPreferenceManager = SharedPreferenceManager(application)
 
     private val _devModeToggleState = MutableStateFlow(sharedPreferenceManager.developerModeEnabled)
     val devModeToggleState: StateFlow<Boolean> = _devModeToggleState
@@ -24,9 +23,9 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
     val showDummyProfileState: StateFlow<Boolean> = _showDummyProfileState
 
     private val _installMethodState = MutableStateFlow(sharedPreferenceManager.installMethod)
-    val installMethodState: StateFlow<com.xenonware.store.InstallMethod> = _installMethodState
+    val installMethodState: StateFlow<InstallMethod> = _installMethodState
 
-    val isShizukuAvailable: StateFlow<Boolean> = _root_ide_package_.com.xenonware.store.ShizukuManager.isAvailable
+    val isShizukuAvailable: StateFlow<Boolean> = ShizukuManager.isAvailable
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun setDeveloperModeEnabled(enabled: Boolean) {
@@ -50,7 +49,7 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun setInstallMethod(installMethod: com.xenonware.store.InstallMethod) {
+    fun setInstallMethod(installMethod: InstallMethod) {
         viewModelScope.launch {
             if (sharedPreferenceManager.installMethod != installMethod) {
                 sharedPreferenceManager.installMethod = installMethod

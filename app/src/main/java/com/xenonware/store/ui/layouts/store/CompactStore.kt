@@ -65,9 +65,9 @@ import kotlinx.coroutines.flow.collectLatest
 )
 @Composable
 fun CompactStore(
-    storeViewModel: com.xenonware.store.viewmodel.StoreViewModel = viewModel(),
-    devSettingsViewModel: com.xenonware.store.viewmodel.DevSettingsViewModel = viewModel(),
-    layoutType: com.xenonware.store.viewmodel.LayoutType,
+    storeViewModel: StoreViewModel = viewModel(),
+    devSettingsViewModel: DevSettingsViewModel = viewModel(),
+    layoutType: LayoutType,
     onOpenSettings: () -> Unit,
     isLandscape: Boolean,
     appSize: IntSize,
@@ -93,11 +93,11 @@ fun CompactStore(
     }
 
     val isAppBarCollapsible = when (layoutType) {
-        _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.COVER -> false
-        _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.SMALL -> false
-        _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.COMPACT -> !isLandscape || !aspectRatioConditionMet
-        _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.MEDIUM -> true
-        _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.EXPANDED -> true
+        LayoutType.COVER -> false
+        LayoutType.SMALL -> false
+        LayoutType.COMPACT -> !isLandscape || !aspectRatioConditionMet
+        LayoutType.MEDIUM -> true
+        LayoutType.EXPANDED -> true
     }
 
     val hazeState = rememberHazeState()
@@ -141,17 +141,17 @@ fun CompactStore(
     Scaffold(
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
-                _root_ide_package_.com.xenonware.store.ui.res.XenonSnackbar(
+                XenonSnackbar(
                     snackbarData = snackbarData,
                     modifier = Modifier.padding(
-                        horizontal = _root_ide_package_.com.xenonware.store.ui.values.LargestPadding,
+                        horizontal = LargestPadding,
                         vertical = 12.dp
                     )
                 )
             }
         },
         bottomBar = {
-            _root_ide_package_.com.xenonware.store.ui.res.FloatingToolbarContent(
+            FloatingToolbarContent(
                 hazeState = hazeState,
                 onOpenSettings = onOpenSettings,
                 currentSearchQuery = currentSearchQuery,
@@ -169,7 +169,7 @@ fun CompactStore(
         },
 
         ) { scaffoldPadding ->
-        _root_ide_package_.com.xenonware.store.ui.layouts.ActivityScreen(
+        ActivityScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding()
@@ -179,13 +179,13 @@ fun CompactStore(
             titleText = stringResource(id = R.string.app_name),
             expandable = isAppBarCollapsible,
 
-            navigationIconStartPadding = if (shouldShowNavigationElements) _root_ide_package_.com.xenonware.store.ui.values.SmallPadding else 0.dp,
+            navigationIconStartPadding = if (shouldShowNavigationElements) SmallPadding else 0.dp,
             navigationIconPadding = if (shouldShowNavigationElements) {
-                if (isDeveloperModeEnabled && showDummyProfile) _root_ide_package_.com.xenonware.store.ui.values.SmallPadding else _root_ide_package_.com.xenonware.store.ui.values.MediumPadding
+                if (isDeveloperModeEnabled && showDummyProfile) SmallPadding else MediumPadding
             } else {
                 0.dp
             },
-            navigationIconSpacing = if (shouldShowNavigationElements) _root_ide_package_.com.xenonware.store.ui.values.NoSpacing else 0.dp,
+            navigationIconSpacing = if (shouldShowNavigationElements) NoSpacing else 0.dp,
 
             navigationIcon = {},
 
@@ -200,7 +200,7 @@ fun CompactStore(
                     Box(
                         contentAlignment = Alignment.Center,
                     ) {
-                        _root_ide_package_.com.xenonware.store.ui.res.GoogleProfilBorder(
+                        GoogleProfilBorder(
                             modifier = Modifier.size(32.dp),
                         )
                         Image(
@@ -218,7 +218,7 @@ fun CompactStore(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = _root_ide_package_.com.xenonware.store.ui.values.ExtraLargeSpacing)
+                        .padding(horizontal = ExtraLargeSpacing)
                 ) {
                     if (storeItems.isEmpty()) {
                         Box(
@@ -237,14 +237,14 @@ fun CompactStore(
                             state = lazyListState,
                             modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(
-                                top = _root_ide_package_.com.xenonware.store.ui.values.LargestPadding,
-                                bottom = scaffoldPadding.calculateBottomPadding() + _root_ide_package_.com.xenonware.store.ui.values.MediumPadding
+                                top = LargestPadding,
+                                bottom = scaffoldPadding.calculateBottomPadding() + MediumPadding
                             ),
-                            verticalArrangement = Arrangement.spacedBy(_root_ide_package_.com.xenonware.store.ui.values.MediumPadding)
+                            verticalArrangement = Arrangement.spacedBy(MediumPadding)
                         ) {
                             itemsIndexed(
                                 storeItems, key = { _, item -> item.packageName }) { _, storeItem ->
-                                _root_ide_package_.com.xenonware.store.ui.res.StoreItemCell(
+                                StoreItemCell(
                                     storeItem = storeItem,
                                     onInstall = { item ->
                                         storeViewModel.installApp(item, context)

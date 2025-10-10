@@ -12,24 +12,24 @@ import com.xenonware.store.viewmodel.SettingsViewModel
 @Composable
 fun SettingsLayout(
     onNavigateBack: () -> Unit,
-    viewModel: com.xenonware.store.viewmodel.SettingsViewModel,
+    viewModel: SettingsViewModel,
     isLandscape: Boolean,
-    layoutType: com.xenonware.store.viewmodel.LayoutType,
+    layoutType: LayoutType,
     onNavigateToDeveloperOptions: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (layoutType) {
-            _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.COVER -> {
-                _root_ide_package_.com.xenonware.store.ui.layouts.settings.CoverSettings(
+            LayoutType.COVER -> {
+                CoverSettings(
                     onNavigateBack = onNavigateBack,
                     viewModel = viewModel,
                     onNavigateToDeveloperOptions = onNavigateToDeveloperOptions
                 )
             }
 
-            _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.SMALL, _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.COMPACT, _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.MEDIUM, _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.EXPANDED -> {
-                _root_ide_package_.com.xenonware.store.ui.layouts.settings.DefaultSettings(
+            LayoutType.SMALL, LayoutType.COMPACT, LayoutType.MEDIUM, LayoutType.EXPANDED -> {
+                DefaultSettings(
                     onNavigateBack = onNavigateBack,
                     viewModel = viewModel,
                     layoutType = layoutType,

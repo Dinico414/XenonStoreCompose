@@ -26,7 +26,6 @@ object ShizukuManager {
         Log.d(TAG, "Registering Shizuku listeners.")
         Shizuku.addBinderReceivedListener(binderReceivedListener)
         Shizuku.addBinderDeadListener(binderDeadListener)
-        // Perform an initial check
         _isAvailable.value = Shizuku.pingBinder()
         Log.i(TAG, "Initial Shizuku check: ${_isAvailable.value}")
     }

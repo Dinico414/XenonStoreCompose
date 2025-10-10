@@ -12,16 +12,16 @@ import com.xenonware.store.viewmodel.StoreViewModel
 @Composable
 fun StoreLayout(
     modifier: Modifier = Modifier,
-    layoutType: com.xenonware.store.viewmodel.LayoutType,
+    layoutType: LayoutType,
     onOpenSettings: () -> Unit,
     isLandscape: Boolean,
     appSize: IntSize,
-    storeViewModel: com.xenonware.store.viewmodel.StoreViewModel // Added ViewModel parameter
+    storeViewModel: StoreViewModel // Added ViewModel parameter
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (layoutType) {
-            _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.COVER -> {
-                _root_ide_package_.com.xenonware.store.ui.layouts.store.CompactStore(
+            LayoutType.COVER -> {
+                CompactStore(
                     onOpenSettings = onOpenSettings,
                     layoutType = layoutType,
                     isLandscape = true,
@@ -30,8 +30,8 @@ fun StoreLayout(
                 )
             }
 
-            _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.SMALL, _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.COMPACT, _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.MEDIUM, _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.EXPANDED -> {
-                _root_ide_package_.com.xenonware.store.ui.layouts.store.CompactStore(
+            LayoutType.SMALL, LayoutType.COMPACT, LayoutType.MEDIUM, LayoutType.EXPANDED -> {
+                CompactStore(
                     onOpenSettings = onOpenSettings,
                     layoutType = layoutType,
                     isLandscape = true, // This seems to be always true, might be an oversight if it should depend on the actual orientation

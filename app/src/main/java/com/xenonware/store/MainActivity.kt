@@ -22,7 +22,7 @@ import com.xenonware.store.viewmodel.StoreViewModel
 class MainActivity : ComponentActivity() {
 
     private lateinit var sharedPreferenceManager: SharedPreferenceManager
-    private lateinit var storeViewModel: com.xenonware.store.viewmodel.StoreViewModel
+    private lateinit var storeViewModel: StoreViewModel
 
     private var lastAppliedTheme: Int = -1
     private var lastAppliedCoverThemeEnabled: Boolean = false
@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         sharedPreferenceManager = SharedPreferenceManager(applicationContext)
-        storeViewModel = ViewModelProvider(this).get(_root_ide_package_.com.xenonware.store.viewmodel.StoreViewModel::class.java)
+        storeViewModel = ViewModelProvider(this).get(StoreViewModel::class.java)
 
         val initialThemePref = sharedPreferenceManager.theme
         val initialCoverThemeEnabled = sharedPreferenceManager.coverThemeEnabled
@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
             val currentContext = LocalContext.current
             val currentContainerSize = LocalWindowInfo.current.containerSize // Use LocalWindowInfo
 
-            _root_ide_package_.com.xenonware.store.ui.theme.ScreenEnvironment(
+            ScreenEnvironment(
                 lastAppliedTheme,
                 lastAppliedCoverThemeEnabled,
                 lastAppliedBlackedOutMode,
@@ -104,13 +104,13 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun XenonStoreApp(
-    layoutType: com.xenonware.store.viewmodel.LayoutType,
+    layoutType: LayoutType,
     onOpenSettings: () -> Unit,
     isLandscape: Boolean = false,
     appSize: IntSize,
-    storeViewModel: com.xenonware.store.viewmodel.StoreViewModel // Added ViewModel parameter
+    storeViewModel: StoreViewModel // Added ViewModel parameter
     ) {
-    _root_ide_package_.com.xenonware.store.ui.layouts.StoreLayout(
+    StoreLayout(
         layoutType = layoutType,
         onOpenSettings = onOpenSettings,
         modifier = Modifier.fillMaxSize(),

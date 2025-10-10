@@ -27,6 +27,17 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.xenonware.store.R
+import com.xenonware.store.ui.layouts.ActivityScreen
+import com.xenonware.store.ui.res.DialogClearDataConfirmation
+import com.xenonware.store.ui.res.DialogCoverDisplaySelection
+import com.xenonware.store.ui.res.DialogLanguageSelection
+import com.xenonware.store.ui.res.DialogResetSettingsConfirmation
+import com.xenonware.store.ui.res.DialogThemeSelection
+import com.xenonware.store.ui.values.MediumPadding
+import com.xenonware.store.ui.values.NoCornerRadius
+import com.xenonware.store.ui.values.NoSpacing
+import com.xenonware.store.viewmodel.SettingsViewModel
+import com.xenonware.store.viewmodel.classes.SettingsItems
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -35,7 +46,7 @@ import dev.chrisbanes.haze.rememberHazeState
 @Composable
 fun CoverSettings(
     onNavigateBack: () -> Unit,
-    viewModel: com.xenonware.store.viewmodel.SettingsViewModel,
+    viewModel: SettingsViewModel,
     onNavigateToDeveloperOptions: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -54,15 +65,12 @@ fun CoverSettings(
     val availableLanguages by viewModel.availableLanguages.collectAsState()
     val selectedLanguageTagInDialog by viewModel.selectedLanguageTagInDialog.collectAsState()
 
-    val showDateTimeFormatDialog by viewModel.showDateTimeFormatDialog.collectAsState()
-    val availableDateFormats = viewModel.availableDateFormats
-    val selectedDateFormatInDialog by viewModel.selectedDateFormatInDialog.collectAsState()
-    val selectedTimeFormatInDialog by viewModel.selectedTimeFormatInDialog.collectAsState()
+    viewModel.availableDateFormats
     val currentFormattedDateTime by viewModel.currentFormattedDateTime.collectAsState()
 
-    val systemTimePattern = remember { viewModel.systemShortTimePattern }
-    val twentyFourHourTimePattern = "HH:mm"
-    val twelveHourTimePattern = "h:mm a"
+    remember { viewModel.systemShortTimePattern }
+    "HH:mm"
+    "h:mm a"
 
 
     val packageManager = context.packageManager
@@ -86,12 +94,12 @@ fun CoverSettings(
     val coverScreenBackgroundColor = Color.Black
     val coverScreenContentColor = Color.White
 
-    _root_ide_package_.com.xenonware.store.ui.layouts.ActivityScreen(
+    ActivityScreen(
         titleText = stringResource(id = R.string.settings),
 
-        navigationIconStartPadding = _root_ide_package_.com.xenonware.store.ui.values.MediumPadding,
-        navigationIconPadding = _root_ide_package_.com.xenonware.store.ui.values.MediumPadding,
-        navigationIconSpacing = _root_ide_package_.com.xenonware.store.ui.values.NoSpacing,
+        navigationIconStartPadding = MediumPadding,
+        navigationIconPadding = MediumPadding,
+        navigationIconSpacing = NoSpacing,
 
         navigationIcon = {
             Icon(
@@ -108,7 +116,7 @@ fun CoverSettings(
         screenBackgroundColor = coverScreenBackgroundColor,
         contentBackgroundColor = coverScreenBackgroundColor,
         appBarNavigationIconContentColor = coverScreenContentColor,
-        contentCornerRadius = _root_ide_package_.com.xenonware.store.ui.values.NoCornerRadius,
+        contentCornerRadius = NoCornerRadius,
         modifier = Modifier.hazeSource(hazeState),
         content = { _ ->
             Column(
@@ -117,11 +125,11 @@ fun CoverSettings(
                     .verticalScroll(rememberScrollState())
                     .padding(
                         bottom = WindowInsets.safeDrawing.asPaddingValues()
-                            .calculateBottomPadding() + _root_ide_package_.com.xenonware.store.ui.values.MediumPadding,
-                        top = _root_ide_package_.com.xenonware.store.ui.values.MediumPadding
+                            .calculateBottomPadding() + MediumPadding,
+                        top = MediumPadding
                     )
             ) {
-                _root_ide_package_.com.xenonware.store.viewmodel.classes.SettingsItems(
+                SettingsItems(
                     viewModel = viewModel,
                     currentThemeTitle = currentThemeTitle,
                     applyCoverTheme = applyCoverThemeActual,
@@ -132,9 +140,9 @@ fun CoverSettings(
                     tileBackgroundColor = coverScreenBackgroundColor,
                     tileContentColor = coverScreenContentColor,
                     tileSubtitleColor = coverScreenContentColor.copy(alpha = 0.7f),
-                    tileShapeOverride = RoundedCornerShape(_root_ide_package_.com.xenonware.store.ui.values.NoCornerRadius),
-                    tileHorizontalPadding = _root_ide_package_.com.xenonware.store.ui.values.MediumPadding,
-                    tileVerticalPadding = _root_ide_package_.com.xenonware.store.ui.values.MediumPadding,
+                    tileShapeOverride = RoundedCornerShape(NoCornerRadius),
+                    tileHorizontalPadding = MediumPadding,
+                    tileVerticalPadding = MediumPadding,
                     useGroupStyling = false,
                     onNavigateToDeveloperOptions = onNavigateToDeveloperOptions
                 )
@@ -146,7 +154,7 @@ fun CoverSettings(
                 .fillMaxSize()
                 .hazeEffect(hazeState)
         ) {
-            _root_ide_package_.com.xenonware.store.ui.res.DialogThemeSelection(
+            DialogThemeSelection(
                 themeOptions = themeOptions,
                 currentThemeIndex = dialogSelectedThemeIndex,
                 onThemeSelected = { index -> viewModel.onThemeOptionSelectedInDialog(index) },
@@ -160,7 +168,7 @@ fun CoverSettings(
                 .fillMaxSize()
                 .hazeEffect(hazeState)
         ) {
-            _root_ide_package_.com.xenonware.store.ui.res.DialogCoverDisplaySelection(
+         DialogCoverDisplaySelection(
                 onConfirm = {
                     viewModel.saveCoverDisplayMetrics(
                         containerSize
@@ -175,7 +183,7 @@ fun CoverSettings(
                 .fillMaxSize()
                 .hazeEffect(hazeState)
         ) {
-            _root_ide_package_.com.xenonware.store.ui.res.DialogClearDataConfirmation(
+            DialogClearDataConfirmation(
                 onConfirm = { viewModel.confirmClearData() },
                 onDismiss = { viewModel.dismissClearDataDialog() })
         }
@@ -186,7 +194,7 @@ fun CoverSettings(
                 .fillMaxSize()
                 .hazeEffect(hazeState)
         ) {
-            _root_ide_package_.com.xenonware.store.ui.res.DialogResetSettingsConfirmation(
+            DialogResetSettingsConfirmation(
                 onConfirm = { viewModel.confirmResetSettings() },
                 onDismiss = { viewModel.dismissResetSettingsDialog() })
         }
@@ -197,7 +205,7 @@ fun CoverSettings(
                 .fillMaxSize()
                 .hazeEffect(hazeState)
         ) {
-            _root_ide_package_.com.xenonware.store.ui.res.DialogLanguageSelection(
+           DialogLanguageSelection(
                 availableLanguages = availableLanguages,
                 currentLanguageTag = selectedLanguageTagInDialog,
                 onLanguageSelected = { tag -> viewModel.onLanguageSelectedInDialog(tag) },

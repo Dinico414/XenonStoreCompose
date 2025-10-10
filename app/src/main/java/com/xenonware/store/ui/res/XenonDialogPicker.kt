@@ -63,17 +63,17 @@ fun XenonDialogPicker(
         usePlatformDefaultWidth = false, dismissOnClickOutside = true, dismissOnBackPress = true
     ),
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(_root_ide_package_.com.xenonware.store.ui.values.DialogCornerRadius),
+    shape: Shape = RoundedCornerShape(DialogCornerRadius),
     containerColor: Color = MaterialTheme.colorScheme.surface,
     tonalElevation: Dp = 6.dp,
 
-    dialogPadding: PaddingValues = PaddingValues(_root_ide_package_.com.xenonware.store.ui.values.DialogPadding),
+    dialogPadding: PaddingValues = PaddingValues(DialogPadding),
     dialogTitleRowPadding: PaddingValues = PaddingValues(
-        start = _root_ide_package_.com.xenonware.store.ui.values.DialogPadding, end = _root_ide_package_.com.xenonware.store.ui.values.DialogPadding, top = 0.dp, bottom = _root_ide_package_.com.xenonware.store.ui.values.LargestPadding
+        start = DialogPadding, end = DialogPadding, top = 0.dp, bottom = LargestPadding
     ),
-    contentPadding: PaddingValues = PaddingValues(horizontal = _root_ide_package_.com.xenonware.store.ui.values.DialogPadding),
+    contentPadding: PaddingValues = PaddingValues(horizontal = DialogPadding),
     buttonRowPadding: PaddingValues = PaddingValues(
-        horizontal = _root_ide_package_.com.xenonware.store.ui.values.MediumPadding, vertical = 0.dp
+        horizontal = MediumPadding, vertical = 0.dp
     ),
 
     confirmButtonText: String,
@@ -129,7 +129,7 @@ fun XenonDialogPicker(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.headlineSmall.copy(
-                            fontFamily = _root_ide_package_.com.xenonware.store.ui.layouts.QuicksandTitleVariable
+                            fontFamily = QuicksandTitleVariable
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -205,7 +205,7 @@ fun XenonDialogPicker(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = _root_ide_package_.com.xenonware.store.ui.values.LargestPadding)
+                        .padding(top = LargestPadding)
                         .padding(buttonRowPadding),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically

@@ -20,7 +20,7 @@ fun ScreenEnvironment(
     themePreference: Int,
     coverTheme: Boolean,
     blackedOutModeEnabled: Boolean,
-    content: @Composable (layoutType: com.xenonware.store.viewmodel.LayoutType, isLandscape: Boolean) -> Unit
+    content: @Composable (layoutType: LayoutType, isLandscape: Boolean) -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -37,15 +37,15 @@ fun ScreenEnvironment(
         val dimensionForLayout = if (isLandscape) screenHeight else screenWidth
 
         val layoutType = when {
-            coverTheme -> _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.COVER
-            dimensionForLayout < 320.dp -> _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.SMALL
-            dimensionForLayout < 600.dp -> _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.COMPACT
-            dimensionForLayout < 840.dp -> _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.MEDIUM
-            else -> _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.EXPANDED
+            coverTheme -> LayoutType.COVER
+            dimensionForLayout < 320.dp -> LayoutType.SMALL
+            dimensionForLayout < 600.dp -> LayoutType.COMPACT
+            dimensionForLayout < 840.dp -> LayoutType.MEDIUM
+            else -> LayoutType.EXPANDED
         }
 
         val appIsDarkTheme = when {
-            layoutType == _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.COVER -> true
+            layoutType == LayoutType.COVER -> true
 
             else -> when (themePreference) {
                 0 -> false
@@ -63,9 +63,9 @@ fun ScreenEnvironment(
             val view = LocalView.current
 
             val systemBarColor =
-                if (layoutType == _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.COVER) Color.Black else MaterialTheme.colorScheme.surfaceDim
+                if (layoutType == LayoutType.COVER) Color.Black else MaterialTheme.colorScheme.surfaceDim
             val darkIconsForSystemBars =
-                if (layoutType == _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.COVER) false else !appIsDarkTheme
+                if (layoutType == LayoutType.COVER) false else !appIsDarkTheme
 
             if (!view.isInEditMode) {
                 SideEffect {

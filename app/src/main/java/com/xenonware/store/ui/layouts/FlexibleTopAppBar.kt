@@ -157,8 +157,8 @@ fun CollapsingAppBarLayout(
                     ) {
                         Row {
                             actions()
-                            Spacer(modifier = _root_ide_package_.androidx.compose.ui.Modifier.Companion.width(
-                                _root_ide_package_.com.xenonware.store.ui.values.LargestPadding
+                            Spacer(modifier = Modifier.width(
+                                LargestPadding
                             ))
                         }
                     }

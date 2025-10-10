@@ -34,7 +34,7 @@ import com.xenonware.store.viewmodel.DevSettingsViewModel
 
 @Composable
 fun DevSettingsItems(
-    viewModel: com.xenonware.store.viewmodel.DevSettingsViewModel,
+    viewModel: DevSettingsViewModel,
     modifier: Modifier = Modifier
 ) {
     val isDeveloperModeEnabled by viewModel.devModeToggleState.collectAsState()
@@ -46,16 +46,16 @@ fun DevSettingsItems(
 
     Column(
         modifier = modifier
-            .padding(_root_ide_package_.com.xenonware.store.ui.values.LargerPadding)
+            .padding(LargerPadding)
             .fillMaxWidth()
     ) {
         Text(
             text = stringResource(id = R.string.dev_settings_description),
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = _root_ide_package_.com.xenonware.store.ui.values.LargerPadding)
+            modifier = Modifier.padding(bottom = LargerPadding)
         )
 
-        _root_ide_package_.com.xenonware.store.ui.res.SettingsSwitchTile(
+        SettingsSwitchTile(
             title = stringResource(id = R.string.developer_options_title),
             subtitle = "",
             checked = isDeveloperModeEnabled,
@@ -69,11 +69,11 @@ fun DevSettingsItems(
         )
 
         if (isDeveloperModeEnabled) {
-            Spacer(modifier = _root_ide_package_.androidx.compose.ui.Modifier.Companion.height(
-                _root_ide_package_.com.xenonware.store.ui.values.SmallSpacing
+            Spacer(modifier = Modifier.Companion.height(
+                SmallSpacing
             ))
 
-            _root_ide_package_.com.xenonware.store.ui.res.SettingsSwitchTile(
+            SettingsSwitchTile(
                 title = stringResource(id = R.string.show_dummy_profile_title),
                 subtitle = "",
                 checked = isShowDummyProfileEnabled,
@@ -86,11 +86,11 @@ fun DevSettingsItems(
                 }
             )
 
-            Spacer(modifier = _root_ide_package_.androidx.compose.ui.Modifier.Companion.height(
-                _root_ide_package_.com.xenonware.store.ui.values.SmallSpacing
+            Spacer(modifier = Modifier.Companion.height(
+                SmallSpacing
             ))
 
-            _root_ide_package_.com.xenonware.store.ui.res.SettingsTile(
+            SettingsTile(
                 title = stringResource(R.string.select_install_method_title),
                 subtitle = getInstallMethodName(currentInstallMethod),
                 onClick = { showInstallMethodDialog = true },
@@ -103,8 +103,8 @@ fun DevSettingsItems(
                     title = { Text(stringResource(R.string.select_install_method_title)) },
                     text = {
                         Column {
-                            _root_ide_package_.com.xenonware.store.InstallMethod.values().forEach { method ->
-                                val isEnabled = if (method == _root_ide_package_.com.xenonware.store.InstallMethod.SHIZUKU) isShizukuAvailable else true
+                            InstallMethod.values().forEach { method ->
+                                val isEnabled = if (method == InstallMethod.SHIZUKU) isShizukuAvailable else true
                                 Row(
                                     Modifier
                                         .fillMaxWidth()
@@ -126,7 +126,7 @@ fun DevSettingsItems(
                                             text = getInstallMethodName(method),
                                             color = if(isEnabled) LocalContentColor.current else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                         )
-                                        if (method == _root_ide_package_.com.xenonware.store.InstallMethod.SHIZUKU && !isShizukuAvailable) {
+                                        if (method == InstallMethod.SHIZUKU && !isShizukuAvailable) {
                                             Text(
                                                 text = stringResource(R.string.disabled),
                                                 style = MaterialTheme.typography.bodySmall,
@@ -151,10 +151,10 @@ fun DevSettingsItems(
 }
 
 @Composable
-private fun getInstallMethodName(method: com.xenonware.store.InstallMethod): String {
+private fun getInstallMethodName(method: InstallMethod): String {
     return when (method) {
-        _root_ide_package_.com.xenonware.store.InstallMethod.DEFAULT -> "Default"
-        _root_ide_package_.com.xenonware.store.InstallMethod.SHIZUKU -> "Shizuku"
-        _root_ide_package_.com.xenonware.store.InstallMethod.ROOT -> "Root"
+        InstallMethod.DEFAULT -> "Default"
+        InstallMethod.SHIZUKU -> "Shizuku"
+        InstallMethod.ROOT -> "Root"
     }
 }

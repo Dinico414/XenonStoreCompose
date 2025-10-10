@@ -48,8 +48,8 @@ import dev.chrisbanes.haze.rememberHazeState
 @Composable
 fun DefaultSettings(
     onNavigateBack: () -> Unit,
-    viewModel: com.xenonware.store.viewmodel.SettingsViewModel,
-    layoutType: com.xenonware.store.viewmodel.LayoutType,
+    viewModel: SettingsViewModel,
+    layoutType: LayoutType,
     isLandscape: Boolean,
     onNavigateToDeveloperOptions: () -> Unit,
 ) {
@@ -70,15 +70,12 @@ fun DefaultSettings(
     val availableLanguages by viewModel.availableLanguages.collectAsState()
     val selectedLanguageTagInDialog by viewModel.selectedLanguageTagInDialog.collectAsState()
 
-    val showDateTimeFormatDialog by viewModel.showDateTimeFormatDialog.collectAsState()
-    val availableDateFormats = viewModel.availableDateFormats
-    val selectedDateFormatInDialog by viewModel.selectedDateFormatInDialog.collectAsState()
-    val selectedTimeFormatInDialog by viewModel.selectedTimeFormatInDialog.collectAsState()
+    viewModel.availableDateFormats
     val currentFormattedDateTime by viewModel.currentFormattedDateTime.collectAsState()
 
-    val systemTimePattern = remember { viewModel.systemShortTimePattern }
-    val twentyFourHourTimePattern = "HH:mm"
-    val twelveHourTimePattern = "h:mm a"
+    remember { viewModel.systemShortTimePattern }
+    "HH:mm"
+    "h:mm a"
 
     val packageManager = context.packageManager
     val packageName = context.packageName
@@ -97,14 +94,14 @@ fun DefaultSettings(
     }
 
     val appThemeSetting = remember {
-        _root_ide_package_.com.xenonware.store.SharedPreferenceManager(
+        SharedPreferenceManager(
             context
         )
     }.theme
     val themeOptionsFromVm = viewModel.themeOptions
     val isSystemCurrentlyDark = isSystemInDarkTheme()
 
-    val useDarkTileBackground: Boolean = when {
+    when {
         blackedOutEnabled -> true
         appThemeSetting < 0 || appThemeSetting >= themeOptionsFromVm.size -> isSystemCurrentlyDark
         else -> when (themeOptionsFromVm[appThemeSetting].nightModeFlag) {
@@ -114,20 +111,20 @@ fun DefaultSettings(
         }
     }
 
-    val isAppBarCollapsible = when (layoutType) {
-        _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.SMALL -> false
-        _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.COMPACT -> !isLandscape
-        _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.MEDIUM -> true
-        _root_ide_package_.com.xenonware.store.viewmodel.LayoutType.EXPANDED -> true
+    when (layoutType) {
+        LayoutType.SMALL -> false
+        LayoutType.COMPACT -> !isLandscape
+        LayoutType.MEDIUM -> true
+        LayoutType.EXPANDED -> true
         else -> true
     }
     val hazeState = rememberHazeState()
 
-    _root_ide_package_.com.xenonware.store.ui.layouts.ActivityScreen(
+    ActivityScreen(
         titleText = stringResource(id = R.string.settings),
-        navigationIconStartPadding = _root_ide_package_.com.xenonware.store.ui.values.MediumPadding,
-        navigationIconPadding = _root_ide_package_.com.xenonware.store.ui.values.MediumPadding,
-        navigationIconSpacing = _root_ide_package_.com.xenonware.store.ui.values.NoSpacing,
+        navigationIconStartPadding = MediumPadding,
+        navigationIconPadding = MediumPadding,
+        navigationIconSpacing = NoSpacing,
         navigationIcon = {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -146,14 +143,14 @@ fun DefaultSettings(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(
-                        start = _root_ide_package_.com.xenonware.store.ui.values.LargestPadding,
-                        end = _root_ide_package_.com.xenonware.store.ui.values.LargestPadding,
-                        top = _root_ide_package_.com.xenonware.store.ui.values.LargestPadding,
+                        start = LargestPadding,
+                        end = LargestPadding,
+                        top = LargestPadding,
                         bottom = WindowInsets.safeDrawing.asPaddingValues()
-                            .calculateBottomPadding() + _root_ide_package_.com.xenonware.store.ui.values.LargestPadding
+                            .calculateBottomPadding() + LargestPadding
                     )
             ) {
-                _root_ide_package_.com.xenonware.store.viewmodel.classes.SettingsItems(
+                SettingsItems(
                     viewModel = viewModel,
                     currentThemeTitle = currentThemeTitle,
                     applyCoverTheme = applyCoverTheme,
@@ -172,7 +169,7 @@ fun DefaultSettings(
                 .fillMaxSize()
                 .hazeEffect(hazeState)
         ) {
-            _root_ide_package_.com.xenonware.store.ui.res.DialogThemeSelection(
+            DialogThemeSelection(
                 themeOptions = themeOptions,
                 currentThemeIndex = dialogSelectedThemeIndex,
                 onThemeSelected = { index -> viewModel.onThemeOptionSelectedInDialog(index) },
@@ -186,7 +183,7 @@ fun DefaultSettings(
                 .fillMaxSize()
                 .hazeEffect(hazeState)
         ) {
-            _root_ide_package_.com.xenonware.store.ui.res.DialogCoverDisplaySelection(onConfirm = {
+            DialogCoverDisplaySelection(onConfirm = {
                 viewModel.saveCoverDisplayMetrics(
                     containerSize
                 )
@@ -199,7 +196,7 @@ fun DefaultSettings(
                 .fillMaxSize()
                 .hazeEffect(hazeState)
         ) {
-            _root_ide_package_.com.xenonware.store.ui.res.DialogClearDataConfirmation(
+            DialogClearDataConfirmation(
                 onConfirm = { viewModel.confirmClearData() },
                 onDismiss = { viewModel.dismissClearDataDialog() })
         }
@@ -210,7 +207,7 @@ fun DefaultSettings(
                 .fillMaxSize()
                 .hazeEffect(hazeState)
         ) {
-            _root_ide_package_.com.xenonware.store.ui.res.DialogResetSettingsConfirmation(
+            DialogResetSettingsConfirmation(
                 onConfirm = { viewModel.confirmResetSettings() },
                 onDismiss = { viewModel.dismissResetSettingsDialog() })
         }
@@ -221,7 +218,7 @@ fun DefaultSettings(
                 .fillMaxSize()
                 .hazeEffect(hazeState)
         ) {
-            _root_ide_package_.com.xenonware.store.ui.res.DialogLanguageSelection(
+            DialogLanguageSelection(
                 availableLanguages = availableLanguages,
                 currentLanguageTag = selectedLanguageTagInDialog,
                 onLanguageSelected = { tag -> viewModel.onLanguageSelectedInDialog(tag) },

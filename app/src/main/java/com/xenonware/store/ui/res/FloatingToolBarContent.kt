@@ -2,7 +2,6 @@ package com.xenonware.store.ui.res
 
 import android.annotation.SuppressLint
 import android.os.Build
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -82,7 +81,6 @@ import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -92,6 +90,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import com.xenonware.store.R
+import com.xenonware.store.ui.values.LargePadding
+import com.xenonware.store.ui.values.SmallElevation
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
@@ -101,7 +101,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlin.math.roundToInt
 
 private data class ScrollState(
     val firstVisibleItemIndex: Int,
@@ -247,9 +246,9 @@ fun FloatingToolbarContent(
 
     val targetBottomPadding = remember(imeHeight, bottomPaddingNavigationBar, imePaddingValues) {
         if (imeHeight > bottomPaddingNavigationBar) {
-            imeHeight + _root_ide_package_.com.xenonware.store.ui.values.LargePadding
+            imeHeight + LargePadding
         } else {
-            max(bottomPaddingNavigationBar, imePaddingValues.calculateTopPadding()) + _root_ide_package_.com.xenonware.store.ui.values.LargePadding
+            max(bottomPaddingNavigationBar, imePaddingValues.calculateTopPadding()) + LargePadding
         }
     }
 
@@ -261,7 +260,7 @@ fun FloatingToolbarContent(
 
     val toolbarHeight = 64.dp
     val toolbarOffsetTarget =
-        if (toolbarVisibleState) 0.dp else toolbarHeight + _root_ide_package_.com.xenonware.store.ui.values.LargePadding + 50.dp
+        if (toolbarVisibleState) 0.dp else toolbarHeight + LargePadding + 50.dp
 
     val animatedToolbarOffset by animateDpAsState(
         targetValue = toolbarOffsetTarget, animationSpec = spring(
@@ -302,7 +301,7 @@ fun FloatingToolbarContent(
                             colorScheme.onPrimary
                         }
                         val hazeThinColor = colorScheme.primary
-                        val smallElevationPx = with(density) { _root_ide_package_.com.xenonware.store.ui.values.SmallElevation.toPx() }
+                        val smallElevationPx = with(density) { SmallElevation.toPx() }
                         val baseShadowAlpha = 0.7f
                         val interactiveShadowAlpha = 0.9f
                         val currentShadowRadius =

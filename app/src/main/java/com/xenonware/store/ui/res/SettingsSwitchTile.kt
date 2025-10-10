@@ -47,12 +47,12 @@ fun SettingsSwitchTile(
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     dividerColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-    shape: Shape = RoundedCornerShape(_root_ide_package_.com.xenonware.store.ui.values.LargeCornerRadius),
-    horizontalPadding: Dp = _root_ide_package_.com.xenonware.store.ui.values.LargestPadding,
-    verticalPadding: Dp = _root_ide_package_.com.xenonware.store.ui.values.ExtraLargePadding,
+    shape: Shape = RoundedCornerShape(LargeCornerRadius),
+    horizontalPadding: Dp = LargestPadding,
+    verticalPadding: Dp = ExtraLargePadding,
     switchColors: SwitchColors = SwitchDefaults.colors(),
-    iconSpacing: Dp = _root_ide_package_.com.xenonware.store.ui.values.ExtraLargePadding,
-    tileSpacing: Dp = _root_ide_package_.com.xenonware.store.ui.values.LargerPadding,
+    iconSpacing: Dp = ExtraLargePadding,
+    tileSpacing: Dp = LargerPadding,
 ) {
     Row(
         modifier = modifier

@@ -12,6 +12,13 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.xenonware.store.InstallMethod
+import com.xenonware.store.SharedPreferenceManager
+import com.xenonware.store.ShizukuManager
+import com.xenonware.store.util.Util.Companion.getCurrentLanguage
+import com.xenonware.store.util.Util.Companion.isNewerVersion
+import com.xenonware.store.viewmodel.classes.AppEntryState
+import com.xenonware.store.viewmodel.classes.StoreItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,8 +42,8 @@ import java.io.InputStreamReader
 
 class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _storeItems = MutableStateFlow<List<com.xenonware.store.viewmodel.classes.StoreItem>>(emptyList())
-    val storeItems: StateFlow<List<com.xenonware.store.viewmodel.classes.StoreItem>> = _storeItems.asStateFlow()
+    private val _storeItems = MutableStateFlow<List<StoreItem>>(emptyList())
+    val storeItems: StateFlow<List<StoreItem>> = _storeItems.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -51,14 +58,13 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     val xenonStoreDownloadProgress: StateFlow<Float> = _xenonStoreDownloadProgress.asStateFlow()
 
     private val client: OkHttpClient
-    private val sharedPreferenceManager =
-        _root_ide_package_.com.xenonware.store.SharedPreferenceManager(application)
+    private val sharedPreferenceManager = SharedPreferenceManager(application)
     private val packageInstallReceiver: PackageInstallReceiver
 
     private companion object {
         const val APP_LIST_PROTOCOL_VERSION = "v0.1"
         const val TAG = "StoreViewModel"
-        const val XENON_STORE_PACKAGE_NAME = "com.xenonware.store"
+        const val XENON_STORE_PACKAGE_NAME = "com.xenon.store"
         const val XENON_STORE_OWNER = "Dinico414"
         const val XENON_STORE_REPO = "XenonStore"
         const val SHIZUKU_PERMISSION_REQUEST_CODE = 1001
@@ -112,7 +118,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     
     fun verifyAndRefreshPendingInstallations() {
         viewModelScope.launch {
-            val itemsToCheck = _storeItems.value.filter { it.state == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLING }
+            val itemsToCheck = _storeItems.value.filter { it.state == AppEntryState.INSTALLING }
             if (itemsToCheck.isEmpty()) return@launch
 
             Log.d(TAG, "Verifying ${itemsToCheck.size} items in INSTALLING state.")
@@ -186,10 +192,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun refreshAppItemBlocking(
-        appItem: com.xenonware.store.viewmodel.classes.StoreItem,
+        appItem: StoreItem,
         githubInfoUseCache: Boolean,
         forceStateReEvaluation: Boolean = false 
-    ): com.xenonware.store.viewmodel.classes.StoreItem {
+    ): StoreItem {
         return withContext(Dispatchers.IO) {
             val currentAppItem = appItem.copy() 
             currentAppItem.installedVersion = getInstalledAppVersion(currentAppItem.packageName) ?: ""
@@ -210,19 +216,19 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             val previousState = currentAppItem.state
-            if (forceStateReEvaluation || (previousState != _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING && previousState != _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLING)) {
+            if (forceStateReEvaluation || (previousState != AppEntryState.DOWNLOADING && previousState != AppEntryState.INSTALLING)) {
                 if (currentAppItem.installedVersion.isNotEmpty()) {
                     if (currentAppItem.isOutdated()) { 
-                        currentAppItem.state = _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED_AND_OUTDATED
+                        currentAppItem.state = AppEntryState.INSTALLED_AND_OUTDATED
                     } else {
-                        currentAppItem.state = _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLED
+                        currentAppItem.state = AppEntryState.INSTALLED
                     }
                 } else {
-                    currentAppItem.state = _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.NOT_INSTALLED
+                    currentAppItem.state = AppEntryState.NOT_INSTALLED
                 }
             }
             
-            if (currentAppItem.state != _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING) {
+            if (currentAppItem.state != AppEntryState.DOWNLOADING) {
                 currentAppItem.bytesDownloaded = 0
                 currentAppItem.fileSize = 0
             }
@@ -243,12 +249,12 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun parseAppListJson(jsonString: String): List<com.xenonware.store.viewmodel.classes.StoreItem> {
+    private fun parseAppListJson(jsonString: String): List<StoreItem> {
         return try {
             val json = JSONObject(jsonString)
-            val appList = ArrayList<com.xenonware.store.viewmodel.classes.StoreItem>()
+            val appList = ArrayList<StoreItem>()
             val version = json.optString("protocolVersion", "v0.0")
-            if (_root_ide_package_.com.xenonware.store.util.Util.Companion.isNewerVersion(APP_LIST_PROTOCOL_VERSION, version)) {
+            if (isNewerVersion(APP_LIST_PROTOCOL_VERSION, version)) {
                 _error.value = "App store client is outdated. Please update XenonStore."
                 return emptyList()
             }
@@ -263,7 +269,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                         nameMap[langKey] = namesObj.getString(langKey)
                     }
                 }
-                val appItem = _root_ide_package_.com.xenonware.store.viewmodel.classes.StoreItem(
+                val appItem = StoreItem(
                     nameMap = nameMap,
                     iconPath = el.getString("icon"),
                     githubUrl = el.getString("githubUrl"),
@@ -339,7 +345,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     return@launch
                 }
                 val latestReleaseInfo = getNewReleaseVersionGithubBlocking(XENON_STORE_OWNER, XENON_STORE_REPO)
-                if (_root_ide_package_.com.xenonware.store.util.Util.Companion.isNewerVersion(installedVersion, latestReleaseInfo.version)) {
+                if (isNewerVersion(installedVersion, latestReleaseInfo.version)) {
                     _xenonStoreUpdateInfo.value = latestReleaseInfo
                 } else {
                     _xenonStoreUpdateInfo.value = null
@@ -381,13 +387,13 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun installApp(storeItem: com.xenonware.store.viewmodel.classes.StoreItem, context: Context) {
+    fun installApp(storeItem: StoreItem, context: Context) {
         viewModelScope.launch {
             val currentItemState = _storeItems.value.firstOrNull { it.packageName == storeItem.packageName }
             val itemToInstall = currentItemState?.copy() ?: storeItem.copy()
 
             _currentActionInfo.value = "Preparing to install ${itemToInstall.getName(
-                _root_ide_package_.com.xenonware.store.util.Util.Companion.getCurrentLanguage(context.resources))}..."
+                getCurrentLanguage(context.resources))}..."
             Log.d(TAG, "Install/Update clicked for: ${itemToInstall.packageName}")
 
             if (itemToInstall.downloadUrl.isEmpty() || itemToInstall.newVersion.isEmpty()) {
@@ -396,7 +402,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 updateItemInList(refreshedItem)
                 if (refreshedItem.downloadUrl.isEmpty() || refreshedItem.newVersion.isEmpty()) {
                     _error.value = "No download URL or version for ${refreshedItem.getName(
-                        _root_ide_package_.com.xenonware.store.util.Util.Companion.getCurrentLanguage(context.resources))} after refresh."
+                      getCurrentLanguage(context.resources))} after refresh."
                     _currentActionInfo.value = null
                     handlePackageChanged(refreshedItem.packageName)
                     return@launch
@@ -412,19 +418,19 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             }
             val destinationFile = File(apksDir, fileName)
 
-            updateItemState(itemToInstall.packageName, _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING, bytesDownloaded = 0, fileSize = 1)
+            updateItemState(itemToInstall.packageName, AppEntryState.DOWNLOADING, bytesDownloaded = 0, fileSize = 1)
             downloadFile(itemToInstall.downloadUrl, destinationFile,
                 onProgress = { bytesDownloaded, fileSize ->
-                    updateItemState(itemToInstall.packageName, _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING, bytesDownloaded, fileSize)
+                    updateItemState(itemToInstall.packageName, AppEntryState.DOWNLOADING, bytesDownloaded, fileSize)
                 },
                 onCompleted = {
                     _currentActionInfo.value = "Download complete for ${itemToInstall.getName(
-                        _root_ide_package_.com.xenonware.store.util.Util.Companion.getCurrentLanguage(context.resources))}. Starting installation..."
-                    updateItemState(itemToInstall.packageName, _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.INSTALLING, 0, 0)
+                       getCurrentLanguage(context.resources))}. Starting installation..."
+                    updateItemState(itemToInstall.packageName, AppEntryState.INSTALLING, 0, 0)
                     initiateInstall(destinationFile, context, itemToInstall.packageName)
                 },
                 onFailure = { errorMsg ->
-                    _error.value = "Download failed for ${itemToInstall.getName(_root_ide_package_.com.xenonware.store.util.Util.Companion.getCurrentLanguage(context.resources))}: $errorMsg"
+                    _error.value = "Download failed for ${itemToInstall.getName(getCurrentLanguage(context.resources))}: $errorMsg"
                     handlePackageChanged(itemToInstall.packageName) 
                     _currentActionInfo.value = null
                 }
@@ -432,7 +438,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
-    private fun updateItemInList(updatedItem: com.xenonware.store.viewmodel.classes.StoreItem) {
+    private fun updateItemInList(updatedItem: StoreItem) {
         viewModelScope.launch {
             val currentList = _storeItems.value.toMutableList()
             val itemIndex = currentList.indexOfFirst { it.packageName == updatedItem.packageName }
@@ -451,29 +457,28 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
 
-                // Read output and error streams concurrently to prevent blocking
-                val job = viewModelScope.launch(Dispatchers.IO) { // Use viewModelScope for structured concurrency, explicitly on IO
-                    launch { // Child coroutine for stdout
+                val job = viewModelScope.launch(Dispatchers.IO) {
+                    launch {
                         BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
                             output = reader.readText()
                         }
                     }
-                    launch { // Child coroutine for stderr
+                    launch {
                         BufferedReader(InputStreamReader(process.errorStream)).use { reader ->
                             errorOutput = reader.readText()
                         }
                     }
                 }
-                job.join() // Wait for stream reading to complete
+                job.join()
                 exitCode = process.waitFor()
                 
                 val logMessage = "Root command '$command'\nExit code: $exitCode\nStdout:\n$output\nStderr:\n$errorOutput"
                 if (exitCode == 0) {
                     Log.d(TAG, logMessage)
                 } else {
-                    Log.e(TAG, logMessage) // Log as error if exit code is non-zero
+                    Log.e(TAG, logMessage)
                 }
-                Pair(exitCode == 0, if (exitCode == 0) output else errorOutput.ifEmpty { output }) // Return stdout if stderr is empty but error occurred
+                Pair(exitCode == 0, if (exitCode == 0) output else errorOutput.ifEmpty { output })
             } catch (e: Exception) {
                 Log.e(TAG, "Root command failed: $command", e)
                 Pair(false, e.message ?: "Exception occurred")
@@ -489,10 +494,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
             try {
                 when (installMethod) {
-                    _root_ide_package_.com.xenonware.store.InstallMethod.SHIZUKU -> {
+                    InstallMethod.SHIZUKU -> {
                         _currentActionInfo.value = "Waiting for Shizuku service..."
                         val isReady = withTimeoutOrNull(5000L) { 
-                            _root_ide_package_.com.xenonware.store.ShizukuManager.isAvailable.first { it }
+                         ShizukuManager.isAvailable.first { it }
                         } ?: false
 
                         if (!isReady) {
@@ -526,7 +531,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                             if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
                         }
                     }
-                    _root_ide_package_.com.xenonware.store.InstallMethod.ROOT -> {
+                    InstallMethod.ROOT -> {
                         _currentActionInfo.value = "Attempting Root installation for $packageName..."
                         val tempApkName = "install_${apkFile.name}" // Ensure unique temp name
                         val tempApkPath = "/data/local/tmp/$tempApkName"
@@ -567,7 +572,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                             if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
                         }
                     }
-                    _root_ide_package_.com.xenonware.store.InstallMethod.DEFAULT -> {
+                  InstallMethod.DEFAULT -> {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             if (!context.packageManager.canRequestPackageInstalls()) {
                                 _error.value = "Permission needed to install apps. Please enable in settings."
@@ -613,26 +618,26 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
 
-    fun uninstallApp(storeItem: com.xenonware.store.viewmodel.classes.StoreItem, context: Context) {
+    fun uninstallApp(storeItem: StoreItem, context: Context) {
         Log.d(TAG, "Uninstall clicked for: ${storeItem.packageName}")
-        _currentActionInfo.value = "Uninstalling ${storeItem.getName(_root_ide_package_.com.xenonware.store.util.Util.Companion.getCurrentLanguage(context.resources))}..."
+        _currentActionInfo.value = "Uninstalling ${storeItem.getName(getCurrentLanguage(context.resources))}..."
         try {
             val intent = Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply {
                 data = Uri.parse("package:${storeItem.packageName}")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-            _currentActionInfo.value = "Uninstallation for ${storeItem.getName(_root_ide_package_.com.xenonware.store.util.Util.Companion.getCurrentLanguage(context.resources))} started by system."
+            _currentActionInfo.value = "Uninstallation for ${storeItem.getName(getCurrentLanguage(context.resources))} started by system."
         } catch (e: Exception) {
-            _error.value = "Failed to start uninstall for ${storeItem.getName(_root_ide_package_.com.xenonware.store.util.Util.Companion.getCurrentLanguage(context.resources))}: ${e.message}"
+            _error.value = "Failed to start uninstall for ${storeItem.getName(getCurrentLanguage(context.resources))}: ${e.message}"
             Log.e(TAG, "Error starting uninstall intent for ${storeItem.packageName}", e)
             _currentActionInfo.value = null
         }
     }
 
-    fun openApp(storeItem: com.xenonware.store.viewmodel.classes.StoreItem, context: Context) {
+    fun openApp(storeItem: StoreItem, context: Context) {
         Log.d(TAG, "Open clicked for: ${storeItem.packageName}")
-        _currentActionInfo.value = "Opening ${storeItem.getName(_root_ide_package_.com.xenonware.store.util.Util.Companion.getCurrentLanguage(context.resources))}..."
+        _currentActionInfo.value = "Opening ${storeItem.getName(getCurrentLanguage(context.resources))}..."
         try {
             val intent = context.packageManager.getLaunchIntentForPackage(storeItem.packageName)
             if (intent != null) {
@@ -640,7 +645,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 context.startActivity(intent)
                 _currentActionInfo.value = null
             } else {
-                _error.value = "Could not open app: ${storeItem.getName(_root_ide_package_.com.xenonware.store.util.Util.Companion.getCurrentLanguage(context.resources))}. App not found or no launch intent."
+                _error.value = "Could not open app: ${storeItem.getName(getCurrentLanguage(context.resources))}. App not found or no launch intent."
                 Log.w(TAG, "No launch intent found for package: ${storeItem.packageName}")
                 _currentActionInfo.value = null
             }
@@ -651,7 +656,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun updateItemState(packageName: String, newState: com.xenonware.store.viewmodel.classes.AppEntryState, bytesDownloaded: Long = 0, fileSize: Long = 0) {
+    private fun updateItemState(packageName: String, newState: AppEntryState, bytesDownloaded: Long = 0, fileSize: Long = 0) {
         viewModelScope.launch {
             val currentList = _storeItems.value.toMutableList()
             val itemIndex = currentList.indexOfFirst { it.packageName == packageName }
@@ -659,9 +664,9 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 val currentItem = currentList[itemIndex]
                 val updatedItem = currentItem.copy(
                     state = newState,
-                    bytesDownloaded = if (newState == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING) bytesDownloaded else 0,
-                    fileSize = if (newState == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING && fileSize > 0) fileSize
-                               else if (newState == _root_ide_package_.com.xenonware.store.viewmodel.classes.AppEntryState.DOWNLOADING && currentItem.fileSize > 0) currentItem.fileSize
+                    bytesDownloaded = if (newState == AppEntryState.DOWNLOADING) bytesDownloaded else 0,
+                    fileSize = if (newState == AppEntryState.DOWNLOADING && fileSize > 0) fileSize
+                               else if (newState == AppEntryState.DOWNLOADING && currentItem.fileSize > 0) currentItem.fileSize
                                else 0
                 )
                 if (currentList[itemIndex] != updatedItem) { 

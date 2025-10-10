@@ -2,7 +2,7 @@ package com.xenonware.store
 
 import android.app.Application
 
-class MainApplication : android.app.Application() {
+class MainApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()

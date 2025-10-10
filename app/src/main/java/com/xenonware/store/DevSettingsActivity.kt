@@ -17,18 +17,18 @@ import com.xenonware.store.viewmodel.SettingsViewModel
 
 class DevSettingsActivity : ComponentActivity() {
 
-    private lateinit var devSettingsViewModel: com.xenonware.store.viewmodel.DevSettingsViewModel
-    private lateinit var mainSettingsViewModel: com.xenonware.store.viewmodel.SettingsViewModel
+    private lateinit var devSettingsViewModel: DevSettingsViewModel
+    private lateinit var mainSettingsViewModel: SettingsViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         mainSettingsViewModel = ViewModelProvider(
             this,
-            _root_ide_package_.com.xenonware.store.viewmodel.SettingsViewModel.SettingsViewModelFactory(application)
-        )[_root_ide_package_.com.xenonware.store.viewmodel.SettingsViewModel::class.java]
+            SettingsViewModel.SettingsViewModelFactory(application)
+        )[SettingsViewModel::class.java]
 
-        devSettingsViewModel = ViewModelProvider(this)[_root_ide_package_.com.xenonware.store.viewmodel.DevSettingsViewModel::class.java]
+        devSettingsViewModel = ViewModelProvider(this)[DevSettingsViewModel::class.java]
 
         enableEdgeToEdge()
 
@@ -40,15 +40,14 @@ class DevSettingsActivity : ComponentActivity() {
 
             val persistedAppThemeIndex by mainSettingsViewModel.persistedThemeIndex.collectAsState()
             val blackedOutEnabled by mainSettingsViewModel.blackedOutModeEnabled.collectAsState()
-            val coverThemeEnabled by mainSettingsViewModel.enableCoverTheme.collectAsState()
             val containerSize = LocalWindowInfo.current.containerSize
             val applyCoverTheme = mainSettingsViewModel.applyCoverTheme(containerSize)
 
 
-            _root_ide_package_.com.xenonware.store.ui.theme.ScreenEnvironment(
+            ScreenEnvironment(
                 persistedAppThemeIndex, applyCoverTheme, blackedOutEnabled
             ) { layoutType, isLandscape ->
-                _root_ide_package_.com.xenonware.store.ui.layouts.DevSettingsLayout(
+                DevSettingsLayout(
                     onNavigateBack = { finish() },
                     viewModel = devSettingsViewModel,
                     layoutType = layoutType

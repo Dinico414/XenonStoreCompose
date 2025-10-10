@@ -43,7 +43,7 @@ class SharedPreferenceManager(context: Context) {
     private val defaultTimeFormat = "HH:mm"
 
     var theme: Int
-        get() = sharedPreferences.getInt(themeKey, _root_ide_package_.com.xenonware.store.viewmodel.ThemeSetting.SYSTEM.ordinal)
+        get() = sharedPreferences.getInt(themeKey, ThemeSetting.SYSTEM.ordinal)
         set(value) = sharedPreferences.edit { putInt(themeKey, value) }
 
     val themeFlag: Array<Int> = arrayOf(
@@ -136,7 +136,7 @@ class SharedPreferenceManager(context: Context) {
 
     fun clearSettings() {
         sharedPreferences.edit {
-            putInt(themeKey, _root_ide_package_.com.xenonware.store.viewmodel.ThemeSetting.SYSTEM.ordinal)
+            putInt(themeKey, ThemeSetting.SYSTEM.ordinal)
             putBoolean(coverThemeEnabledKey, false)
             remove(coverDisplayDimension1Key)
             remove(coverDisplayDimension2Key)

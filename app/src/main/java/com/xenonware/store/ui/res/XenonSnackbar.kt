@@ -31,12 +31,12 @@ object XenonSnackbarDefault {
     val startPadding: Dp = 16.dp
     val endPadding: Dp = 8.dp
     val textStyle: TextStyle @Composable get() = TextStyle(
-        fontFamily = _root_ide_package_.com.xenonware.store.ui.layouts.QuicksandTitleVariable,
+        fontFamily = QuicksandTitleVariable,
         fontWeight = FontWeight.Thin,
         fontSize = 14.sp
     )
     val actionTextStyle: TextStyle @Composable get() = TextStyle(
-        fontFamily = _root_ide_package_.com.xenonware.store.ui.layouts.QuicksandTitleVariable,
+        fontFamily = QuicksandTitleVariable,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp
     )

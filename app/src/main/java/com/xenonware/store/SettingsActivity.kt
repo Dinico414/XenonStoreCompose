@@ -28,15 +28,15 @@ object SettingsDestinations {
 
 class SettingsActivity : ComponentActivity() {
 
-    private lateinit var settingsViewModel: com.xenonware.store.viewmodel.SettingsViewModel
+    private lateinit var settingsViewModel: SettingsViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         settingsViewModel = ViewModelProvider(
             this,
-            _root_ide_package_.com.xenonware.store.viewmodel.SettingsViewModel.SettingsViewModelFactory(application)
-        )[_root_ide_package_.com.xenonware.store.viewmodel.SettingsViewModel::class.java]
+            SettingsViewModel.SettingsViewModelFactory(application)
+        )[SettingsViewModel::class.java]
 
         enableEdgeToEdge()
 
@@ -56,7 +56,7 @@ class SettingsActivity : ComponentActivity() {
                 settingsViewModel.applyCoverTheme(containerSize)
             }
 
-            _root_ide_package_.com.xenonware.store.ui.theme.ScreenEnvironment(
+            ScreenEnvironment(
                 persistedAppThemeIndex, applyCoverTheme, blackedOutEnabled
             ) { layoutType, isLandscape ->
 
@@ -68,7 +68,7 @@ class SettingsActivity : ComponentActivity() {
                     startDestination = SettingsDestinations.MAIN_SETTINGS_ROUTE
                 ) {
                     composable(SettingsDestinations.MAIN_SETTINGS_ROUTE) {
-                        _root_ide_package_.com.xenonware.store.ui.layouts.SettingsLayout(
+                        SettingsLayout(
                             onNavigateBack = { finish() },
                             viewModel = settingsViewModel,
                             isLandscape = isLandscape,

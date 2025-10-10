@@ -32,7 +32,7 @@ import com.xenonware.store.viewmodel.ThemeSetting
 
 @Composable
 fun DialogThemeSelection(
-    themeOptions: Array<com.xenonware.store.viewmodel.ThemeSetting>,
+    themeOptions: Array<ThemeSetting>,
     currentThemeIndex: Int,
     onThemeSelected: (Int) -> Unit,
     onDismiss: () -> Unit,
@@ -93,7 +93,7 @@ fun DialogThemeSelection(
                         Text(
                             text = theme.title,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = _root_ide_package_.com.xenonware.store.ui.values.LargerPadding)
+                            modifier = Modifier.padding(start = LargerPadding)
                         )
                     }
                 }
