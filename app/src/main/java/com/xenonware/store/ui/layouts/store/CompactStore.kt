@@ -142,10 +142,8 @@ fun CompactStore(
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
                 XenonSnackbar(
-                    snackbarData = snackbarData,
-                    modifier = Modifier.padding(
-                        horizontal = LargestPadding,
-                        vertical = 12.dp
+                    snackbarData = snackbarData, modifier = Modifier.padding(
+                        horizontal = 16.dp, vertical = 12.dp
                     )
                 )
             }
@@ -244,17 +242,13 @@ fun CompactStore(
                         ) {
                             itemsIndexed(
                                 storeItems, key = { _, item -> item.packageName }) { _, storeItem ->
-                                StoreItemCell(
-                                    storeItem = storeItem,
-                                    onInstall = { item ->
-                                        storeViewModel.installApp(item, context)
-                                    },
-                                    onUninstall = { item ->
-                                        storeViewModel.uninstallApp(item, context)
-                                    },
-                                    onOpen = { item ->
-                                        storeViewModel.openApp(item, context)
-                                    })
+                                StoreItemCell(storeItem = storeItem, onInstall = { item ->
+                                    storeViewModel.installApp(item, context)
+                                }, onUninstall = { item ->
+                                    storeViewModel.uninstallApp(item, context)
+                                }, onOpen = { item ->
+                                    storeViewModel.openApp(item, context)
+                                })
                             }
                         }
                     }

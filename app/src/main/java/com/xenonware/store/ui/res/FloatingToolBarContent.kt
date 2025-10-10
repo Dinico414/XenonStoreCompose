@@ -245,18 +245,12 @@ fun FloatingToolbarContent(
     val imeHeight = imePaddingValues.calculateBottomPadding()
 
     val targetBottomPadding = remember(imeHeight, bottomPaddingNavigationBar, imePaddingValues) {
-        if (imeHeight > bottomPaddingNavigationBar) {
+        if (isSearchActive && imeHeight > bottomPaddingNavigationBar) {
             imeHeight + LargePadding
         } else {
             max(bottomPaddingNavigationBar, imePaddingValues.calculateTopPadding()) + LargePadding
         }
     }
-
-    val animatedBottomPadding by animateDpAsState(
-        targetValue = targetBottomPadding, animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow
-        ), label = "bottomPaddingAnimation"
-    )
 
     val toolbarHeight = 64.dp
     val toolbarOffsetTarget =
@@ -271,7 +265,7 @@ fun FloatingToolbarContent(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = animatedBottomPadding)
+            .padding(bottom = targetBottomPadding)
             .offset(y = animatedToolbarOffset), contentAlignment = Alignment.Center
     ) {
 
