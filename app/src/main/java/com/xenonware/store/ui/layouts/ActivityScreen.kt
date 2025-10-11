@@ -125,10 +125,7 @@ fun ActivityScreen(
         },
         actions = actions,
         expandable = expandable,
-        titleAlignment = Alignment.Center,
-        //TODO make it so its Center if navigation is empty but CenterStart if navigation is used for navigation or extra content,
-        // important because settings uses same layout and navigation always used there!!!
-        // A padding is always in front of the Title which results into slightly to the right shifted position, find and fix to have same behavior
+        titleAlignment = if (onNavigationIconClick == null && !hasNavigationIconExtraContent) Alignment.Center else Alignment.CenterStart,
         collapsedContainerColor = screenBackgroundColor,
         expandedContainerColor = screenBackgroundColor,
         navigationIconContentColor = appBarNavigationIconContentColor,
