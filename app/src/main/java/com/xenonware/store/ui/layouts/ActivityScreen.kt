@@ -41,7 +41,6 @@ import androidx.compose.ui.util.lerp
 import com.xenonware.store.ui.values.LargerCornerRadius
 import com.xenonware.store.ui.values.SmallPadding
 import kotlin.math.roundToInt
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActivityScreen(
@@ -78,48 +77,54 @@ fun ActivityScreen(
             )
         },
         navigationIcon = {
-            val iconButtonContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-            val interactionSource = remember { MutableInteractionSource() }
+            // Conditionally render the navigation icon container
+            if (onNavigationIconClick != null || hasNavigationIconExtraContent) {
+                val iconButtonContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                val interactionSource = remember { MutableInteractionSource() }
 
-            val minButtonSize = 32.dp
+                val minButtonSize = 32.dp
 
-            var boxModifier =
-                Modifier
-                    .defaultMinSize(minWidth = minButtonSize)
-                    .clip(RoundedCornerShape(100.0f))
-                    .background(iconButtonContainerColor)
+                var boxModifier =
+                    Modifier
+                        .defaultMinSize(minWidth = minButtonSize)
+                        .clip(RoundedCornerShape(100.0f))
+                        .background(iconButtonContainerColor)
 
-            if (onNavigationIconClick != null) {
-                boxModifier = boxModifier.clickable(
-                    onClick = onNavigationIconClick,
-                    role = Role.Button,
-                    interactionSource = interactionSource,
-                    indication = ripple(bounded = true)
-                )
-            }
+                if (onNavigationIconClick != null) {
+                    boxModifier = boxModifier.clickable(
+                        onClick = onNavigationIconClick,
+                        role = Role.Button,
+                        interactionSource = interactionSource,
+                        indication = ripple(bounded = true)
+                    )
+                }
 
-            Box(
-                Modifier.width(72.dp), contentAlignment = Alignment.Center
-            ) {
                 Box(
-                    modifier = boxModifier, contentAlignment = Alignment.Center
+                    Modifier.width(72.dp), // The container now always has a fixed width when present
+                    contentAlignment = Alignment.Center
                 ) {
-                    CompositionLocalProvider(LocalContentColor provides appBarNavigationIconContentColor) {
-                        Row(
-                            modifier = Modifier.padding(
-                                start = navigationIconStartPadding,
-                                end = navigationIconPadding
-                            ).padding(vertical = navigationIconPadding),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(navigationIconSpacing)
-                        ) {
-                            navigationIcon()
-                            if (hasNavigationIconExtraContent) {
-                                navigationIconExtraContent()
+                    Box(
+                        modifier = boxModifier, contentAlignment = Alignment.Center
+                    ) {
+                        CompositionLocalProvider(LocalContentColor provides appBarNavigationIconContentColor) {
+                            Row(
+                                modifier = Modifier
+                                    .padding(
+                                        start = navigationIconStartPadding,
+                                        end = navigationIconPadding
+                                    )
+                                    .padding(vertical = navigationIconPadding),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(navigationIconSpacing)
+                            ) {
+                                navigationIcon()
+                                if (hasNavigationIconExtraContent) {
+                                    navigationIconExtraContent()
+                                }
                             }
                         }
-                    }
 
+                    }
                 }
             }
         },
