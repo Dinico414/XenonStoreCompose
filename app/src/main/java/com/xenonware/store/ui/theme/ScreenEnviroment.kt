@@ -138,13 +138,6 @@ fun rememberAppBarExpandableState(
             }
         }
         LayoutType.MEDIUM -> true // Keep as true for MEDIUM
-        LayoutType.EXPANDED -> {
-            if (isSurfaceDuoDevice()) {
-                !(isSurfaceDuoSingleScreen(appSize) && !isLandscape)
-            }
-            else {
-                !isLandscape || !aspectRatioConditionMet
-            }
-        }
+        LayoutType.EXPANDED -> true // Keep as true for EXPANDED
     }
 }
