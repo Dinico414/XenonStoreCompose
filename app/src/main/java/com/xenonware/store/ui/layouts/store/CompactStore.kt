@@ -1,10 +1,21 @@
 package com.xenonware.store.ui.layouts.store
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,9 +23,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -27,28 +47,34 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xenon.mylibrary.ActivityScreen
+import com.xenon.mylibrary.res.FloatingToolbarContent
 import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.store.R
-import com.xenonware.store.ui.res.FloatingToolbarContent
+import com.xenonware.store.ui.res.DialogShareSelector
 import com.xenonware.store.ui.res.GoogleProfilBorder
 import com.xenonware.store.ui.res.StoreItemCell
 import com.xenonware.store.ui.res.XenonSnackbar
+import com.xenonware.store.utils.rememberAppBarCollapsibleState
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.StoreViewModel
@@ -68,41 +94,22 @@ fun CompactStore(
     storeViewModel: StoreViewModel = viewModel(),
     devSettingsViewModel: DevSettingsViewModel = viewModel(),
     layoutType: LayoutType,
-    onOpenSettings: () -> Unit,
     isLandscape: Boolean,
     appSize: IntSize,
+    onOpenSettings: () -> Unit,
+
 
     ) {
     val context = LocalContext.current
     val storeItems by storeViewModel.storeItems.collectAsState()
 
-    val density = LocalDensity.current
-    val appWidthDp = with(density) { appSize.width.toDp() }
-    val appHeightDp = with(density) { appSize.height.toDp() }
-
-    val currentAspectRatio = if (isLandscape) {
-        appWidthDp / appHeightDp
-    } else {
-        appHeightDp / appWidthDp
-    }
-
-    val aspectRatioConditionMet = if (isLandscape) {
-        currentAspectRatio > 0.5625f
-    } else {
-        currentAspectRatio < 1.77f
-    }
-
-    val isAppBarCollapsible = when (layoutType) {
-        LayoutType.COVER -> false
-        LayoutType.SMALL -> false
-        LayoutType.COMPACT -> !isLandscape || !aspectRatioConditionMet
-        LayoutType.MEDIUM -> true
-        LayoutType.EXPANDED -> true
-    }
+    val isAppBarCollapsible = rememberAppBarCollapsibleState(layoutType, isLandscape, appSize)
 
     val hazeState = rememberHazeState()
     val snackbarHostState = remember { SnackbarHostState() }
     var currentSearchQuery by remember { mutableStateOf("") }
+    var isSearchActive by rememberSaveable { mutableStateOf(false) }
+    var showShareDialog by rememberSaveable { mutableStateOf(false) }
 
     val showDummyProfile by devSettingsViewModel.showDummyProfileState.collectAsState()
     val isDeveloperModeEnabled by devSettingsViewModel.devModeToggleState.collectAsState()
@@ -137,6 +144,9 @@ fun CompactStore(
         }
     }
 
+    if (showShareDialog) {
+        DialogShareSelector(onDismissRequest = { showShareDialog = false })
+    }
 
     Scaffold(
         snackbarHost = {
@@ -149,21 +159,122 @@ fun CompactStore(
             }
         },
         bottomBar = {
-            FloatingToolbarContent(
+           FloatingToolbarContent(
                 hazeState = hazeState,
-                onOpenSettings = onOpenSettings,
-                currentSearchQuery = currentSearchQuery,
                 onSearchQueryChanged = { newQuery ->
                     currentSearchQuery = newQuery
+                    storeViewModel.setSearchQuery(newQuery)
                 },
+                currentSearchQuery = currentSearchQuery,
                 lazyListState = lazyListState,
                 allowToolbarScrollBehavior = !isAppBarCollapsible,
-                hasUpdate = xenonStoreUpdateInfo != null,
-                onDownloadUpdateClick = {
-                    storeViewModel.downloadAndInstallXenonStoreUpdate(context)
+                selectedNoteIds = emptyList(),
+                onClearSelection = { },
+                isAddModeActive = false,
+                onAddModeToggle = { /* Not implemented in CompactStore yet */ },
+                isSearchActive = isSearchActive,
+                onIsSearchActiveChange = { isSearchActive = it },
+                defaultContent = { iconsAlphaDuration, showActionIconsExceptSearch ->
+                    Row {
+                        val updateButtonAnimationDuration = 300
+                        val iconAlphaTarget = if (isSearchActive) 0f else 1f
+
+                        val updateIconAlpha by animateFloatAsState(
+                            targetValue = iconAlphaTarget, animationSpec = tween(
+                                durationMillis = iconsAlphaDuration,
+                                delayMillis = if (isSearchActive) 0 else 0
+                            ), label = "FilterIconAlpha"
+                        )
+                        AnimatedVisibility(
+                            visible = xenonStoreUpdateInfo != null,
+                            enter = fadeIn(animationSpec = tween(durationMillis = updateButtonAnimationDuration)) + scaleIn(
+                                animationSpec = tween(durationMillis = updateButtonAnimationDuration),
+                                initialScale = 0.8f,
+                                transformOrigin = TransformOrigin.Center
+                            ),
+                            exit = fadeOut(animationSpec = tween(durationMillis = updateButtonAnimationDuration)) + scaleOut(
+                                animationSpec = tween(durationMillis = updateButtonAnimationDuration),
+                                targetScale = 0.8f,
+                                transformOrigin = TransformOrigin.Center
+                            )
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxHeight()
+                                    .padding(horizontal = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .alpha(updateIconAlpha)
+                                        .clip(RoundedCornerShape(100f))
+                                        .background(colorScheme.primary)
+                                        .clickable(
+                                            enabled = !isSearchActive && showActionIconsExceptSearch,
+                                            onClick = {
+                                                storeViewModel.downloadAndInstallXenonStoreUpdate(context)
+                                            }
+                                        ),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Download,
+                                        contentDescription = stringResource(R.string.update),
+                                        tint = colorScheme.onPrimary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    if (xenonStoreDownloadProgress > 0f && xenonStoreDownloadProgress < 1f) {
+                                        CircularProgressIndicator(
+                                            progress = { xenonStoreDownloadProgress },
+                                            modifier = Modifier.size(36.dp),
+                                            color = colorScheme.onPrimary,
+                                            trackColor = Color.Transparent,
+                                            strokeWidth = 5.dp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        val shareIconAlpha by animateFloatAsState(
+                            targetValue = iconAlphaTarget, animationSpec = tween(
+                                durationMillis = iconsAlphaDuration,
+                                delayMillis = if (isSearchActive) 100 else 0
+                            ), label = "FilterIconAlpha"
+                        )
+                        IconButton(
+                            onClick = { showShareDialog = true },
+                            modifier = Modifier.alpha(shareIconAlpha),
+                            enabled = !isSearchActive && showActionIconsExceptSearch
+                        ) {
+                            Icon(
+                                Icons.Filled.Share,
+                                contentDescription = stringResource(R.string.share_store_action),
+                                tint = colorScheme.onSurface
+                            )
+                        }
+                        val settingsIconAlpha by animateFloatAsState(
+                            targetValue = iconAlphaTarget, animationSpec = tween(
+                                durationMillis = iconsAlphaDuration,
+                                delayMillis = if (isSearchActive) 200 else 0
+                            ), label = "SettingsIconAlpha"
+                        )
+                        IconButton(
+                            onClick = onOpenSettings,
+                            modifier = Modifier.alpha(settingsIconAlpha),
+                            enabled = !isSearchActive && showActionIconsExceptSearch
+                        ) {
+                            Icon(
+                                Icons.Filled.Settings,
+                                contentDescription = stringResource(R.string.settings),
+                                tint = colorScheme.onSurface
+                            )
+                        }
+                    }
                 },
-                xenonStoreDownloadProgress = xenonStoreDownloadProgress
-            )
+               isFabEnabled = false,
+
+               )
         },
 
         ) { scaffoldPadding ->
@@ -230,7 +341,8 @@ fun CompactStore(
                                 style = MaterialTheme.typography.bodyLarge,
                             )
                         }
-                    } else {
+                    }
+                    else {
                         LazyColumn(
                             state = lazyListState,
                             modifier = Modifier.weight(1f),

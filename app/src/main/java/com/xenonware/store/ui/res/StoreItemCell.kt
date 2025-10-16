@@ -54,7 +54,7 @@ import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumCornerRadius
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenonware.store.R
-import com.xenonware.store.util.Util
+import com.xenonware.store.utils.Utils
 import com.xenonware.store.viewmodel.classes.AppEntryState
 import com.xenonware.store.viewmodel.classes.StoreItem
 
@@ -87,7 +87,7 @@ fun StoreItemCell(
     onOpen: (StoreItem) -> Unit,
 ) {
     val context = LocalContext.current
-    val language = Util.Companion.getCurrentLanguage(context.resources)
+    val language = Utils.Companion.getCurrentLanguage(context.resources)
 
     val installButtonText = when (storeItem.state) {
         AppEntryState.NOT_INSTALLED -> context.getString(R.string.install)

@@ -1,8 +1,7 @@
 package com.xenonware.store.viewmodel.classes
 
 import android.content.Context
-import android.content.res.Resources // For Util.getCurrentLanguage
-import com.xenonware.store.util.Util // Assuming Util.getCurrentLanguage
+import com.xenonware.store.utils.Utils // Assuming Utils.getCurrentLanguage
 
 enum class AppEntryState {
     NOT_INSTALLED,
@@ -36,12 +35,12 @@ data class StoreItem(
 
     fun isOutdated(): Boolean {
         if (installedVersion.isEmpty() || newVersion.isEmpty()) return false
-        return Util.Companion.isNewerVersion(installedVersion, newVersion)
+        return Utils.Companion.isNewerVersion(installedVersion, newVersion)
     }
 
     fun isNewerVersion(remoteVersion: String): Boolean {
         if (newVersion.isEmpty() && remoteVersion.isNotEmpty()) return true
-        return Util.Companion.isNewerVersion(newVersion, remoteVersion)
+        return Utils.Companion.isNewerVersion(newVersion, remoteVersion)
     }
 
     fun getDrawableId(context: Context): Int {

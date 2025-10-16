@@ -160,7 +160,6 @@ fun SettingsItems(
         backgroundColor = tileBackgroundColor,
         contentColor = tileContentColor,
         subtitleColor = tileSubtitleColor,
-        dividerColor = Color.Transparent,
         horizontalPadding = tileHorizontalPadding,
         verticalPadding = tileVerticalPadding,
         switchColors = switchColorsOverride ?: defaultSwitchColors
