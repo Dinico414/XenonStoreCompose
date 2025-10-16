@@ -92,12 +92,12 @@ fun StoreItemCell(
     val installButtonText = when (storeItem.state) {
         AppEntryState.NOT_INSTALLED -> context.getString(R.string.install)
         AppEntryState.INSTALLED_AND_OUTDATED -> context.getString(R.string.update)
-        AppEntryState.INSTALLING -> { // Show previous text but button will be disabled
+        AppEntryState.INSTALLING -> {
             if (storeItem.installedVersion.isNotEmpty()) context.getString(R.string.update)
             else context.getString(R.string.install)
         }
 
-        else -> context.getString(R.string.install) // Default for DOWNLOADING, though content changes
+        else -> context.getString(R.string.install)
     }
 
     val showVersionInfoHorizontal =

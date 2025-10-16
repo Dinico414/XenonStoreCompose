@@ -74,7 +74,7 @@ import com.xenonware.store.ui.res.DialogShareSelector
 import com.xenonware.store.ui.res.GoogleProfilBorder
 import com.xenonware.store.ui.res.StoreItemCell
 import com.xenonware.store.ui.res.XenonSnackbar
-import com.xenonware.store.utils.rememberAppBarCollapsibleState
+import com.xenonware.store.utils.rememberAppBarExpandableState
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.StoreViewModel
@@ -103,7 +103,7 @@ fun CompactStore(
     val context = LocalContext.current
     val storeItems by storeViewModel.storeItems.collectAsState()
 
-    val isAppBarCollapsible = rememberAppBarCollapsibleState(layoutType, isLandscape, appSize)
+    val isAppBarCollapsible = rememberAppBarExpandableState(layoutType, isLandscape, appSize)
 
     val hazeState = rememberHazeState()
     val snackbarHostState = remember { SnackbarHostState() }
