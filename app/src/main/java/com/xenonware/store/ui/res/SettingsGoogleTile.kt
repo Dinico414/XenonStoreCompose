@@ -30,12 +30,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.xenon.mylibrary.QuicksandTitleVariable
+import com.xenon.mylibrary.values.ExtraLargePadding
+import com.xenon.mylibrary.values.LargeCornerRadius
+import com.xenon.mylibrary.values.LargestPadding
 import com.xenonware.store.R
-import com.xenonware.store.ui.layouts.QuicksandTitleVariable
-import com.xenonware.store.ui.res.GoogleProfilBorder
-import com.xenonware.store.ui.values.ExtraLargePadding
-import com.xenonware.store.ui.values.LargeCornerRadius
-import com.xenonware.store.ui.values.LargestPadding
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

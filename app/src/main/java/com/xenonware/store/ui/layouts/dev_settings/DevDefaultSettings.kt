@@ -16,10 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.xenon.mylibrary.ActivityScreen
+import com.xenon.mylibrary.values.MediumPadding
+import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.store.R
-import com.xenonware.store.ui.layouts.ActivityScreen
-import com.xenonware.store.ui.values.MediumPadding
-import com.xenonware.store.ui.values.NoSpacing
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.classes.DevSettingsItems
 import dev.chrisbanes.haze.hazeSource

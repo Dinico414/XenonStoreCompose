@@ -26,8 +26,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.window.DialogProperties
+import com.xenon.mylibrary.values.LargerPadding
 import com.xenonware.store.R
-import com.xenonware.store.ui.values.LargerPadding
 import com.xenonware.store.viewmodel.ThemeSetting
 
 @Composable

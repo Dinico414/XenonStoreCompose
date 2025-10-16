@@ -64,7 +64,7 @@ android {
 
 dependencies {
 
-    implementation(libs.coil.compose) // latest version
+    implementation(libs.coil.compose)
 
     implementation(libs.xenon.commons)
     implementation(libs.androidx.material3.window.size.class1.android)

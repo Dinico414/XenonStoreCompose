@@ -24,12 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.xenon.mylibrary.values.LargerPadding
+import com.xenon.mylibrary.values.SmallSpacing
 import com.xenonware.store.InstallMethod
 import com.xenonware.store.R
 import com.xenonware.store.ui.res.SettingsSwitchTile
 import com.xenonware.store.ui.res.SettingsTile
-import com.xenonware.store.ui.values.LargerPadding
-import com.xenonware.store.ui.values.SmallSpacing
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 
 @Composable

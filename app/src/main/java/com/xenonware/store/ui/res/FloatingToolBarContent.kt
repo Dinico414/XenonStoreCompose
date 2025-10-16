@@ -89,9 +89,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
+import com.xenon.mylibrary.res.XenonTextFieldV2
+import com.xenon.mylibrary.values.LargePadding
+import com.xenon.mylibrary.values.SmallElevation
 import com.xenonware.store.R
-import com.xenonware.store.ui.values.LargePadding
-import com.xenonware.store.ui.values.SmallElevation
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi

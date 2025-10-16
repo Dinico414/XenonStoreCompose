@@ -47,12 +47,12 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.xenon.mylibrary.QuicksandTitleVariable
+import com.xenon.mylibrary.values.DialogCornerRadius
+import com.xenon.mylibrary.values.DialogPadding
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.MediumPadding
 import com.xenonware.store.R
-import com.xenonware.store.ui.layouts.QuicksandTitleVariable
-import com.xenonware.store.ui.values.DialogCornerRadius
-import com.xenonware.store.ui.values.DialogPadding
-import com.xenonware.store.ui.values.LargestPadding
-import com.xenonware.store.ui.values.MediumPadding
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
@@ -136,7 +136,8 @@ fun XenonDialog(
                         text = title,
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontFamily = QuicksandTitleVariable
-                        ),                        modifier = Modifier
+                        ),
+                        modifier = Modifier
                             .weight(1f)
                             .align(titleVerticalAlignment),
                         onTextLayout = { textLayoutResult: TextLayoutResult ->

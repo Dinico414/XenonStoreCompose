@@ -3,7 +3,9 @@ package com.xenonware.store.ui.theme
 import android.app.Activity
 import android.os.Build
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme.Companion.expressive
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -20,84 +22,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
-import com.xenonware.store.ui.theme.backgroundDark
-import com.xenonware.store.ui.theme.backgroundLight
-import com.xenonware.store.ui.theme.errorContainerDark
-import com.xenonware.store.ui.theme.errorContainerLight
-import com.xenonware.store.ui.theme.errorDark
-import com.xenonware.store.ui.theme.errorLight
-import com.xenonware.store.ui.theme.inverseErrorContainerDark
-import com.xenonware.store.ui.theme.inverseErrorContainerLight
-import com.xenonware.store.ui.theme.inverseErrorDark
-import com.xenonware.store.ui.theme.inverseErrorLight
-import com.xenonware.store.ui.theme.inverseOnErrorContainerDark
-import com.xenonware.store.ui.theme.inverseOnErrorContainerLight
-import com.xenonware.store.ui.theme.inverseOnErrorDark
-import com.xenonware.store.ui.theme.inverseOnErrorLight
-import com.xenonware.store.ui.theme.inverseOnSurfaceDark
-import com.xenonware.store.ui.theme.inverseOnSurfaceLight
-import com.xenonware.store.ui.theme.inversePrimaryDark
-import com.xenonware.store.ui.theme.inversePrimaryLight
-import com.xenonware.store.ui.theme.inverseSurfaceDark
-import com.xenonware.store.ui.theme.inverseSurfaceLight
-import com.xenonware.store.ui.theme.onBackgroundDark
-import com.xenonware.store.ui.theme.onBackgroundLight
-import com.xenonware.store.ui.theme.onErrorContainerDark
-import com.xenonware.store.ui.theme.onErrorContainerLight
-import com.xenonware.store.ui.theme.onErrorDark
-import com.xenonware.store.ui.theme.onErrorLight
-import com.xenonware.store.ui.theme.onPrimaryContainerDark
-import com.xenonware.store.ui.theme.onPrimaryContainerLight
-import com.xenonware.store.ui.theme.onPrimaryDark
-import com.xenonware.store.ui.theme.onPrimaryLight
-import com.xenonware.store.ui.theme.onSecondaryContainerDark
-import com.xenonware.store.ui.theme.onSecondaryContainerLight
-import com.xenonware.store.ui.theme.onSecondaryDark
-import com.xenonware.store.ui.theme.onSecondaryLight
-import com.xenonware.store.ui.theme.onSurfaceDark
-import com.xenonware.store.ui.theme.onSurfaceLight
-import com.xenonware.store.ui.theme.onSurfaceVariantDark
-import com.xenonware.store.ui.theme.onSurfaceVariantLight
-import com.xenonware.store.ui.theme.onTertiaryContainerDark
-import com.xenonware.store.ui.theme.onTertiaryContainerLight
-import com.xenonware.store.ui.theme.onTertiaryDark
-import com.xenonware.store.ui.theme.onTertiaryLight
-import com.xenonware.store.ui.theme.outlineDark
-import com.xenonware.store.ui.theme.outlineLight
-import com.xenonware.store.ui.theme.outlineVariantDark
-import com.xenonware.store.ui.theme.outlineVariantLight
-import com.xenonware.store.ui.theme.primaryContainerDark
-import com.xenonware.store.ui.theme.primaryContainerLight
-import com.xenonware.store.ui.theme.primaryDark
-import com.xenonware.store.ui.theme.primaryLight
-import com.xenonware.store.ui.theme.scrimDark
-import com.xenonware.store.ui.theme.scrimLight
-import com.xenonware.store.ui.theme.secondaryContainerDark
-import com.xenonware.store.ui.theme.secondaryContainerLight
-import com.xenonware.store.ui.theme.secondaryDark
-import com.xenonware.store.ui.theme.secondaryLight
-import com.xenonware.store.ui.theme.surfaceBrightDark
-import com.xenonware.store.ui.theme.surfaceBrightLight
-import com.xenonware.store.ui.theme.surfaceContainerDark
-import com.xenonware.store.ui.theme.surfaceContainerHighDark
-import com.xenonware.store.ui.theme.surfaceContainerHighLight
-import com.xenonware.store.ui.theme.surfaceContainerHighestDark
-import com.xenonware.store.ui.theme.surfaceContainerHighestLight
-import com.xenonware.store.ui.theme.surfaceContainerLight
-import com.xenonware.store.ui.theme.surfaceContainerLowDark
-import com.xenonware.store.ui.theme.surfaceContainerLowLight
-import com.xenonware.store.ui.theme.surfaceContainerLowestDark
-import com.xenonware.store.ui.theme.surfaceContainerLowestLight
-import com.xenonware.store.ui.theme.surfaceDark
-import com.xenonware.store.ui.theme.surfaceDimDark
-import com.xenonware.store.ui.theme.surfaceDimLight
-import com.xenonware.store.ui.theme.surfaceLight
-import com.xenonware.store.ui.theme.surfaceVariantDark
-import com.xenonware.store.ui.theme.surfaceVariantLight
-import com.xenonware.store.ui.theme.tertiaryContainerDark
-import com.xenonware.store.ui.theme.tertiaryContainerLight
-import com.xenonware.store.ui.theme.tertiaryDark
-import com.xenonware.store.ui.theme.tertiaryLight
 
 data class ExtendedMaterialColorScheme(
     val inverseError: Color,
@@ -206,6 +130,7 @@ fun ColorScheme.toBlackedOut(): ColorScheme {
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun StoreTheme(
     darkTheme: Boolean,
@@ -266,7 +191,7 @@ fun StoreTheme(
 
     CompositionLocalProvider(LocalExtendedMaterialColorScheme provides extendedColorScheme) {
         MaterialTheme(
-            colorScheme = baseColorScheme, typography = Typography, content = content
+            colorScheme = baseColorScheme, typography = Typography, motionScheme = expressive(), content = content
         )
     }
 }

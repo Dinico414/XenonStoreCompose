@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close // Import the icon for the unchecked state
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -29,10 +29,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
-import com.xenonware.store.ui.values.ExtraLargePadding
-import com.xenonware.store.ui.values.LargeCornerRadius
-import com.xenonware.store.ui.values.LargerPadding
-import com.xenonware.store.ui.values.LargestPadding
+import com.xenon.mylibrary.values.ExtraLargePadding
+import com.xenon.mylibrary.values.LargeCornerRadius
+import com.xenon.mylibrary.values.LargerPadding
+import com.xenon.mylibrary.values.LargestPadding
 
 @Composable
 fun SettingsSwitchTile(
@@ -46,7 +46,6 @@ fun SettingsSwitchTile(
     backgroundColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    dividerColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
     shape: Shape = RoundedCornerShape(LargeCornerRadius),
     horizontalPadding: Dp = LargestPadding,
     verticalPadding: Dp = ExtraLargePadding,

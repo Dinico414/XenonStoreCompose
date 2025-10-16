@@ -49,11 +49,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
+import com.xenon.mylibrary.QuicksandTitleVariable
+import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.MediumCornerRadius
+import com.xenon.mylibrary.values.MediumPadding
 import com.xenonware.store.R
-import com.xenonware.store.ui.layouts.QuicksandTitleVariable
-import com.xenonware.store.ui.values.LargestPadding
-import com.xenonware.store.ui.values.MediumCornerRadius
-import com.xenonware.store.ui.values.MediumPadding
 import com.xenonware.store.util.Util
 import com.xenonware.store.viewmodel.classes.AppEntryState
 import com.xenonware.store.viewmodel.classes.StoreItem
