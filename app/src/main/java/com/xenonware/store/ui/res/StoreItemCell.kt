@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.xenonware.store.ui.res
 
 import android.annotation.SuppressLint
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonDefaults.outlinedButtonBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -77,7 +80,7 @@ private fun getDrawableIdFromPath(context: android.content.Context, iconPath: St
     return context.resources.getIdentifier(iconName, iconDirectory, context.packageName)
 }
 
-@SuppressLint("DiscouragedApi")
+@SuppressLint("DiscouragedApi", "LocalContextResourcesRead")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StoreItemCell(
@@ -113,9 +116,11 @@ fun StoreItemCell(
                 containerColor = MaterialTheme.colorScheme.surfaceBright
             )
         ) {
-            Column(modifier = Modifier.Companion.padding(
-                MediumPadding
-            )) {
+            Column(
+                modifier = Modifier.Companion.padding(
+                    MediumPadding
+                )
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -217,9 +222,12 @@ fun StoreItemCell(
                         )
                     }
 
-                    Spacer(modifier = Modifier.Companion.width(
-                        LargestPadding
-                    ))
+                    Spacer(
+                        modifier = Modifier.Companion.width(
+                            LargestPadding
+                        )
+                    )
+
 
                     Text(
                         text = storeItem.getName(language),
@@ -245,10 +253,15 @@ fun StoreItemCell(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = ">>"
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+
                         }
                         Text(
                             text = context.getString(
-                                R.string.version_with_prefix, storeItem.newVersion
+                                R.string.version_without_prefix, storeItem.newVersion
                             ),
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold
@@ -266,7 +279,7 @@ fun StoreItemCell(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = if (mainActionButtonVisible && openAndUninstallRowVisible) Arrangement.SpaceBetween else Arrangement.End,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (mainActionButtonVisible) {
@@ -308,9 +321,15 @@ fun StoreItemCell(
                                             val tertiaryColor = MaterialTheme.colorScheme.tertiary
                                             val adjustedTertiaryColor = if (isDarkTheme) {
                                                 tertiaryColor.copy(
-                                                    red = (tertiaryColor.red + 0.25f).coerceAtMost(1f),
-                                                    green = (tertiaryColor.green + 0.25f).coerceAtMost(1f),
-                                                    blue = (tertiaryColor.blue + 0.25f).coerceAtMost(1f)
+                                                    red = (tertiaryColor.red + 0.25f).coerceAtMost(
+                                                        1f
+                                                    ),
+                                                    green = (tertiaryColor.green + 0.25f).coerceAtMost(
+                                                        1f
+                                                    ),
+                                                    blue = (tertiaryColor.blue + 0.25f).coerceAtMost(
+                                                        1f
+                                                    )
                                                 )
                                             } else {
                                                 tertiaryColor.copy(
@@ -327,11 +346,9 @@ fun StoreItemCell(
                                                     .background(
                                                         brush = Brush.horizontalGradient(
                                                             colors = listOf(
-                                                                tertiaryColor,
-                                                                adjustedTertiaryColor
+                                                                tertiaryColor, adjustedTertiaryColor
                                                             )
-                                                        ),
-                                                        shape = RoundedCornerShape(12.dp)
+                                                        ), shape = RoundedCornerShape(12.dp)
                                                     )
                                             )
                                         }
@@ -343,67 +360,63 @@ fun StoreItemCell(
                                 }
                             }
                         }
-                        val buttonShouldTakeFullWidth =
-                            (storeItem.state == AppEntryState.NOT_INSTALLED && storeItem.newVersion.isNotEmpty()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.installedVersion.isEmpty()) || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.installedVersion.isEmpty())
-
-                        if (!openAndUninstallRowVisible && !buttonShouldTakeFullWidth) {
-                            Spacer(modifier = Modifier.width(16.dp))
-                        }
                     }
 
                     if (openAndUninstallRowVisible) {
-                        if (mainActionButtonVisible) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        Button(
-                            onClick = { onOpen(storeItem) },
-                            shape = RoundedCornerShape(
-                                bottomStart = 16.dp,
-                                topStart = 16.dp,
-                                topEnd = 4.dp,
-                                bottomEnd = 4.dp
-                            ),
-                            modifier = Modifier
-                                .weight(if (mainActionButtonVisible) 0.5f else 1f)
-                                .height(40.dp),
-                            enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED
+                        Row(
+                            modifier = Modifier.weight(if (mainActionButtonVisible) 0.5f else 1f),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            Text(text = context.getString(R.string.open))
-                        }
-
-                        Spacer(modifier = Modifier.width(2.dp))
-
-                        Box(
-                            modifier = Modifier.width(52.dp), contentAlignment = Alignment.Center
-                        ) {
-                            OutlinedButton(
-                                onClick = { onUninstall(storeItem) },
-                                modifier = Modifier
-                                    .width(52.dp)
-                                    .height(40.dp),
-                                enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED,
+                            Button(
+                                onClick = { onOpen(storeItem) },
                                 shape = RoundedCornerShape(
-                                    bottomStart = 4.dp,
-                                    topStart = 4.dp,
-                                    topEnd = 16.dp,
-                                    bottomEnd = 16.dp
+                                    bottomStart = 16.dp,
+                                    topStart = 16.dp,
+                                    topEnd = 4.dp,
+                                    bottomEnd = 4.dp
                                 ),
-                                contentPadding = PaddingValues(0.dp),
-                                border = ButtonDefaults.outlinedButtonBorder.copy(
-                                    brush = SolidColor(MaterialTheme.colorScheme.primary)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp),
+                                enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED
+                            ) {
+                                Text(text = context.getString(R.string.open))
+                            }
+
+                            Box(
+                                modifier = Modifier.width(52.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                OutlinedButton(
+                                    onClick = { onUninstall(storeItem) },
+                                    modifier = Modifier
+                                        .width(52.dp)
+                                        .height(40.dp),
+                                    enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED,
+                                    shape = RoundedCornerShape(
+                                        bottomStart = 4.dp,
+                                        topStart = 4.dp,
+                                        topEnd = 16.dp,
+                                        bottomEnd = 16.dp
+                                    ),
+                                    contentPadding = PaddingValues(0.dp),
+                                    border = outlinedButtonBorder.copy(
+                                        brush = SolidColor(MaterialTheme.colorScheme.primary)
+                                    )
+                                ) {}
+                                Icon(
+                                    imageVector = Icons.Filled.Delete,
+                                    contentDescription = context.getString(R.string.uninstall),
+                                    modifier = Modifier.size(24.dp)
                                 )
-                            ) {}
-                            Icon(
-                                imageVector = Icons.Filled.Delete,
-                                contentDescription = context.getString(R.string.uninstall),
-                                modifier = Modifier.size(24.dp)
-                            )
+                            }
                         }
                     }
                 }
+
             }
         }
-    } // End Row
+    }
 }
 
 
@@ -414,14 +427,14 @@ private fun StoreItemCellPreviewNotInstalled() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-                nameMap = hashMapOf("en" to "Amazing New Application"),
-                packageName = "com.sample.app.notinstalled",
-                githubUrl = "Dinico414/Xenon-App",
-                iconPath = "@mipmap/ic_launcher" // Example iconPath
-            ).apply {
-                state = AppEntryState.NOT_INSTALLED
-                newVersion = "1.0.0"
-            }, onInstall = {}, onUninstall = {}, onOpen = {})
+            nameMap = hashMapOf("en" to "Amazing New Application"),
+            packageName = "com.sample.app.notinstalled",
+            githubUrl = "Dinico414/Xenon-App",
+            iconPath = "@mipmap/ic_launcher" // Example iconPath
+        ).apply {
+            state = AppEntryState.NOT_INSTALLED
+            newVersion = "1.0.0"
+        }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
 
@@ -431,17 +444,17 @@ private fun StoreItemCellPreviewDownloadingNew() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-                nameMap = hashMapOf("en" to "Super Downloader App"),
-                packageName = "com.sample.app.downloadingnew",
-                githubUrl = "Dinico414/downloader",
-                iconPath = "@mipmap/ic_launcher_round"
-            ).apply {
-                state = AppEntryState.DOWNLOADING
-                bytesDownloaded = 50 * 1024 * 1024 // 50MB
-                fileSize = 100 * 1024 * 1024      // 100MB
-                newVersion = "2.1.0"
-                // installedVersion is empty, so Open/Uninstall shouldn't show
-            }, onInstall = {}, onUninstall = {}, onOpen = {})
+            nameMap = hashMapOf("en" to "Super Downloader App"),
+            packageName = "com.sample.app.downloadingnew",
+            githubUrl = "Dinico414/downloader",
+            iconPath = "@mipmap/ic_launcher_round"
+        ).apply {
+            state = AppEntryState.DOWNLOADING
+            bytesDownloaded = 50 * 1024 * 1024 // 50MB
+            fileSize = 100 * 1024 * 1024      // 100MB
+            newVersion = "2.1.0"
+            // installedVersion is empty, so Open/Uninstall shouldn't show
+        }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
 
@@ -451,17 +464,17 @@ private fun StoreItemCellPreviewDownloadingUpdate() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-                nameMap = hashMapOf("en" to "My Awesome App (Updating)"),
-                packageName = "com.sample.app.downloadingupdate",
-                githubUrl = "Dinico414/updater",
-                iconPath = "@mipmap/ic_launcher_round"
-            ).apply {
-                state = AppEntryState.DOWNLOADING
-                installedVersion = "1.0.0" // Important: app is already installed
-                newVersion = "1.1.0"
-                bytesDownloaded = 30 * 1024 * 1024
-                fileSize = 60 * 1024 * 1024
-            }, onInstall = {}, onUninstall = {}, onOpen = {})
+            nameMap = hashMapOf("en" to "My Awesome App (Updating)"),
+            packageName = "com.sample.app.downloadingupdate",
+            githubUrl = "Dinico414/updater",
+            iconPath = "@mipmap/ic_launcher_round"
+        ).apply {
+            state = AppEntryState.DOWNLOADING
+            installedVersion = "1.0.0" // Important: app is already installed
+            newVersion = "1.1.0"
+            bytesDownloaded = 30 * 1024 * 1024
+            fileSize = 60 * 1024 * 1024
+        }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
 
@@ -471,15 +484,15 @@ private fun StoreItemCellPreviewInstallingNew() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-                nameMap = hashMapOf("en" to "Fantastic Installer (New)"),
-                packageName = "com.sample.app.installingnew",
-                githubUrl = "Dinico414/installer",
-                iconPath = "@mipmap/ic_launcher"
-            ).apply {
-                state = AppEntryState.INSTALLING
-                newVersion = "1.0.0"
-                // installedVersion is empty
-            }, onInstall = {}, onUninstall = {}, onOpen = {})
+            nameMap = hashMapOf("en" to "Fantastic Installer (New)"),
+            packageName = "com.sample.app.installingnew",
+            githubUrl = "Dinico414/installer",
+            iconPath = "@mipmap/ic_launcher"
+        ).apply {
+            state = AppEntryState.INSTALLING
+            newVersion = "1.0.0"
+            // installedVersion is empty
+        }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
 
@@ -489,15 +502,15 @@ private fun StoreItemCellPreviewInstallingUpdate() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-                nameMap = hashMapOf("en" to "Fantastic Installer (Update)"),
-                packageName = "com.sample.app.installingupdate",
-                githubUrl = "Dinico414/installer",
-                iconPath = "@mipmap/ic_launcher"
-            ).apply {
-                state = AppEntryState.INSTALLING
-                installedVersion = "1.0.0" // Important: app is already installed
-                newVersion = "1.1.0"
-            }, onInstall = {}, onUninstall = {}, onOpen = {})
+            nameMap = hashMapOf("en" to "Fantastic Installer (Update)"),
+            packageName = "com.sample.app.installingupdate",
+            githubUrl = "Dinico414/installer",
+            iconPath = "@mipmap/ic_launcher"
+        ).apply {
+            state = AppEntryState.INSTALLING
+            installedVersion = "1.0.0" // Important: app is already installed
+            newVersion = "1.1.0"
+        }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
 
@@ -508,15 +521,15 @@ private fun StoreItemCellPreviewInstalled() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-                nameMap = hashMapOf("en" to "My Favorite Installed App"),
-                packageName = "com.sample.app.installed",
-                githubUrl = "User/My-Favorite-App.Repo",
-                iconPath = "@drawable/xenon_icon" // Example drawable path
-            ).apply {
-                state = AppEntryState.INSTALLED
-                installedVersion = "1.0.0"
-                newVersion = "1.0.0"
-            }, onInstall = {}, onUninstall = {}, onOpen = {})
+            nameMap = hashMapOf("en" to "My Favorite Installed App"),
+            packageName = "com.sample.app.installed",
+            githubUrl = "User/My-Favorite-App.Repo",
+            iconPath = "@drawable/xenon_icon" // Example drawable path
+        ).apply {
+            state = AppEntryState.INSTALLED
+            installedVersion = "1.0.0"
+            newVersion = "1.0.0"
+        }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
 
@@ -526,14 +539,14 @@ private fun StoreItemCellPreviewOutdated() {
     MaterialTheme {
         StoreItemCell(
             storeItem = StoreItem(
-                nameMap = hashMapOf("en" to "Old But Gold App (Update Available!)"),
-                packageName = "com.sample.app.outdated",
-                githubUrl = "",
-                iconPath = "@mipmap/ic_launcher"
-            ).apply {
-                state = AppEntryState.INSTALLED_AND_OUTDATED
-                installedVersion = "1.0.0"
-                newVersion = "1.1.0"
-            }, onInstall = {}, onUninstall = {}, onOpen = {})
+            nameMap = hashMapOf("en" to "Old But Gold App (Update Available!)"),
+            packageName = "com.sample.app.outdated",
+            githubUrl = "",
+            iconPath = "@mipmap/ic_launcher"
+        ).apply {
+            state = AppEntryState.INSTALLED_AND_OUTDATED
+            installedVersion = "1.0.0"
+            newVersion = "1.1.0"
+        }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }

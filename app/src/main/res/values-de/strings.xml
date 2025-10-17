@@ -120,6 +120,7 @@
     <string name="install">Installieren</string>
     <string name="update">Update</string>
     <string name="open">Öffnen</string>
+    <string name="version_without_prefix">%s</string>
     <string name="version_with_prefix">Version: %s</string>
     <string name="uninstall">deinstallieren</string>
 
