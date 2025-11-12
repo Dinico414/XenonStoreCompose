@@ -12,9 +12,9 @@ android {
     defaultConfig {
         applicationId = "com.xenonware.store"
         minSdk = 29
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
-        versionName = "2.0.1 "
+        versionName = "2.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
