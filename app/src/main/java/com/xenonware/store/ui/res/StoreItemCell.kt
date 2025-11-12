@@ -8,6 +8,7 @@ import android.graphics.drawable.AdaptiveIconDrawable
 import android.util.Log
 import android.view.View
 import android.widget.ImageView
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +27,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonDefaults.outlinedButtonBorder
@@ -33,10 +36,16 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -90,7 +99,7 @@ fun StoreItemCell(
     onOpen: (StoreItem) -> Unit,
 ) {
     val context = LocalContext.current
-    val language = Utils.Companion.getCurrentLanguage(context.resources)
+    val language = Utils.getCurrentLanguage(context.resources)
 
     val installButtonText = when (storeItem.state) {
         AppEntryState.NOT_INSTALLED -> context.getString(R.string.install)
@@ -103,9 +112,6 @@ fun StoreItemCell(
         else -> context.getString(R.string.install)
     }
 
-    val showVersionInfoHorizontal =
-        storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.isOutdated())
-
     Row(
         modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
     ) {
@@ -117,10 +123,11 @@ fun StoreItemCell(
             )
         ) {
             Column(
-                modifier = Modifier.Companion.padding(
+                modifier = Modifier.padding(
                     MediumPadding
                 )
             ) {
+                var isExpanded by remember { mutableStateOf(false) }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -147,6 +154,7 @@ fun StoreItemCell(
                     }
 
                     if (iconResId != 0) {
+                        @Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
                         AndroidView(
                             factory = { ctx ->
                                 ImageView(ctx).apply {
@@ -211,7 +219,7 @@ fun StoreItemCell(
                                         "Error loading drawable ID: $iconResId for ${storeItem.packageName}",
                                         e
                                     )
-                                    imageView.visibility = View.GONE // Hide if error
+                                    imageView.visibility = View.GONE
                                 }
                             })
                     } else {
@@ -223,7 +231,7 @@ fun StoreItemCell(
                     }
 
                     Spacer(
-                        modifier = Modifier.Companion.width(
+                        modifier = Modifier.width(
                             LargestPadding
                         )
                     )
@@ -238,34 +246,100 @@ fun StoreItemCell(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
+
+                    val isUpdateAvailable = 
+                        storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.isOutdated())
+
+                    IconButton(
+                        onClick = { isExpanded = !isExpanded },
+                        colors = if (isUpdateAvailable) {
+                            IconButtonDefaults.iconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiary,
+                                contentColor = MaterialTheme.colorScheme.onTertiary
+                            )
+                        } else {
+                            IconButtonDefaults.iconButtonColors()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (isExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                            contentDescription = "More info"
+                        )
+                    }
                 }
 
-                if (showVersionInfoHorizontal && storeItem.newVersion.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (storeItem.installedVersion.isNotEmpty()) {
+                AnimatedVisibility(visible = isExpanded) {
+                    Column {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val isUpdateAvailable = 
+                            storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.isOutdated())
+
+                        if (isUpdateAvailable && storeItem.newVersion.isNotEmpty()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (storeItem.installedVersion.isNotEmpty()) {
+                                    Text(
+                                        text = context.getString(
+                                            R.string.version_with_prefix,
+                                            storeItem.installedVersion
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        textDecoration = TextDecoration.LineThrough,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                            alpha = 0.7f
+                                        )
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = ">>"
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                                Text(
+                                    text = context.getString(
+                                        R.string.version_without_prefix,
+                                        storeItem.newVersion
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        } else if (storeItem.installedVersion.isNotEmpty()) {
                             Text(
                                 text = context.getString(
-                                    R.string.version_with_prefix, storeItem.installedVersion
+                                    R.string.version_with_prefix,
+                                    storeItem.installedVersion
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
-                                textDecoration = TextDecoration.LineThrough,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                fontWeight = FontWeight.Bold
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                        } else if (storeItem.newVersion.isNotEmpty()) {
                             Text(
-                                text = ">>"
+                                text = context.getString(
+                                    R.string.version_with_prefix,
+                                    storeItem.newVersion
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-
                         }
-                        Text(
-                            text = context.getString(
-                                R.string.version_without_prefix, storeItem.newVersion
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold
-                        )
+
+//                        if (storeItem.fileSize > 0) {
+//                            val sizeLabel = when (storeItem.state) {
+//                                AppEntryState.NOT_INSTALLED, AppEntryState.DOWNLOADING, AppEntryState.INSTALLING -> "Download size: "
+//                                AppEntryState.INSTALLED -> "Installed size: "
+//                                AppEntryState.INSTALLED_AND_OUTDATED -> "Update size: "
+//                            }
+//                            Text(
+//                                text = "$sizeLabel${Formatter.formatShortFileSize(context, storeItem.fileSize)}",
+//                                style = MaterialTheme.typography.bodySmall,
+//                                fontWeight = FontWeight.Bold
+//                            )
+//                        } else if (storeItem.state == AppEntryState.NOT_INSTALLED) {
+//                            Text(text = "Size: N/A",
+//                                style = MaterialTheme.typography.bodySmall,
+//                                fontWeight = FontWeight.Bold
+//                            )
+//                        }
                     }
                 }
 
@@ -316,7 +390,7 @@ fun StoreItemCell(
                                                 .fillMaxSize()
                                                 .padding(horizontal = 4.dp, vertical = 4.dp)
                                                 .clip(RoundedCornerShape(12.dp))
-                                        ) {
+                                        ) { 
                                             val isDarkTheme = isSystemInDarkTheme()
                                             val tertiaryColor = MaterialTheme.colorScheme.tertiary
                                             val adjustedTertiaryColor = if (isDarkTheme) {
@@ -420,7 +494,6 @@ fun StoreItemCell(
 }
 
 
-// Dummy StoreItem for Preview, assuming iconPath exists
 @Preview(showBackground = true, name = "Not Installed", widthDp = 380)
 @Composable
 private fun StoreItemCellPreviewNotInstalled() {
@@ -430,10 +503,11 @@ private fun StoreItemCellPreviewNotInstalled() {
             nameMap = hashMapOf("en" to "Amazing New Application"),
             packageName = "com.sample.app.notinstalled",
             githubUrl = "Dinico414/Xenon-App",
-            iconPath = "@mipmap/ic_launcher" // Example iconPath
+            iconPath = "@mipmap/ic_launcher"
         ).apply {
             state = AppEntryState.NOT_INSTALLED
             newVersion = "1.0.0"
+            fileSize = 10 * 1024 * 1024
         }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
@@ -450,10 +524,9 @@ private fun StoreItemCellPreviewDownloadingNew() {
             iconPath = "@mipmap/ic_launcher_round"
         ).apply {
             state = AppEntryState.DOWNLOADING
-            bytesDownloaded = 50 * 1024 * 1024 // 50MB
-            fileSize = 100 * 1024 * 1024      // 100MB
+            bytesDownloaded = 50 * 1024 * 1024
+            fileSize = 100 * 1024 * 1024
             newVersion = "2.1.0"
-            // installedVersion is empty, so Open/Uninstall shouldn't show
         }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
@@ -470,7 +543,7 @@ private fun StoreItemCellPreviewDownloadingUpdate() {
             iconPath = "@mipmap/ic_launcher_round"
         ).apply {
             state = AppEntryState.DOWNLOADING
-            installedVersion = "1.0.0" // Important: app is already installed
+            installedVersion = "1.0.0"
             newVersion = "1.1.0"
             bytesDownloaded = 30 * 1024 * 1024
             fileSize = 60 * 1024 * 1024
@@ -491,7 +564,7 @@ private fun StoreItemCellPreviewInstallingNew() {
         ).apply {
             state = AppEntryState.INSTALLING
             newVersion = "1.0.0"
-            // installedVersion is empty
+            fileSize = 25 * 1024 * 1024
         }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
@@ -508,8 +581,9 @@ private fun StoreItemCellPreviewInstallingUpdate() {
             iconPath = "@mipmap/ic_launcher"
         ).apply {
             state = AppEntryState.INSTALLING
-            installedVersion = "1.0.0" // Important: app is already installed
+            installedVersion = "1.0.0"
             newVersion = "1.1.0"
+            fileSize = 15 * 1024 * 1024
         }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
@@ -524,11 +598,12 @@ private fun StoreItemCellPreviewInstalled() {
             nameMap = hashMapOf("en" to "My Favorite Installed App"),
             packageName = "com.sample.app.installed",
             githubUrl = "User/My-Favorite-App.Repo",
-            iconPath = "@drawable/xenon_icon" // Example drawable path
+            iconPath = "@drawable/xenon_icon"
         ).apply {
             state = AppEntryState.INSTALLED
             installedVersion = "1.0.0"
             newVersion = "1.0.0"
+            fileSize = 50 * 1024 * 1024
         }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
@@ -547,6 +622,7 @@ private fun StoreItemCellPreviewOutdated() {
             state = AppEntryState.INSTALLED_AND_OUTDATED
             installedVersion = "1.0.0"
             newVersion = "1.1.0"
+            fileSize = 20 * 1024 * 1024
         }, onInstall = {}, onUninstall = {}, onOpen = {})
     }
 }
