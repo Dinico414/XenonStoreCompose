@@ -56,7 +56,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
@@ -74,7 +76,6 @@ import com.xenonware.store.ui.res.DialogShareSelector
 import com.xenonware.store.ui.res.GoogleProfilBorder
 import com.xenonware.store.ui.res.StoreItemCell
 import com.xenonware.store.ui.res.XenonSnackbar
-import com.xenonware.store.ui.theme.rememberAppBarExpandableState
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.StoreViewModel
@@ -103,7 +104,7 @@ fun CompactStore(
     val context = LocalContext.current
     val storeItems by storeViewModel.storeItems.collectAsState()
 
-    val isAppBarCollapsible = rememberAppBarExpandableState(layoutType, isLandscape, appSize)
+//    val isAppBarCollapsible = rememberAppBarExpandableState(layoutType, isLandscape, appSize)
 
     val hazeState = rememberHazeState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -125,6 +126,38 @@ fun CompactStore(
     val xenonStoreDownloadProgress by storeViewModel.xenonStoreDownloadProgress.collectAsState()
 
     val lazyListState = rememberLazyListState()
+
+
+
+    val coverLayout = layoutType == LayoutType.COVER
+
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp
+    val screenHeight = configuration.screenHeightDp
+
+    val density = LocalDensity.current
+    val appWidthDp = with(density) { appSize.width.toDp() }
+    val appHeightDp = with(density) { appSize.height.toDp() }
+
+    val currentAspectRatio = if (isLandscape) {
+        appWidthDp / appHeightDp
+    } else {
+        appHeightDp / appWidthDp
+    }
+
+    val aspectRatioConditionMet = if (isLandscape) {
+        currentAspectRatio > 0.5625f
+    } else {
+        currentAspectRatio < 1.77f
+    }
+
+    val isAppBarCollapsible = when (layoutType) {
+        LayoutType.COVER -> false
+        LayoutType.SMALL -> false
+        LayoutType.COMPACT -> !isLandscape || !aspectRatioConditionMet
+        LayoutType.MEDIUM -> true
+        LayoutType.EXPANDED -> true
+    }
 
 
     LaunchedEffect(Unit) {
@@ -287,7 +320,6 @@ fun CompactStore(
                 },
             titleText = stringResource(id = R.string.app_name),
             expandable = isAppBarCollapsible,
-
             navigationIconStartPadding = if (shouldShowNavigationElements) SmallPadding else 0.dp,
             navigationIconPadding = if (shouldShowNavigationElements) {
                 if (isDeveloperModeEnabled && showDummyProfile) SmallPadding else MediumPadding

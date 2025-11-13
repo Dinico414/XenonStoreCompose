@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntSize
 import com.xenonware.store.ui.layouts.settings.CoverSettings
 import com.xenonware.store.ui.layouts.settings.DefaultSettings
 import com.xenonware.store.viewmodel.LayoutType

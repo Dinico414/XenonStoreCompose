@@ -111,13 +111,22 @@ fun DefaultSettings(
         }
     }
 
-    when (layoutType) {
+//    when (layoutType) {
+//        LayoutType.SMALL -> false
+//        LayoutType.COMPACT -> !isLandscape
+//        LayoutType.MEDIUM -> true
+//        LayoutType.EXPANDED -> true
+//        else -> true
+//    }
+
+    val isAppBarCollapsible = when (layoutType) {
+        LayoutType.COVER -> false
         LayoutType.SMALL -> false
         LayoutType.COMPACT -> !isLandscape
         LayoutType.MEDIUM -> true
         LayoutType.EXPANDED -> true
-        else -> true
     }
+
     val hazeState = rememberHazeState()
 
     ActivityScreen(
@@ -135,7 +144,7 @@ fun DefaultSettings(
         onNavigationIconClick = onNavigateBack,
         hasNavigationIconExtraContent = false,
         actions = {},
-        // isAppBarCollapsible = isAppBarCollapsible,
+        expandable = isAppBarCollapsible,
         modifier = Modifier.hazeSource(hazeState),
         content = { _ ->
             Column(
