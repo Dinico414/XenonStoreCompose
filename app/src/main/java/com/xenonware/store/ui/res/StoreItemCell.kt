@@ -10,6 +10,7 @@ import android.view.View
 import android.widget.ImageView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -133,6 +134,8 @@ fun StoreItemCell(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     var iconResId = getDrawableIdFromPath(context, storeItem.iconPath)
+                    var usePlaceholderBorder by remember { mutableStateOf(false) }
+
                     if (iconResId == 0 && storeItem.githubUrl.isNotBlank()) {
                         val repoMipmapName = getRepoMipmapName(storeItem.githubUrl)
                         if (repoMipmapName.isNotBlank()) {
@@ -147,81 +150,103 @@ fun StoreItemCell(
                             } else {
                                 Log.w(
                                     "StoreItemCell",
-                                    "Fallback Mipmap '$repoMipmapName' from GitHub URL not found for ${storeItem.packageName}."
+                                    "Fallback Mipmap '$repoMipmapName' from GitHub URL not found for ${storeItem.packageName}. Trying placeholder."
                                 )
+                                
+                                iconResId = context.resources.getIdentifier(
+                                    "placeholder", "mipmap", context.packageName
+                                )
+                                if (iconResId != 0) {
+                                    usePlaceholderBorder =
+                                        true
+                                    Log.i(
+                                        "StoreItemCell",
+                                        "Using placeholder mipmap for ${storeItem.packageName}"
+                                    )
+                                } else {
+                                    Log.e(
+                                        "StoreItemCell",
+                                        "Placeholder mipmap also not found for ${storeItem.packageName}."
+                                    )
+                                }
                             }
                         }
                     }
 
+                    val iconModifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .then(
+                            if (usePlaceholderBorder) Modifier.border(
+                                0.5.dp,
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                                RoundedCornerShape(16.dp)
+                            ) else Modifier
+                        )
+
                     if (iconResId != 0) {
-                        @Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
-                        AndroidView(
-                            factory = { ctx ->
-                                ImageView(ctx).apply {
-                                    scaleType = ImageView.ScaleType.CENTER_CROP
-                                }
-                            },
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(RoundedCornerShape(16.dp)),
-                            update = { imageView ->
-                                try {
-                                    val originalDrawable = ResourcesCompat.getDrawable(
-                                        context.resources, iconResId, null
-                                    )
-                                    if (originalDrawable is AdaptiveIconDrawable) {
-                                        val iconSizePx = 48.dp.toPx(context).toInt()
-                                        if (iconSizePx > 0) {
-                                            val bitmap = createBitmap(iconSizePx, iconSizePx)
-                                            val canvas = Canvas(bitmap)
+                        @Suppress("COMPOSE_APPLIER_CALL_MISMATCH") AndroidView(factory = { ctx ->
+                            ImageView(ctx).apply {
+                                scaleType = ImageView.ScaleType.CENTER_CROP
+                            }
+                        }, modifier = iconModifier, update = {
+                            try {
+                                val originalDrawable = ResourcesCompat.getDrawable(
+                                    context.resources, iconResId, null
+                                )
+                                if (originalDrawable is AdaptiveIconDrawable) {
+                                    val iconSizePx = 48.dp.toPx(context).toInt()
+                                    if (iconSizePx > 0) {
+                                        val bitmap = createBitmap(iconSizePx, iconSizePx)
+                                        val canvas = Canvas(bitmap)
 
-                                            val scaleFactor = 1.5f
-                                            val scaledWidth = iconSizePx * scaleFactor
-                                            val scaledHeight = iconSizePx * scaleFactor
+                                        val scaleFactor = 1.5f
+                                        val scaledWidth = iconSizePx * scaleFactor
+                                        val scaledHeight = iconSizePx * scaleFactor
 
-                                            val offsetWidth = (scaledWidth - iconSizePx) / 2f
-                                            val offsetHeight = (scaledHeight - iconSizePx) / 2f
+                                        val offsetWidth = (scaledWidth - iconSizePx) / 2f
+                                        val offsetHeight = (scaledHeight - iconSizePx) / 2f
 
-                                            val scaledLeft = (-offsetWidth).toInt()
-                                            val scaledTop = (-offsetHeight).toInt()
-                                            val scaledRight = (iconSizePx + offsetWidth).toInt()
-                                            val scaledBottom = (iconSizePx + offsetHeight).toInt()
+                                        val scaledLeft = (-offsetWidth).toInt()
+                                        val scaledTop = (-offsetHeight).toInt()
+                                        val scaledRight = (iconSizePx + offsetWidth).toInt()
+                                        val scaledBottom = (iconSizePx + offsetHeight).toInt()
 
-                                            originalDrawable.background?.let {
-                                                it.setBounds(
-                                                    scaledLeft, scaledTop, scaledRight, scaledBottom
-                                                )
-                                                it.draw(canvas)
-                                            }
-                                            originalDrawable.foreground?.let {
-                                                it.setBounds(
-                                                    scaledLeft, scaledTop, scaledRight, scaledBottom
-                                                )
-                                                it.draw(canvas)
-                                            }
-                                            imageView.setImageBitmap(bitmap)
-                                            imageView.visibility = View.VISIBLE
-                                        } else {
-                                            Log.w(
-                                                "StoreItemCell",
-                                                "ImageView dimensions for ${storeItem.packageName} are invalid ($iconSizePx x $iconSizePx), falling back to direct drawable."
+                                        originalDrawable.background?.let {
+                                            it.setBounds(
+                                                scaledLeft, scaledTop, scaledRight, scaledBottom
                                             )
-                                            imageView.setImageDrawable(originalDrawable)
-                                            imageView.visibility = View.VISIBLE
+                                            it.draw(canvas)
                                         }
+                                        originalDrawable.foreground?.let {
+                                            it.setBounds(
+                                                scaledLeft, scaledTop, scaledRight, scaledBottom
+                                            )
+                                            it.draw(canvas)
+                                        }
+                                        it.setImageBitmap(bitmap)
+                                        it.visibility = View.VISIBLE
                                     } else {
-                                        imageView.setImageDrawable(originalDrawable)
-                                        imageView.visibility = View.VISIBLE
+                                        Log.w(
+                                            "StoreItemCell",
+                                            "ImageView dimensions for ${storeItem.packageName} are invalid ($iconSizePx x $iconSizePx), falling back to direct drawable."
+                                        )
+                                        it.setImageDrawable(originalDrawable)
+                                        it.visibility = View.VISIBLE
                                     }
-                                } catch (e: Exception) {
-                                    Log.e(
-                                        "StoreItemCell",
-                                        "Error loading drawable ID: $iconResId for ${storeItem.packageName}",
-                                        e
-                                    )
-                                    imageView.visibility = View.GONE
+                                } else {
+                                    it.setImageDrawable(originalDrawable)
+                                    it.visibility = View.VISIBLE
                                 }
-                            })
+                            } catch (e: Exception) {
+                                Log.e(
+                                    "StoreItemCell",
+                                    "Error loading drawable ID: $iconResId for ${storeItem.packageName}",
+                                    e
+                                )
+                                it.visibility = View.GONE
+                            }
+                        })
                     } else {
                         Spacer(modifier = Modifier.size(48.dp))
                         Log.w(
@@ -247,12 +272,11 @@ fun StoreItemCell(
                         modifier = Modifier.weight(1f)
                     )
 
-                    val isUpdateAvailable = 
+                    val isUpdateAvailable =
                         storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.isOutdated())
 
                     IconButton(
-                        onClick = { isExpanded = !isExpanded },
-                        colors = if (isUpdateAvailable) {
+                        onClick = { isExpanded = !isExpanded }, colors = if (isUpdateAvailable) {
                             IconButtonDefaults.iconButtonColors(
                                 containerColor = MaterialTheme.colorScheme.tertiary,
                                 contentColor = MaterialTheme.colorScheme.onTertiary
@@ -271,7 +295,7 @@ fun StoreItemCell(
                 AnimatedVisibility(visible = isExpanded) {
                     Column {
                         Spacer(modifier = Modifier.height(8.dp))
-                        val isUpdateAvailable = 
+                        val isUpdateAvailable =
                             storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.isOutdated())
 
                         if (isUpdateAvailable && storeItem.newVersion.isNotEmpty()) {
@@ -279,8 +303,7 @@ fun StoreItemCell(
                                 if (storeItem.installedVersion.isNotEmpty()) {
                                     Text(
                                         text = context.getString(
-                                            R.string.version_with_prefix,
-                                            storeItem.installedVersion
+                                            R.string.version_with_prefix, storeItem.installedVersion
                                         ),
                                         style = MaterialTheme.typography.bodySmall,
                                         textDecoration = TextDecoration.LineThrough,
@@ -296,8 +319,7 @@ fun StoreItemCell(
                                 }
                                 Text(
                                     text = context.getString(
-                                        R.string.version_without_prefix,
-                                        storeItem.newVersion
+                                        R.string.version_without_prefix, storeItem.newVersion
                                     ),
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold
@@ -306,8 +328,7 @@ fun StoreItemCell(
                         } else if (storeItem.installedVersion.isNotEmpty()) {
                             Text(
                                 text = context.getString(
-                                    R.string.version_with_prefix,
-                                    storeItem.installedVersion
+                                    R.string.version_with_prefix, storeItem.installedVersion
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold
@@ -315,8 +336,7 @@ fun StoreItemCell(
                         } else if (storeItem.newVersion.isNotEmpty()) {
                             Text(
                                 text = context.getString(
-                                    R.string.version_with_prefix,
-                                    storeItem.newVersion
+                                    R.string.version_with_prefix, storeItem.newVersion
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold
@@ -390,7 +410,7 @@ fun StoreItemCell(
                                                 .fillMaxSize()
                                                 .padding(horizontal = 4.dp, vertical = 4.dp)
                                                 .clip(RoundedCornerShape(12.dp))
-                                        ) { 
+                                        ) {
                                             val isDarkTheme = isSystemInDarkTheme()
                                             val tertiaryColor = MaterialTheme.colorScheme.tertiary
                                             val adjustedTertiaryColor = if (isDarkTheme) {
