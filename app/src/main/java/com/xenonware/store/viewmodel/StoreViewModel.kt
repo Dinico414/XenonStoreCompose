@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION", "SameParameterValue")
-
 package com.xenonware.store.viewmodel
 
 import android.app.Application
@@ -65,6 +63,19 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private val client: OkHttpClient = OkHttpClient.Builder().build()
     private val sharedPreferenceManager = SharedPreferenceManager(application)
     private val packageInstallReceiver: PackageInstallReceiver
+
+    // --- TOAST MESSAGE STATE ---
+    private val _toastMessage = MutableStateFlow<String?>(null)
+    val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
+
+    fun showToast(message: String) {
+        _toastMessage.value = message
+    }
+
+    fun clearToastMessage() {
+        _toastMessage.value = null
+    }
+    // --- END TOAST MESSAGE STATE ---
 
     private companion object {
         const val APP_LIST_PROTOCOL_VERSION = "v0.1"
@@ -173,6 +184,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                         Log.d(TAG, "App list JSON is unchanged, refreshing existing items states with useCache = true.")
                         refreshAllAppItemsStates(true)
                         _currentActionInfo.value = "App list refreshed (cached)."
+                        showToast("App list refreshed!") // Show toast on completion
                         return
                     }
                     cachedJsonHash = hash
@@ -182,11 +194,13 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     refreshAllAppItemsStates(false)
                     filterStoreItems(_searchQuery.value) // Apply current search query
                     _currentActionInfo.value = "App list updated."
+                    showToast("App list refreshed!") // Show toast on completion
                 }
 
                 override fun onFailure(error: String) {
                     _error.value = "Failed to fetch app list from Cloud Run: $error"
                     _currentActionInfo.value = null
+                    showToast("Failed to refresh app list.") // Show toast on failure
                 }
             }, useCache)
         }

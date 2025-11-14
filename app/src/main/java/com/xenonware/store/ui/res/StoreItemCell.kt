@@ -75,6 +75,12 @@ private fun Dp.toPx(context: android.content.Context): Float {
     return this.value * context.resources.displayMetrics.density
 }
 
+
+private fun getRepoOwner(githubUrl: String): String {
+    val urlParts = githubUrl.trimEnd('/').split('/')
+    return urlParts.getOrNull(urlParts.size - 2) ?: ""
+}
+
 private fun getRepoMipmapName(githubUrl: String): String {
     return githubUrl.substringAfterLast('/').replace("-", "_").replace(".", "").lowercase()
 }
@@ -152,7 +158,7 @@ fun StoreItemCell(
                                     "StoreItemCell",
                                     "Fallback Mipmap '$repoMipmapName' from GitHub URL not found for ${storeItem.packageName}. Trying placeholder."
                                 )
-                                
+
                                 iconResId = context.resources.getIdentifier(
                                     "placeholder", "mipmap", context.packageName
                                 )
@@ -297,9 +303,16 @@ fun StoreItemCell(
                         Spacer(modifier = Modifier.height(8.dp))
                         val isUpdateAvailable =
                             storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.isOutdated())
-
-                        if (isUpdateAvailable && storeItem.newVersion.isNotEmpty()) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (storeItem.githubUrl.isNotBlank()) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = getRepoOwner(storeItem.githubUrl),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (isUpdateAvailable && storeItem.newVersion.isNotEmpty()) {
                                 if (storeItem.installedVersion.isNotEmpty()) {
                                     Text(
                                         text = context.getString(
@@ -324,42 +337,24 @@ fun StoreItemCell(
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold
                                 )
+                            } else if (storeItem.installedVersion.isNotEmpty()) {
+                                Text(
+                                    text = context.getString(
+                                        R.string.version_with_prefix, storeItem.installedVersion
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            } else if (storeItem.newVersion.isNotEmpty()) {
+                                Text(
+                                    text = context.getString(
+                                        R.string.version_with_prefix, storeItem.newVersion
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
-                        } else if (storeItem.installedVersion.isNotEmpty()) {
-                            Text(
-                                text = context.getString(
-                                    R.string.version_with_prefix, storeItem.installedVersion
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                        } else if (storeItem.newVersion.isNotEmpty()) {
-                            Text(
-                                text = context.getString(
-                                    R.string.version_with_prefix, storeItem.newVersion
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold
-                            )
                         }
-
-//                        if (storeItem.fileSize > 0) {
-//                            val sizeLabel = when (storeItem.state) {
-//                                AppEntryState.NOT_INSTALLED, AppEntryState.DOWNLOADING, AppEntryState.INSTALLING -> "Download size: "
-//                                AppEntryState.INSTALLED -> "Installed size: "
-//                                AppEntryState.INSTALLED_AND_OUTDATED -> "Update size: "
-//                            }
-//                            Text(
-//                                text = "$sizeLabel${Formatter.formatShortFileSize(context, storeItem.fileSize)}",
-//                                style = MaterialTheme.typography.bodySmall,
-//                                fontWeight = FontWeight.Bold
-//                            )
-//                        } else if (storeItem.state == AppEntryState.NOT_INSTALLED) {
-//                            Text(text = "Size: N/A",
-//                                style = MaterialTheme.typography.bodySmall,
-//                                fontWeight = FontWeight.Bold
-//                            )
-//                        }
                     }
                 }
 

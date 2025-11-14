@@ -19,6 +19,12 @@ import com.xenonware.store.ui.theme.ScreenEnvironment
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.StoreViewModel
 
+// Import Toast and related Compose UI components
+import android.widget.Toast
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+
 class MainActivity : ComponentActivity() {
 
     private lateinit var sharedPreferenceManager: SharedPreferenceManager
@@ -27,6 +33,10 @@ class MainActivity : ComponentActivity() {
     private var lastAppliedTheme: Int = -1
     private var lastAppliedCoverThemeEnabled: Boolean = false
     private var lastAppliedBlackedOutMode: Boolean = false
+
+    // Define a request code for SettingsActivity
+    private val SETTINGS_REQUEST_CODE = 1001
+
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,17 +59,29 @@ class MainActivity : ComponentActivity() {
             val currentContext = LocalContext.current
             val currentContainerSize = LocalWindowInfo.current.containerSize // Use LocalWindowInfo
 
+//            val toastMsg by storeViewModel.toastMessage.collectAsState()
+//
+//            // Show toast when toastMsg changes
+//            LaunchedEffect(toastMsg) {
+//                toastMsg?.let {
+//                    Toast.makeText(currentContext, it, Toast.LENGTH_SHORT).show()
+//                    storeViewModel.clearToastMessage() // Clear the message after showing
+//                }
+//            }
+
             ScreenEnvironment(
                 lastAppliedTheme,
                 lastAppliedCoverThemeEnabled,
                 lastAppliedBlackedOutMode,
 
-                ) { layoutType, isLandscape ->
+                ) {
+                layoutType, isLandscape ->
                 XenonStoreApp(
                     layoutType = layoutType,
                     onOpenSettings = {
                         val intent = Intent(currentContext, SettingsActivity::class.java)
-                        currentContext.startActivity(intent)
+                        // Start activity for result
+                        startActivityForResult(intent, SETTINGS_REQUEST_CODE)
                     },
                     isLandscape = isLandscape,
                     appSize = currentContainerSize,
@@ -71,7 +93,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Refresh app list on every resume
+        storeViewModel.fetchAndRefreshAppList(useCache = false)
         storeViewModel.verifyAndRefreshPendingInstallations()
+
 
         val currentThemePref = sharedPreferenceManager.theme
         val currentCoverThemeEnabled = sharedPreferenceManager.coverThemeEnabled
@@ -92,6 +117,16 @@ class MainActivity : ComponentActivity() {
             recreate()
         }
     }
+
+    // Handle the result from SettingsActivity
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == SETTINGS_REQUEST_CODE && resultCode == RESULT_OK) {
+            // Settings were exited, refresh the app list
+            storeViewModel.fetchAndRefreshAppList(useCache = false)
+        }
+    }
+
 
     private fun updateAppCompatDelegateTheme(themePref: Int) {
         if (themePref >= 0 && themePref < sharedPreferenceManager.themeFlag.size) {
