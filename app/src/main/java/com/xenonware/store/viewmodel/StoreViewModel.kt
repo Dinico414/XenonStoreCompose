@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.xenonware.store.viewmodel
 
 import android.app.Application
@@ -6,10 +8,10 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xenonware.store.InstallMethod
@@ -47,7 +49,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     val storeItems: StateFlow<List<StoreItem>> = _storeItems.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -61,7 +62,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private val _xenonStoreDownloadProgress = MutableStateFlow(0f)
     val xenonStoreDownloadProgress: StateFlow<Float> = _xenonStoreDownloadProgress.asStateFlow()
 
-    private val client: OkHttpClient
+    private val client: OkHttpClient = OkHttpClient.Builder().build()
     private val sharedPreferenceManager = SharedPreferenceManager(application)
     private val packageInstallReceiver: PackageInstallReceiver
 
@@ -77,7 +78,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private var cachedJsonHash: Int = 0
 
     init {
-        client = OkHttpClient.Builder().build()
         fetchAndRefreshAppList()
         checkForXenonStoreUpdate()
 
@@ -181,8 +181,8 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     _currentActionInfo.value = "App list updated."
                 }
 
-                override fun onFailure(errorMessage: String) {
-                    _error.value = "Failed to fetch app list: $errorMessage"
+                override fun onFailure(error: String) {
+                    _error.value = "Failed to fetch app list: $error"
                     _currentActionInfo.value = null
                 }
             }, useCache)
@@ -202,7 +202,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun refreshAppItemBlocking(
         appItem: StoreItem,
         githubInfoUseCache: Boolean,
-        forceStateReEvaluation: Boolean = false 
+        forceStateReEvaluation: Boolean = false,
     ): StoreItem {
         return withContext(Dispatchers.IO) {
             val currentAppItem = appItem.copy() 
@@ -249,7 +249,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             val context = getApplication<Application>().applicationContext
             val packageInfo = context.packageManager.getPackageInfo(packageName, 0)
             packageInfo.versionName
-        } catch (e: PackageManager.NameNotFoundException) {
+        } catch (_: PackageManager.NameNotFoundException) {
             null
         } catch (e: Exception) {
             Log.e(TAG, "Error getting installed app version for $packageName: ${e.message}")
@@ -305,8 +305,8 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val response = client.newCall(request).execute()
                 if (!response.isSuccessful) throw IOException("Unexpected code $response for $url")
-                val responseBody = response.body?.string()
-                if (responseBody.isNullOrEmpty()) throw IOException("Empty response body from $url")
+                val responseBody = response.body.string()
+                if (responseBody.isEmpty()) throw IOException("Empty response body from $url")
                 if (checkForPreReleases) {
                     val releasesArray = JSONArray(responseBody)
                     if (releasesArray.length() == 0) throw IOException("No releases found (pre-releases enabled) for $owner/$repo")
@@ -582,20 +582,18 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                   InstallMethod.DEFAULT -> {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            if (!context.packageManager.canRequestPackageInstalls()) {
-                                _error.value = "Permission needed to install apps. Please enable in settings."
-                                val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                                    data = Uri.parse("package:${context.packageName}")
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-                                context.startActivity(settingsIntent)
-                                _currentActionInfo.value = null
-                                if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
-                                return@launch
-                            }
-                        }
-                        val intent = Intent(Intent.ACTION_VIEW)
+                      if (!context.packageManager.canRequestPackageInstalls()) {
+                          _error.value = "Permission needed to install apps. Please enable in settings."
+                          val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                              data = "package:${context.packageName}".toUri()
+                              addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                          }
+                          context.startActivity(settingsIntent)
+                          _currentActionInfo.value = null
+                          if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+                          return@launch
+                      }
+                      val intent = Intent(Intent.ACTION_VIEW)
                         val fileUri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", apkFile)
                         intent.setDataAndType(fileUri, "application/vnd.android.package-archive")
                         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -632,7 +630,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         _currentActionInfo.value = "Uninstalling ${storeItem.getName(getCurrentLanguage(context.resources))}..."
         try {
             val intent = Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply {
-                data = Uri.parse("package:${storeItem.packageName}")
+                data = "package:${storeItem.packageName}".toUri()
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
@@ -674,9 +672,11 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 val updatedItem = currentItem.copy(
                     state = newState,
                     bytesDownloaded = if (newState == AppEntryState.DOWNLOADING) bytesDownloaded else 0,
-                    fileSize = if (newState == AppEntryState.DOWNLOADING && fileSize > 0) fileSize
-                               else if (newState == AppEntryState.DOWNLOADING && currentItem.fileSize > 0) currentItem.fileSize
-                               else 0
+                    fileSize = when (newState) {
+                        AppEntryState.DOWNLOADING if fileSize > 0 -> fileSize
+                        AppEntryState.DOWNLOADING if currentItem.fileSize > 0 -> currentItem.fileSize
+                        else -> 0
+                    }
                 )
                 if (currentList[itemIndex] != updatedItem) { 
                     currentList[itemIndex] = updatedItem
@@ -701,7 +701,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     listener.onFailure("Response error code: ${response.code} from $url")
                     return
                 }
-                response.body?.string()?.let { listener.onCompleted(it) } ?: listener.onFailure("Empty body from $url")
+                response.body.string().let { listener.onCompleted(it) }
             }
             override fun onFailure(call: Call, e: IOException) { listener.onFailure("Download failed for $url: ${e.message}") }
         })
@@ -710,7 +710,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private fun downloadFile(
         url: String, destinationFile: File,
         onProgress: (bytesDownloaded: Long, fileSize: Long) -> Unit,
-        onCompleted: () -> Unit, onFailure: (errorMsg: String) -> Unit
+        onCompleted: () -> Unit, onFailure: (errorMsg: String) -> Unit,
     ) {
         val request = Request.Builder().url(url).build()
         val freshClient = OkHttpClient.Builder().cache(null).build() // Use a fresh client to bypass OkHttp caching for downloads
@@ -719,7 +719,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) { viewModelScope.launch { onFailure("Server error: ${response.code} for $url") }; return }
                 val body = response.body
-                if (body == null) { viewModelScope.launch { onFailure("Empty response body for $url") }; return }
                 val fileSize = body.contentLength()
                 var bytesCopied: Long = 0
                 try {
@@ -747,7 +746,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun clearError() { _error.value = null }
-    fun clearActionInfo() { _currentActionInfo.value = null }
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
