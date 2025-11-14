@@ -14,6 +14,7 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.xenonware.store.BuildConfig
 import com.xenonware.store.InstallMethod
 import com.xenonware.store.SharedPreferenceManager
 import com.xenonware.store.ShizukuManager
@@ -73,7 +74,11 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         const val XENON_STORE_OWNER = "Dinico414"
         const val XENON_STORE_REPO = "XenonStoreCompose"
         const val SHIZUKU_PERMISSION_REQUEST_CODE = 1001
+
+        val CLOUD_RUN_API_URL = "https://appstore-cache-8027822132.europe-west1.run.app"
+        const val CLOUD_API_ENDPOINT = "/api/apps"
     }
+
 
     private var cachedJsonHash: Int = 0
 
@@ -101,26 +106,26 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     fun handlePackageChanged(packageName: String) {
         viewModelScope.launch {
-            val currentList = _fullStoreItems.value // Filtered list based on search, so use full list here
+            val currentList = _fullStoreItems.value
             val itemIndex = currentList.indexOfFirst { it.packageName == packageName }
             if (itemIndex != -1) {
                 val itemToRefresh = currentList[itemIndex]
                 val refreshedItem = refreshAppItemBlocking(
                     itemToRefresh.copy(),
-                    githubInfoUseCache = true, 
-                    forceStateReEvaluation = true 
+                    githubInfoUseCache = true,
+                    forceStateReEvaluation = true
                 )
                 val newList = currentList.toMutableList()
                 newList[itemIndex] = refreshedItem
-                _fullStoreItems.value = newList.toList() // Update the full list
-                filterStoreItems(_searchQuery.value) // Re-filter to update visible list
+                _fullStoreItems.value = newList.toList()
+                filterStoreItems(_searchQuery.value)
                 Log.d(TAG, "Refreshed item $packageName (state: ${refreshedItem.state}) due to package change.")
             } else if (packageName == XENON_STORE_PACKAGE_NAME) {
                 checkForXenonStoreUpdate()
             }
         }
     }
-    
+
     fun verifyAndRefreshPendingInstallations() {
         viewModelScope.launch {
             val itemsToCheck = _fullStoreItems.value.filter { it.state == AppEntryState.INSTALLING }
@@ -161,8 +166,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     fun fetchAndRefreshAppList(useCache: Boolean = true) {
         viewModelScope.launch {
             _currentActionInfo.value = "Refreshing app list..."
-            val urlString =
-                "https://raw.githubusercontent.com/Dinico414/Xenon-Commons/master/app_list.json"
+            val urlString = CLOUD_RUN_API_URL + CLOUD_API_ENDPOINT
             downloadToString(urlString, object : DownloadListener<String> {
                 override fun onCompleted(result: String) {
                     val hash = result.hashCode()
@@ -176,13 +180,13 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     Log.d(TAG, "Parsing new app list JSON or cache miss/invalidated.")
                     val appList = parseAppListJson(result)
                     _fullStoreItems.value = appList // Store the full list
-                    refreshAllAppItemsStates(false) 
+                    refreshAllAppItemsStates(false)
                     filterStoreItems(_searchQuery.value) // Apply current search query
                     _currentActionInfo.value = "App list updated."
                 }
 
                 override fun onFailure(error: String) {
-                    _error.value = "Failed to fetch app list: $error"
+                    _error.value = "Failed to fetch app list from Cloud Run: $error"
                     _currentActionInfo.value = null
                 }
             }, useCache)
@@ -205,7 +209,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         forceStateReEvaluation: Boolean = false,
     ): StoreItem {
         return withContext(Dispatchers.IO) {
-            val currentAppItem = appItem.copy() 
+            val currentAppItem = appItem.copy()
             currentAppItem.installedVersion = getInstalledAppVersion(currentAppItem.packageName) ?: ""
 
             val shouldFetchFromGitHub = currentAppItem.newVersion.isEmpty() ||
@@ -226,7 +230,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             val previousState = currentAppItem.state
             if (forceStateReEvaluation || (previousState != AppEntryState.DOWNLOADING && previousState != AppEntryState.INSTALLING)) {
                 if (currentAppItem.installedVersion.isNotEmpty()) {
-                    if (currentAppItem.isOutdated()) { 
+                    if (currentAppItem.isOutdated()) {
                         currentAppItem.state = AppEntryState.INSTALLED_AND_OUTDATED
                     } else {
                         currentAppItem.state = AppEntryState.INSTALLED
@@ -235,7 +239,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     currentAppItem.state = AppEntryState.NOT_INSTALLED
                 }
             }
-            
+
             if (currentAppItem.state != AppEntryState.DOWNLOADING) {
                 currentAppItem.bytesDownloaded = 0
                 currentAppItem.fileSize = 0
@@ -266,7 +270,11 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 _error.value = "App store client is outdated. Please update XenonStore."
                 return emptyList()
             }
-            val list = json.getJSONArray("appList")
+            val list = if (jsonString.startsWith("[")) {
+                 JSONArray(jsonString)
+            } else {
+                json.optJSONArray("data") ?: json.getJSONArray("appList")
+            }
             for (i in 0 until list.length()) {
                 val el = list.getJSONObject(i)
                 val nameMap = HashMap<String, String>()
@@ -439,13 +447,13 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 },
                 onFailure = { errorMsg ->
                     _error.value = "Download failed for ${itemToInstall.getName(getCurrentLanguage(context.resources))}: $errorMsg"
-                    handlePackageChanged(itemToInstall.packageName) 
+                    handlePackageChanged(itemToInstall.packageName)
                     _currentActionInfo.value = null
                 }
             )
         }
     }
-    
+
     private fun updateItemInList(updatedItem: StoreItem) {
         viewModelScope.launch {
             val currentList = _fullStoreItems.value.toMutableList() // Use full list
@@ -480,7 +488,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 job.join()
                 exitCode = process.waitFor()
-                
+
                 val logMessage = "Root command '$command'\\nExit code: $exitCode\\nStdout:\\n$output\\nStderr:\\n$errorOutput"
                 if (exitCode == 0) {
                     Log.d(TAG, logMessage)
@@ -505,7 +513,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 when (installMethod) {
                     InstallMethod.SHIZUKU -> {
                         _currentActionInfo.value = "Waiting for Shizuku service..."
-                        val isReady = withTimeoutOrNull(5000L) { 
+                        val isReady = withTimeoutOrNull(5000L) {
                          ShizukuManager.isAvailable.first { it }
                         } ?: false
 
@@ -563,7 +571,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
                         // 3. Install from /data/local/tmp/
                         val (installSuccess, installMessage) = executeRootCommand("pm install -g -r \"$tempApkPath\"")
-                        
+
                         // 4. Delete the temp APK
                         val (deleteSuccess, deleteMessage) = executeRootCommand("rm \"$tempApkPath\"")
                         if (!deleteSuccess) {
@@ -678,7 +686,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                         else -> 0
                     }
                 )
-                if (currentList[itemIndex] != updatedItem) { 
+                if (currentList[itemIndex] != updatedItem) {
                     currentList[itemIndex] = updatedItem
                     _fullStoreItems.value = currentList.toList() // Update the full list
                     filterStoreItems(_searchQuery.value) // Re-filter to update visible list
