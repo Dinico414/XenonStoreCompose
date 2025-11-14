@@ -1,4 +1,4 @@
-@file:Suppress("DEPRECATION")
+@file:Suppress("DEPRECATION", "SameParameterValue")
 
 package com.xenonware.store.viewmodel
 
@@ -14,7 +14,6 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.xenonware.store.BuildConfig
 import com.xenonware.store.InstallMethod
 import com.xenonware.store.SharedPreferenceManager
 import com.xenonware.store.ShizukuManager
@@ -75,7 +74,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         const val XENON_STORE_REPO = "XenonStoreCompose"
         const val SHIZUKU_PERMISSION_REQUEST_CODE = 1001
 
-        val CLOUD_RUN_API_URL = "https://appstore-cache-8027822132.europe-west1.run.app"
+        const val CLOUD_RUN_API_URL = "https://appstore-cache-8027822132.europe-west1.run.app"
         const val CLOUD_API_ENDPOINT = "/api/apps"
     }
 
