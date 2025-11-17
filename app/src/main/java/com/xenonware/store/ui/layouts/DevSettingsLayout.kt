@@ -13,21 +13,24 @@ import com.xenonware.store.viewmodel.LayoutType
 fun DevSettingsLayout(
     onNavigateBack: () -> Unit,
     viewModel: DevSettingsViewModel,
+    isLandscape: Boolean,
     layoutType: LayoutType,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (layoutType) {
             LayoutType.COVER -> {
-              DevCoverSettings(
+                DevCoverSettings(
                     onNavigateBack = onNavigateBack,
                     viewModel = viewModel
                 )
             }
             LayoutType.SMALL, LayoutType.COMPACT, LayoutType.MEDIUM, LayoutType.EXPANDED -> {
-               DevDefaultSettings(
+                DevDefaultSettings(
                     onNavigateBack = onNavigateBack,
                     viewModel = viewModel,
+                    layoutType = layoutType,
+                    isLandscape = isLandscape
                 )
             }
         }
