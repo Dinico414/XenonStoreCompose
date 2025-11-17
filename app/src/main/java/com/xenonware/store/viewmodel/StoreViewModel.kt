@@ -222,7 +222,9 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     Log.d(TAG, "Parsing new app list JSON or cache miss/invalidated.")
 
                     val cloudList = parseAppListJson(result)
-                    _cloudStoreItems.value = cloudList
+                    _cloudStoreItems.value = cloudList.filter { cloudItem ->
+                        _customStoreItems.value.none { customItem -> customItem.packageName == cloudItem.packageName }
+                    }
                     refreshAllAppItemsStates(false, isCustomList = false) // Refresh new cloud list
                     _currentActionInfo.value = "App list updated."
                     showToast("App list refreshed!")
@@ -871,15 +873,16 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun filterStoreItems(query: String) {
-        val combinedList = _customStoreItems.value + _cloudStoreItems.value
-        val distinctList = combinedList.distinctBy { it.packageName }
+        val combinedList = (_customStoreItems.value + _cloudStoreItems.value)
+            .distinctBy { it.packageName }
 
         if (query.isBlank()) {
-            _storeItems.value = distinctList
+            _storeItems.value = combinedList
             return
         }
+
         val lowerCaseQuery = query.lowercase()
-        val filteredList = distinctList.filter { storeItem ->
+        val filteredList = combinedList.filter { storeItem ->
             val appNameMatches = storeItem.nameMap.any { (_, name) ->
                 name.lowercase().contains(lowerCaseQuery)
             } || storeItem.packageName.lowercase().contains(lowerCaseQuery)
@@ -887,6 +890,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
         _storeItems.value = filteredList
     }
+
 
     override fun onCleared() {
         super.onCleared()

@@ -2,7 +2,9 @@ package com.xenonware.store.viewmodel.classes
 
 import android.content.Context
 import com.xenonware.store.utils.Utils // Assuming Utils.getCurrentLanguage
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class AppEntryState {
     NOT_INSTALLED,
     DOWNLOADING,
@@ -11,6 +13,7 @@ enum class AppEntryState {
     INSTALLED_AND_OUTDATED
 }
 
+@Serializable
 data class StoreItem(
     val nameMap: Map<String, String>,
     val iconPath: String,
