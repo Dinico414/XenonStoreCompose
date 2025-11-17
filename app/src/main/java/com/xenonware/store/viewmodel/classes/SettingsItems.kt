@@ -204,7 +204,6 @@ fun SettingsItems(
                 tint = tileSubtitleColor
             )
         },
-        // Language is now top of a new group with Pre-release
         shape = tileShapeOverride ?: topShape,
         backgroundColor = tileBackgroundColor,
         contentColor = tileContentColor,
@@ -229,7 +228,6 @@ fun SettingsItems(
                 tint = tileSubtitleColor
             )
         },
-        // This tile is now the bottom of a group of two
         shape = tileShapeOverride ?: bottomShape,
         backgroundColor = tileBackgroundColor,
         contentColor = tileContentColor,
@@ -285,7 +283,7 @@ fun SettingsItems(
     Spacer(Modifier.height(actualInnerGroupSpacing))
     SettingsTile(
         title = stringResource(R.string.version),
-        subtitle = "v $appVersion" + if (developerModeEnabled) " (Developer)" else "", // developerModeEnabled from SettingsViewModel
+        subtitle = "v $appVersion" + if (developerModeEnabled) " (Developer)" else "",
         onClick = { viewModel.onInfoTileClicked(context) },
         onLongClick = { viewModel.openImpressum(context) },
         icon = {
@@ -303,7 +301,6 @@ fun SettingsItems(
         verticalPadding = tileVerticalPadding
     )
 
-    // Developer Options section - developerModeEnabled from SettingsViewModel controls its visibility
     if (developerModeEnabled) {
         Spacer(Modifier.height(actualOuterGroupSpacing))
         SettingsTile(
@@ -323,7 +320,6 @@ fun SettingsItems(
                     tint = tileSubtitleColor
                 )
             },
-            // If this is the only item in dev options, it's standalone
             shape = tileShapeOverride ?: standaloneShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,

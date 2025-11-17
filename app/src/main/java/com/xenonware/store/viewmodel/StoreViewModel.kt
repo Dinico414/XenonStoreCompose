@@ -467,6 +467,51 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun addGitHubRepoConfig(owner: String, repo: String, packageName: String, gitHubPAT: String?) {
+        viewModelScope.launch {
+            // Create a new StoreItem from the provided data
+            val newItem = StoreItem(
+                nameMap = hashMapOf("en" to repo), // Default name to repo name
+                iconPath = "", // No icon initially
+                githubUrl = "https://github.com/$owner/$repo",
+                packageName = packageName
+            )
+
+            // Add the new item to the main list and refresh it
+            val currentList = _fullStoreItems.value.toMutableList()
+            currentList.add(newItem)
+            _fullStoreItems.value = currentList.toList()
+            handlePackageChanged(packageName) // This will trigger a refresh for the new item
+
+            // TODO: Persist the new repository config using SharedPreferenceManager or a database
+            // sharedPreferenceManager.saveGitHubRepo(owner, repo, packageName, gitHubPAT)
+
+            // Logic for scheduling updates based on PAT
+            if (gitHubPAT.isNullOrEmpty()) {
+                Log.d(TAG, "Scheduling daily update check for $owner/$repo.")
+                // TODO: Implement WorkManager to schedule a daily worker
+                // val dailyWorkRequest = OneTimeWorkRequestBuilder<UpdateWorker>()
+                //     .setInitialDelay(24, TimeUnit.HOURS)
+                //     .setInputData(workDataOf("owner" to owner, "repo" to repo))
+                //     .build()
+                // WorkManager.getInstance(getApplication()).enqueue(dailyWorkRequest)
+            } else {
+                Log.d(TAG, "Scheduling half-hourly update check for $owner/$repo.")
+                // TODO: Implement WorkManager to schedule a periodic worker
+                // val periodicWorkRequest = PeriodicWorkRequestBuilder<UpdateWorker>(30, TimeUnit.MINUTES)
+                //     .setInputData(workDataOf("owner" to owner, "repo" to repo, "pat" to gitHubPAT))
+                //     .build()
+                // WorkManager.getInstance(getApplication()).enqueueUniquePeriodicWork(
+                //     "$owner/$repo",
+                //     ExistingPeriodicWorkPolicy.REPLACE,
+                //     periodicWorkRequest
+                // )
+            }
+            showToast("Added $repo to the list!")
+        }
+    }
+
+
     private fun updateItemInList(updatedItem: StoreItem) {
         viewModelScope.launch {
             val currentList = _fullStoreItems.value.toMutableList() // Use full list

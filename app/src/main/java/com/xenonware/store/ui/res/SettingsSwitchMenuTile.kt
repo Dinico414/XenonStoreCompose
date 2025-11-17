@@ -92,7 +92,9 @@ fun SettingsSwitchMenuTile(
                 Spacer(modifier = Modifier.width(iconSpacing))
             }
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = iconSpacing)
             ) {
                 Text(
                     text = title,

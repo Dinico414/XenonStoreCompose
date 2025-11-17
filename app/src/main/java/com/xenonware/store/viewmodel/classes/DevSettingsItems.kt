@@ -1,6 +1,7 @@
 package com.xenonware.store.viewmodel.classes
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,7 +10,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -31,6 +37,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.LargerPadding
 import com.xenon.mylibrary.values.MediumCornerRadius
@@ -39,8 +46,10 @@ import com.xenon.mylibrary.values.SmallSpacing
 import com.xenon.mylibrary.values.SmallestCornerRadius
 import com.xenonware.store.InstallMethod
 import com.xenonware.store.R
+import com.xenonware.store.ui.res.SettingsSwitchMenuTile
 import com.xenonware.store.ui.res.SettingsSwitchTile
 import com.xenonware.store.ui.res.SettingsTile
+import com.xenonware.store.ui.res.XenonDialog
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.SettingsViewModel
 
@@ -63,6 +72,7 @@ fun DevSettingsItems(
 ) {
     val isDeveloperModeEnabled by viewModel.devModeToggleState.collectAsState()
     val isShowDummyProfileEnabled by viewModel.showDummyProfileState.collectAsState()
+    val isAddButtonEnabled by viewModel.addButtonState.collectAsState()
 
     LocalContext.current
     LocalHapticFeedback.current
@@ -77,6 +87,7 @@ fun DevSettingsItems(
     val isShizukuAvailable by viewModel.isShizukuAvailable.collectAsState()
     var showInstallMethodDialog by remember { mutableStateOf(false) }
     val currentInstallMethod by viewModel.installMethodState.collectAsState()
+    var showGithubAppDialog by remember { mutableStateOf(false) }
 
 
     val topShape = if (useGroupStyling) RoundedCornerShape(
@@ -125,7 +136,7 @@ fun DevSettingsItems(
                 val newCheckedState = !isDeveloperModeEnabled
                 viewModel.setDeveloperModeEnabled(newCheckedState)
             },
-            shape = tileShapeOverride ?: topShape,
+            shape = tileShapeOverride ?: if (!isDeveloperModeEnabled) standaloneShape else topShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
@@ -171,57 +182,120 @@ fun DevSettingsItems(
 
                 )
 
+            Spacer(
+                modifier = Modifier.height(
+                    ExtraLargeSpacing
+                )
+            )
+
+            SettingsSwitchMenuTile(
+                title = stringResource(R.string.github_app),
+                subtitle = stringResource(R.string.github_app_description),
+                checked = isAddButtonEnabled,
+                onCheckedChange = { viewModel.setAddButtonEnabled(it) },
+                onClick = { showGithubAppDialog = true },
+                shape = tileShapeOverride ?: standaloneShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+
+            )
+
+
             if (showInstallMethodDialog) {
-                AlertDialog(
+                XenonDialog(
                     onDismissRequest = { showInstallMethodDialog = false },
-                    title = { Text(stringResource(R.string.select_install_method_title)) },
-                    text = {
-                        Column {
-                            InstallMethod.values().forEach { method ->
-                                val isEnabled =
-                                    if (method == InstallMethod.SHIZUKU) isShizukuAvailable else true
-                                Row(Modifier
-                                    .fillMaxWidth()
-                                    .clickable(enabled = isEnabled) {
-                                        viewModel.setInstallMethod(method)
-                                        showInstallMethodDialog = false
-                                    }
-                                    .padding(vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically) {
-                                    RadioButton(
-                                        selected = (method == currentInstallMethod),
-                                        onClick = null,
-                                        enabled = isEnabled
+                    title = stringResource(R.string.select_install_method_title),
+                    properties = DialogProperties(usePlatformDefaultWidth = true),
+                    ) {
+                    Column {
+                        InstallMethod.values().forEach { method ->
+                            val isEnabled =
+                                if (method == InstallMethod.SHIZUKU) isShizukuAvailable else true
+                            Row(modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = isEnabled) {
+                                    viewModel.setInstallMethod(method)
+                                    showInstallMethodDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    selected = (method == currentInstallMethod),
+                                    onClick = null,
+                                    enabled = isEnabled
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = getInstallMethodName(method),
+                                        color = if (isEnabled) LocalContentColor.current else MaterialTheme.colorScheme.onSurface.copy(
+                                            alpha = 0.38f
+                                        )
                                     )
-                                    Spacer(Modifier.width(8.dp))
-                                    Column {
+                                    if (method == InstallMethod.SHIZUKU && !isShizukuAvailable) {
                                         Text(
-                                            text = getInstallMethodName(method),
-                                            color = if (isEnabled) LocalContentColor.current else MaterialTheme.colorScheme.onSurface.copy(
+                                            text = stringResource(R.string.disabled),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(
                                                 alpha = 0.38f
                                             )
                                         )
-                                        if (method == InstallMethod.SHIZUKU && !isShizukuAvailable) {
-                                            Text(
-                                                text = stringResource(R.string.disabled),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurface.copy(
-                                                    alpha = 0.38f
-                                                )
-                                            )
-                                        }
                                     }
                                 }
                             }
                         }
-                    },
-                    confirmButton = { },
-                    dismissButton = {
-                        TextButton(onClick = { showInstallMethodDialog = false }) {
-                            Text(stringResource(R.string.cancel))
-                        }
-                    })
+                    }
+                }
             }
+//            if (showGithubAppDialog) {
+//                val githubApps by viewModel.githubApps.collectAsState()
+//                XenonDialog(
+//                    onDismissRequest = { showGithubAppDialog = false },
+//                    title = stringResource(R.string.manage_github_apps_title),
+//                    properties = DialogProperties(usePlatformDefaultWidth = true),
+//                ) {
+//                    Column {
+//                        if (githubApps.isEmpty()) {
+//                            Text(
+//                                text = stringResource(R.string.no_github_apps_added),
+//                                modifier = Modifier.padding(16.dp)
+//                            )
+//                        } else {
+//                            githubApps.forEach { app ->
+//                                Row(
+//                                    modifier = Modifier
+//                                        .fillMaxWidth()
+//                                        .padding(vertical = 8.dp),
+//                                    verticalAlignment = Alignment.CenterVertically,
+//                                    horizontalArrangement = Arrangement.SpaceBetween
+//                                ) {
+//                                    IconButton(onClick = { viewModel.onEditGitHubApp(app) }) {
+//                                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))
+//                                    }
+//                                    Text(
+//                                        text = app.name,
+//                                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+//                                    )
+//                                    IconButton(onClick = { viewModel.onDeleteGitHubApp(app) }) {
+//                                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
+//                                    }
+//                                }
+//                            }
+//                        }
+//
+//                        // Add new app button
+//                        TextButton(
+//                            onClick = {
+//                                viewModel.onAddGitHubApp()
+//                                showGithubAppDialog = false
+//                            },
+//                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+//                        ) {
+//                            Text(stringResource(R.string.add_new_github_app))
+//                        }
+//                    }
+//                }
+//            }
         }
     }
 }

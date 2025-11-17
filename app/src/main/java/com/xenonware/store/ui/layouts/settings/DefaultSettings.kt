@@ -37,12 +37,15 @@ import com.xenonware.store.ui.res.DialogCoverDisplaySelection
 import com.xenonware.store.ui.res.DialogLanguageSelection
 import com.xenonware.store.ui.res.DialogResetSettingsConfirmation
 import com.xenonware.store.ui.res.DialogThemeSelection
+import com.xenonware.store.ui.res.DialogVersionNumber
+import com.xenonware.store.ui.res.VersionInfo
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.SettingsViewModel
 import com.xenonware.store.viewmodel.classes.SettingsItems
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import com.xenonware.store.BuildConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +67,7 @@ fun DefaultSettings(
     val showClearDataDialog by viewModel.showClearDataDialog.collectAsState()
     val showResetSettingsDialog by viewModel.showResetSettingsDialog.collectAsState()
     val showCoverSelectionDialog by viewModel.showCoverSelectionDialog.collectAsState()
+    val showVersionDialog by viewModel.showVersionDialog.collectAsState()
     val coverThemeEnabled by viewModel.enableCoverTheme.collectAsState()
 
     val showLanguageDialog by viewModel.showLanguageDialog.collectAsState()
@@ -73,6 +77,7 @@ fun DefaultSettings(
     viewModel.availableDateFormats
     val currentFormattedDateTime by viewModel.currentFormattedDateTime.collectAsState()
 
+    // Note: These strings ("HH:mm", etc) do nothing here, but I left them as provided
     remember { viewModel.systemShortTimePattern }
     "HH:mm"
     "h:mm a"
@@ -110,14 +115,6 @@ fun DefaultSettings(
             else -> isSystemCurrentlyDark
         }
     }
-
-//    when (layoutType) {
-//        LayoutType.SMALL -> false
-//        LayoutType.COMPACT -> !isLandscape
-//        LayoutType.MEDIUM -> true
-//        LayoutType.EXPANDED -> true
-//        else -> true
-//    }
 
     val isAppBarCollapsible = when (layoutType) {
         LayoutType.COVER -> false
@@ -235,5 +232,20 @@ fun DefaultSettings(
                 onConfirm = { viewModel.applySelectedLanguage() })
         }
     }
+    if (showVersionDialog) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeEffect(hazeState)
+        ) {
+            DialogVersionNumber(
+                onDismiss = { viewModel.dismissVersionDialog() },
+                versionInfo = VersionInfo(
+                    appVersion = appVersion,
+                    xenonUIVersion = "3.0",
+                    xenonCommonsVersion = BuildConfig.XENON_COMMONS_VERSION
+                )
+            )
+        }
+    }
 }
-

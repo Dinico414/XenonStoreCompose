@@ -6,6 +6,8 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.unit.IntSize
 import androidx.core.content.edit
 import com.xenonware.store.viewmodel.ThemeSetting
+import com.xenonware.store.viewmodel.classes.StoreItem
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.math.max
 import kotlin.math.min
@@ -31,16 +33,43 @@ class SharedPreferenceManager(context: Context) {
     private val timeFormatKey = "time_format_key"
     private val developerModeKey = "developer_mode_enabled"
     private val showDummyProfileKey = "show_dummy_profile_enabled"
+    private val addButtonStateKey = "add_button_state_enabled"
     private val checkForPreReleasesKey = "check_for_pre_releases"
-    private val installMethodKey = "install_method" // New key for install method
+    private val installMethodKey = "install_method"
+    private val customStoreItemsKey = "custom_store_items" // Key for custom apps
 
     internal val sharedPreferences: SharedPreferences =
         context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
 
-    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+        prettyPrint = true // Makes debugging JSON easier
+    }
 
     private val defaultDateFormat = "yyyy-MM-dd"
     private val defaultTimeFormat = "HH:mm"
+
+    // --- Custom Store Items ---
+    fun saveCustomStoreItems(items: List<StoreItem>) {
+        val jsonString = json.encodeToString(items)
+        sharedPreferences.edit { putString(customStoreItemsKey, jsonString) }
+    }
+
+    fun loadCustomStoreItems(): List<StoreItem> {
+        val jsonString = sharedPreferences.getString(customStoreItemsKey, null)
+        return if (jsonString != null && jsonString.isNotEmpty()) {
+            try {
+                json.decodeFromString<List<StoreItem>>(jsonString)
+            } catch (e: Exception) {
+                // Handle potential deserialization errors
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+    }
+    // -------------------------
 
     var theme: Int
         get() = sharedPreferences.getInt(themeKey, ThemeSetting.SYSTEM.ordinal)
@@ -89,6 +118,11 @@ class SharedPreferenceManager(context: Context) {
     var showDummyProfileEnabled: Boolean
         get() = sharedPreferences.getBoolean(showDummyProfileKey, false)
         set(value) = sharedPreferences.edit { putBoolean(showDummyProfileKey, value) }
+
+    var addButtonEnabled: Boolean
+        get() = sharedPreferences.getBoolean(addButtonStateKey, false)
+        set(value) = sharedPreferences.edit { putBoolean(addButtonStateKey, value) }
+
 
     var checkForPreReleases: Boolean
         get() = sharedPreferences.getBoolean(checkForPreReleasesKey, false)

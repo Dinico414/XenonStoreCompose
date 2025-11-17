@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -72,6 +74,7 @@ import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.store.R
+import com.xenonware.store.ui.res.DialogGitHubApps
 import com.xenonware.store.ui.res.DialogShareSelector
 import com.xenonware.store.ui.res.GoogleProfilBorder
 import com.xenonware.store.ui.res.StoreItemCell
@@ -111,7 +114,16 @@ fun CompactStore(
     var currentSearchQuery by remember { mutableStateOf("") }
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     var showShareDialog by rememberSaveable { mutableStateOf(false) }
+    var showGitHubDialog by remember { mutableStateOf(false) }
 
+    // State variables for GitHub dialog inputs
+    var ownerInput by rememberSaveable { mutableStateOf("") }
+    var repoInput by rememberSaveable { mutableStateOf("") }
+    var packageNameInput by rememberSaveable { mutableStateOf("") }
+    var gitHubPATInput by rememberSaveable { mutableStateOf("") }
+
+
+    val isAddButtonEnabled by devSettingsViewModel.addButtonState.collectAsState()
     val showDummyProfile by devSettingsViewModel.showDummyProfileState.collectAsState()
     val isDeveloperModeEnabled by devSettingsViewModel.devModeToggleState.collectAsState()
 
@@ -181,6 +193,39 @@ fun CompactStore(
         DialogShareSelector(onDismissRequest = { showShareDialog = false })
     }
 
+    if (showGitHubDialog) {
+        DialogGitHubApps(
+            onDismissRequest = { showGitHubDialog = false },
+            onConfirm = {
+                storeViewModel.addGitHubRepoConfig(
+                    owner = ownerInput,
+                    repo = repoInput,
+                    packageName = packageNameInput,
+                    gitHubPAT = if (gitHubPATInput.isEmpty()) null else gitHubPATInput
+                )
+                showGitHubDialog = false
+                // Clear input fields after confirmation
+                ownerInput = ""
+                repoInput = ""
+                packageNameInput = ""
+                gitHubPATInput = ""
+            },
+            owner = ownerInput,
+            onOwnerChange = { ownerInput = it },
+            repo = repoInput,
+            onRepoChange = { repoInput = it },
+            packageName = packageNameInput,
+            onPackageNameChange = { packageNameInput = it },
+            gitHubPAT = gitHubPATInput,
+            onGitHubPATChange = { gitHubPATInput = it }
+        )
+    }
+
+
+    fun resetGitHubDialogState() {
+
+    }
+
     Scaffold(
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
@@ -204,7 +249,10 @@ fun CompactStore(
                 selectedNoteIds = emptyList(),
                 onClearSelection = { },
                 isAddModeActive = false,
-                onAddModeToggle = { /* Not implemented in CompactStore yet */ },
+                onAddModeToggle = {
+                    resetGitHubDialogState()
+                    showGitHubDialog = true
+                },
                 isSearchActive = isSearchActive,
                 onIsSearchActiveChange = { isSearchActive = it },
                 defaultContent = { iconsAlphaDuration, showActionIconsExceptSearch ->
@@ -305,10 +353,11 @@ fun CompactStore(
                         }
                     }
                 },
-               isFabEnabled = false,
-
+               isFabEnabled = isAddButtonEnabled,
                )
         },
+
+
 
         ) { scaffoldPadding ->
         ActivityScreen(

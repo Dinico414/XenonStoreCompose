@@ -17,6 +17,7 @@ android {
         versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "XENON_COMMONS_VERSION", "\"${libs.versions.xenonCommons.get()}\"")
     }
 
     buildTypes {
@@ -27,6 +28,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("debug")
+            buildConfigField("String", "XENON_COMMONS_VERSION", "\"${libs.versions.xenonCommons.get()}\"")
+
         }
         release {
             isMinifyEnabled = true
@@ -34,6 +37,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("debug")
+            buildConfigField("String", "XENON_COMMONS_VERSION", "\"${libs.versions.xenonCommons.get()}\"")
+
         }
     }
     compileOptions {
@@ -45,8 +50,8 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
-
     applicationVariants.all {
         outputs.all {
             val outputFileName = if (buildType.name == "release") {

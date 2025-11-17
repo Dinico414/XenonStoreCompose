@@ -19,14 +19,23 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
     private val _devModeToggleState = MutableStateFlow(sharedPreferenceManager.developerModeEnabled)
     val devModeToggleState: StateFlow<Boolean> = _devModeToggleState
 
-    private val _showDummyProfileState = MutableStateFlow(sharedPreferenceManager.showDummyProfileEnabled)
+    private val _showDummyProfileState =
+        MutableStateFlow(sharedPreferenceManager.showDummyProfileEnabled)
     val showDummyProfileState: StateFlow<Boolean> = _showDummyProfileState
+
+    private val _addButtonState =
+        MutableStateFlow(sharedPreferenceManager.addButtonEnabled)
+    val addButtonState: StateFlow<Boolean> = _addButtonState
+
 
     private val _installMethodState = MutableStateFlow(sharedPreferenceManager.installMethod)
     val installMethodState: StateFlow<InstallMethod> = _installMethodState
 
-    val isShizukuAvailable: StateFlow<Boolean> = ShizukuManager.isAvailable
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val isShizukuAvailable: StateFlow<Boolean> = ShizukuManager.isAvailable.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            false
+        )
 
     fun setDeveloperModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
@@ -35,9 +44,11 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
 
             if (!enabled) {
                 setShowDummyProfileEnabled(false)
+                setAddButtonEnabled(false)
             }
         }
     }
+
     fun setShowDummyProfileEnabled(enabled: Boolean) {
         viewModelScope.launch {
             if (sharedPreferenceManager.showDummyProfileEnabled != enabled) {
@@ -48,6 +59,18 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
     }
+
+    fun setAddButtonEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            if (sharedPreferenceManager.addButtonEnabled != enabled) {
+                sharedPreferenceManager.addButtonEnabled = enabled
+                _addButtonState.value = enabled
+
+                triggerExampleDevActionThatRequiresRestart()
+            }
+        }
+    }
+
 
     fun setInstallMethod(installMethod: InstallMethod) {
         viewModelScope.launch {
@@ -66,9 +89,7 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
     fun triggerExampleDevActionThatRequiresRestart() {
         viewModelScope.launch {
             Toast.makeText(
-                getApplication(),
-                "To apply changes, restart the app.",
-                Toast.LENGTH_LONG
+                getApplication(), "To apply changes, restart the app.", Toast.LENGTH_LONG
             ).show()
         }
     }

@@ -38,8 +38,9 @@ fun SettingsTile(
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     shape: Shape = RoundedCornerShape(LargeCornerRadius),
+    iconSpacing: Dp = ExtraLargePadding,
     horizontalPadding: Dp = LargestPadding,
-    verticalPadding: Dp = ExtraLargePadding
+    verticalPadding: Dp = ExtraLargePadding,
 ) {
     Row(
         modifier = modifier
@@ -60,11 +61,13 @@ fun SettingsTile(
         icon?.let {
             it()
         }
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = iconSpacing)
+        ) {
             Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = contentColor
+                text = title, style = MaterialTheme.typography.titleMedium, color = contentColor
             )
             if (subtitle.isNotEmpty()) {
                 Text(

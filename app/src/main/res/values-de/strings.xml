@@ -107,9 +107,9 @@
     <string name="task_text">Aufgabe</string>
     <string name="deleted_text">gelöscht</string>
     <string name="task_name">Task Name</string>
-    <string name="developer_options_title">Developer Einstellungen</string>
+    <string name="developer_options_title">Dev Einstellungen</string>
     <string name="dev_settings_description">Aktiviere Alpha und Beta Funktionen</string>
-    <string name="developer_options">Developer Einstellungen</string>
+    <string name="developer_options">Dev Einstellungen</string>
     <string name="already_in_developer_mode">Du bist bereits im Developer Modus</string>
     <string name="developer_mode_enabled">Developer mode aktive!</string>
     <string name="taps_remaining_to_developer">Du bist nun %d schritten entfernt ein developer zu sein.</string>
@@ -132,4 +132,8 @@
     <string name="check_pre_release">Suche nach Pre-Release</string>
     <string name="check_pre_release_describtion">Pre-Release bei der Suche nach Updates einbeziehen</string>
     <string name="select_install_method_title">Install Method</string>
+    <string name="github_app">Custom GitHub app</string>
+    <string name="github_app_description">Show add Button to add custom repository to ber added to the app list (only for you)</string>
+    <string name="add_git_repo">Add GitHub repository</string>
+    <string name="add">Add</string>
 </resources>
