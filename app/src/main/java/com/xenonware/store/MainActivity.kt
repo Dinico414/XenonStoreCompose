@@ -16,6 +16,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelProvider
 import com.xenonware.store.ui.layouts.StoreLayout
 import com.xenonware.store.ui.theme.ScreenEnvironment
+import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.StoreViewModel
 
@@ -24,11 +25,16 @@ import android.widget.Toast
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var sharedPreferenceManager: SharedPreferenceManager
     private lateinit var storeViewModel: StoreViewModel
+    private lateinit var devSettingsViewModel: DevSettingsViewModel
 
     private var lastAppliedTheme: Int = -1
     private var lastAppliedCoverThemeEnabled: Boolean = false
@@ -44,6 +50,16 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         sharedPreferenceManager = SharedPreferenceManager(applicationContext)
         storeViewModel = ViewModelProvider(this).get(StoreViewModel::class.java)
+        devSettingsViewModel = ViewModelProvider(this).get(DevSettingsViewModel::class.java)
+
+        // Observe custom app updates
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                devSettingsViewModel.customAppsUpdated.collect {
+                    storeViewModel.onCustomAppsUpdated()
+                }
+            }
+        }
 
         val initialThemePref = sharedPreferenceManager.theme
         val initialCoverThemeEnabled = sharedPreferenceManager.coverThemeEnabled
@@ -85,7 +101,8 @@ class MainActivity : ComponentActivity() {
                     },
                     isLandscape = isLandscape,
                     appSize = currentContainerSize,
-                    storeViewModel = storeViewModel // Pass ViewModel to Composable if needed there
+                    storeViewModel = storeViewModel,
+                    devSettingsViewModel = devSettingsViewModel
                 )
             }
         }
@@ -143,14 +160,16 @@ fun XenonStoreApp(
     onOpenSettings: () -> Unit,
     isLandscape: Boolean = false,
     appSize: IntSize,
-    storeViewModel: StoreViewModel // Added ViewModel parameter
-    ) {
+    storeViewModel: StoreViewModel,
+    devSettingsViewModel: DevSettingsViewModel
+) {
     StoreLayout(
         layoutType = layoutType,
         onOpenSettings = onOpenSettings,
         modifier = Modifier.fillMaxSize(),
         isLandscape = isLandscape,
         appSize = appSize,
-        storeViewModel = storeViewModel // Pass ViewModel to StoreLayout
+        storeViewModel = storeViewModel,
+        devSettingsViewModel = devSettingsViewModel
     )
 }

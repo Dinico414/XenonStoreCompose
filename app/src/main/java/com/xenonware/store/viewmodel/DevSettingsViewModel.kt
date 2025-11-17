@@ -8,9 +8,11 @@ import com.xenonware.store.InstallMethod
 import com.xenonware.store.SharedPreferenceManager
 import com.xenonware.store.ShizukuManager
 import com.xenonware.store.viewmodel.classes.StoreItem
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -36,6 +38,12 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
     private val _githubApps = MutableStateFlow<List<StoreItem>>(emptyList())
     val githubApps: StateFlow<List<StoreItem>> = _githubApps.asStateFlow()
 
+    private val _editingApp = MutableStateFlow<StoreItem?>(null)
+    val editingApp: StateFlow<StoreItem?> = _editingApp.asStateFlow()
+
+    private val _customAppsUpdated = MutableSharedFlow<Unit>(replay = 1)
+    val customAppsUpdated = _customAppsUpdated.asSharedFlow()
+
     val isShizukuAvailable: StateFlow<Boolean> = ShizukuManager.isAvailable.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -53,7 +61,48 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun onEditGitHubApp(app: StoreItem) {
-        // TODO: Implement edit functionality
+        _editingApp.value = app
+    }
+
+    fun onSaveGitHubApp(owner: String, repo: String, packageName: String) {
+        viewModelScope.launch {
+            val currentApps = _githubApps.value.toMutableList()
+            val editingApp = _editingApp.value
+
+            if (editingApp != null) {
+                // Update existing app
+                val index = currentApps.indexOfFirst { it.packageName == editingApp.packageName }
+                if (index != -1) {
+                    val updatedApp = editingApp.copy(
+                        nameMap = hashMapOf("en" to repo),
+                        githubUrl = "https://github.com/$owner/$repo",
+                        packageName = packageName
+                    )
+                    currentApps[index] = updatedApp
+                }
+            } else {
+                // Add new app
+                val newApp = StoreItem(
+                    nameMap = hashMapOf("en" to repo),
+                    iconPath = "",
+                    githubUrl = "https://github.com/$owner/$repo",
+                    packageName = packageName,
+                    isCustom = true
+                )
+                if (currentApps.none { it.packageName == newApp.packageName }) {
+                    currentApps.add(newApp)
+                }
+            }
+
+            sharedPreferenceManager.saveCustomStoreItems(currentApps)
+            _githubApps.value = currentApps
+            _editingApp.value = null
+            _customAppsUpdated.tryEmit(Unit)
+        }
+    }
+
+    fun onDialogDismiss() {
+        _editingApp.value = null
     }
 
     fun onDeleteGitHubApp(app: StoreItem) {
@@ -62,6 +111,7 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
             if (currentApps.remove(app)) {
                 sharedPreferenceManager.saveCustomStoreItems(currentApps)
                 _githubApps.value = currentApps
+                _customAppsUpdated.tryEmit(Unit)
             }
         }
     }

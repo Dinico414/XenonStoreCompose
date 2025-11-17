@@ -95,8 +95,8 @@ import kotlinx.coroutines.flow.collectLatest
 )
 @Composable
 fun CompactStore(
-    storeViewModel: StoreViewModel = viewModel(),
-    devSettingsViewModel: DevSettingsViewModel = viewModel(),
+    storeViewModel: StoreViewModel,
+    devSettingsViewModel: DevSettingsViewModel,
     layoutType: LayoutType,
     isLandscape: Boolean,
     appSize: IntSize,
@@ -201,7 +201,8 @@ fun CompactStore(
                     owner = ownerInput,
                     repo = repoInput,
                     packageName = packageNameInput,
-                    gitHubPAT = if (gitHubPATInput.isEmpty()) null else gitHubPATInput
+                    gitHubPAT = if (gitHubPATInput.isEmpty()) null else gitHubPATInput,
+                    isUpdate = false
                 )
                 showGitHubDialog = false
                 // Clear input fields after confirmation

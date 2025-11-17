@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntSize
 import com.xenonware.store.ui.layouts.store.CompactStore
+import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.StoreViewModel
 
@@ -16,7 +17,8 @@ fun StoreLayout(
     layoutType: LayoutType,
     isLandscape: Boolean,
     appSize: IntSize,
-    storeViewModel: StoreViewModel
+    storeViewModel: StoreViewModel,
+    devSettingsViewModel: DevSettingsViewModel
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (layoutType) {
@@ -26,7 +28,8 @@ fun StoreLayout(
                     layoutType = layoutType,
                     isLandscape = true,
                     appSize = appSize,
-                    storeViewModel = storeViewModel
+                    storeViewModel = storeViewModel,
+                    devSettingsViewModel = devSettingsViewModel
                 )
             }
 
@@ -36,7 +39,8 @@ fun StoreLayout(
                     layoutType = layoutType,
                     isLandscape = true,
                     appSize = appSize,
-                    storeViewModel = storeViewModel
+                    storeViewModel = storeViewModel,
+                    devSettingsViewModel = devSettingsViewModel
                 )
             }
         }

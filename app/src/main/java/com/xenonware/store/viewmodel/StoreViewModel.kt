@@ -108,6 +108,17 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         getApplication<Application>().registerReceiver(packageInstallReceiver, intentFilter)
     }
 
+    fun onCustomAppsUpdated() {
+        viewModelScope.launch {
+            val customItems = sharedPreferenceManager.loadCustomStoreItems()
+            val updatedCustomItems = customItems.map { item ->
+                refreshAppItemBlocking(item.copy(), githubInfoUseCache = true, forceStateReEvaluation = true)
+            }
+            _customStoreItems.value = updatedCustomItems
+            filterStoreItems(_searchQuery.value)
+        }
+    }
+
     private fun loadCustomStoreItems() {
         viewModelScope.launch {
             val customItems = sharedPreferenceManager.loadCustomStoreItems()
@@ -510,25 +521,38 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addGitHubRepoConfig(owner: String, repo: String, packageName: String, gitHubPAT: String?) {
+    fun addGitHubRepoConfig(owner: String, repo: String, packageName: String, gitHubPAT: String?, isUpdate: Boolean) {
         viewModelScope.launch {
-            val newItem = StoreItem(
-                nameMap = hashMapOf("en" to repo),
-                iconPath = "",
-                githubUrl = "https://github.com/$owner/$repo",
-                packageName = packageName,
-                isCustom = true
-            )
             val customItems = _customStoreItems.value.toMutableList()
-            if (customItems.none { it.packageName == packageName }) {
+            val existingItemIndex = customItems.indexOfFirst { it.packageName == packageName }
+
+            if (isUpdate && existingItemIndex != -1) {
+                // Update existing item
+                val updatedItem = customItems[existingItemIndex].copy(
+                    nameMap = hashMapOf("en" to repo),
+                    githubUrl = "https://github.com/$owner/$repo"
+                )
+                customItems[existingItemIndex] = updatedItem
+                showToast("Updated $repo in the list!")
+            } else if (!isUpdate && existingItemIndex == -1) {
+                // Add new item
+                val newItem = StoreItem(
+                    nameMap = hashMapOf("en" to repo),
+                    iconPath = "",
+                    githubUrl = "https://github.com/$owner/$repo",
+                    packageName = packageName,
+                    isCustom = true
+                )
                 customItems.add(newItem)
-                sharedPreferenceManager.saveCustomStoreItems(customItems)
-                _customStoreItems.value = customItems.toList()
-                handlePackageChanged(packageName) // Refresh the new item
                 showToast("Added $repo to the list!")
             } else {
                 showToast("$repo is already in the custom list.")
+                return@launch
             }
+
+            sharedPreferenceManager.saveCustomStoreItems(customItems)
+            _customStoreItems.value = customItems.toList()
+            handlePackageChanged(packageName) // Refresh the item
         }
     }
 

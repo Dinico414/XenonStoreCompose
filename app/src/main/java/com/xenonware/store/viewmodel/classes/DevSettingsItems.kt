@@ -21,6 +21,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +45,7 @@ import com.xenon.mylibrary.values.SmallSpacing
 import com.xenon.mylibrary.values.SmallestCornerRadius
 import com.xenonware.store.InstallMethod
 import com.xenonware.store.R
+import com.xenonware.store.ui.res.DialogGitHubApps
 import com.xenonware.store.ui.res.SettingsSwitchMenuTile
 import com.xenonware.store.ui.res.SettingsSwitchTile
 import com.xenonware.store.ui.res.SettingsTile
@@ -72,6 +74,7 @@ fun DevSettingsItems(
     val isDeveloperModeEnabled by viewModel.devModeToggleState.collectAsState()
     val isShowDummyProfileEnabled by viewModel.showDummyProfileState.collectAsState()
     val isAddButtonEnabled by viewModel.addButtonState.collectAsState()
+    val editingApp by viewModel.editingApp.collectAsState()
 
     val context = LocalContext.current
     LocalHapticFeedback.current
@@ -87,6 +90,7 @@ fun DevSettingsItems(
     var showInstallMethodDialog by remember { mutableStateOf(false) }
     val currentInstallMethod by viewModel.installMethodState.collectAsState()
     var showGithubAppDialog by remember { mutableStateOf(false) }
+    var showAddEditGithubAppDialog by remember { mutableStateOf(false) }
 
 
     val topShape = if (useGroupStyling) RoundedCornerShape(
@@ -121,7 +125,9 @@ fun DevSettingsItems(
         Text(
             text = stringResource(id = R.string.dev_settings_description),
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = LargerPadding).align(alignment = Alignment.CenterHorizontally)
+            modifier = Modifier
+                .padding(bottom = LargerPadding)
+                .align(alignment = Alignment.CenterHorizontally)
         )
 
         SettingsSwitchTile(
@@ -149,10 +155,10 @@ fun DevSettingsItems(
                 title = stringResource(id = R.string.show_dummy_profile_title),
                 subtitle = "",
                 checked = isShowDummyProfileEnabled,
-                onCheckedChange = { 
-                    viewModel.setShowDummyProfileEnabled(it) 
+                onCheckedChange = {
+                    viewModel.setShowDummyProfileEnabled(it)
                 },
-                onClick = { 
+                onClick = {
                     viewModel.setShowDummyProfileEnabled(!isShowDummyProfileEnabled)
                 },
                 shape = tileShapeOverride ?: bottomShape,
@@ -249,6 +255,8 @@ fun DevSettingsItems(
                 XenonDialog(
                     onDismissRequest = { showGithubAppDialog = false },
                     title = stringResource(R.string.manage_github_apps_title),
+                    confirmButtonText = stringResource(R.string.add),
+                    onConfirmButtonClick = { showAddEditGithubAppDialog = true },
                     properties = DialogProperties(usePlatformDefaultWidth = true),
                 ) {
                     Column {
@@ -266,21 +274,63 @@ fun DevSettingsItems(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    IconButton(onClick = { viewModel.onEditGitHubApp(app) }) {
-                                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))
+                                    IconButton(onClick = {
+                                        viewModel.onEditGitHubApp(app)
+                                        showAddEditGithubAppDialog = true
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = stringResource(R.string.edit)
+                                        )
                                     }
                                     Text(
                                         text = app.getName(getCurrentLanguage(context.resources)),
-                                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(horizontal = 8.dp)
                                     )
                                     IconButton(onClick = { viewModel.onDeleteGitHubApp(app) }) {
-                                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = stringResource(R.string.delete)
+                                        )
                                     }
                                 }
                             }
                         }
                     }
                 }
+            }
+            if (showAddEditGithubAppDialog) {
+                var owner by remember(editingApp) { mutableStateOf(editingApp?.owner ?: "") }
+                var repo by remember(editingApp) { mutableStateOf(editingApp?.repo ?: "") }
+                var packageName by remember(editingApp) { mutableStateOf(editingApp?.packageName ?: "") }
+                var pat by remember { mutableStateOf("") }
+
+                LaunchedEffect(editingApp) {
+                    owner = editingApp?.owner ?: ""
+                    repo = editingApp?.repo ?: ""
+                    packageName = editingApp?.packageName ?: ""
+                }
+
+                DialogGitHubApps(
+                    onDismissRequest = {
+                        viewModel.onDialogDismiss()
+                        showAddEditGithubAppDialog = false
+                    },
+                    onConfirm = {
+                        viewModel.onSaveGitHubApp(owner, repo, packageName)
+                        showAddEditGithubAppDialog = false
+                    },
+                    owner = owner,
+                    onOwnerChange = { owner = it },
+                    repo = repo,
+                    onRepoChange = { repo = it },
+                    packageName = packageName,
+                    onPackageNameChange = { packageName = it },
+                    gitHubPAT = pat,
+                    onGitHubPATChange = { pat = it }
+                )
             }
         }
     }
