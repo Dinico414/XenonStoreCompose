@@ -46,7 +46,6 @@ fun SettingsItems(
     applyCoverTheme: Boolean,
     coverThemeEnabled: Boolean,
     currentLanguage: String,
-    currentFormat: String,
     appVersion: String,
     onNavigateToDeveloperOptions: () -> Unit,
     innerGroupRadius: Dp = SmallestCornerRadius,

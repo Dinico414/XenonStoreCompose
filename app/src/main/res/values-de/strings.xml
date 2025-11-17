@@ -136,4 +136,7 @@
     <string name="github_app_description">Show add Button to add custom repository to ber added to the app list (only for you)</string>
     <string name="add_git_repo">Add GitHub repository</string>
     <string name="add">Add</string>
+    <string name="edit">Edit</string>
+    <string name="no_github_apps_added">No GitHub Repositories added yet</string>
+    <string name="manage_github_apps_title">Added GitHub repositories</string>
 </resources>

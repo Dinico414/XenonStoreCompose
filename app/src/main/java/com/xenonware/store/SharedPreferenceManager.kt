@@ -26,8 +26,6 @@ class SharedPreferenceManager(context: Context) {
     private val coverThemeEnabledKey = "cover_theme_enabled"
     private val coverDisplayDimension1Key = "cover_display_dimension_1"
     private val coverDisplayDimension2Key = "cover_display_dimension_2"
-    private val taskListKey = "task_list_json"
-    private val drawerTodoItemsKey = "drawer_todo_items_json"
     private val blackedOutModeKey = "blacked_out_mode_enabled"
     private val dateFormatKey = "date_format_key"
     private val timeFormatKey = "time_format_key"
@@ -47,8 +45,6 @@ class SharedPreferenceManager(context: Context) {
         prettyPrint = true // Makes debugging JSON easier
     }
 
-    private val defaultDateFormat = "yyyy-MM-dd"
-    private val defaultTimeFormat = "HH:mm"
 
     // --- Custom Store Items ---
     fun saveCustomStoreItems(items: List<StoreItem>) {
@@ -102,14 +98,6 @@ class SharedPreferenceManager(context: Context) {
     var blackedOutModeEnabled: Boolean
         get() = sharedPreferences.getBoolean(blackedOutModeKey, false)
         set(value) = sharedPreferences.edit { putBoolean(blackedOutModeKey, value) }
-
-    var dateFormat: String
-        get() = sharedPreferences.getString(dateFormatKey, defaultDateFormat) ?: defaultDateFormat
-        set(value) = sharedPreferences.edit { putString(dateFormatKey, value) }
-
-    var timeFormat: String
-        get() = sharedPreferences.getString(timeFormatKey, defaultTimeFormat) ?: defaultTimeFormat
-        set(value) = sharedPreferences.edit { putString(timeFormatKey, value) }
 
     var developerModeEnabled: Boolean
         get() = sharedPreferences.getBoolean(developerModeKey, false)
@@ -175,8 +163,6 @@ class SharedPreferenceManager(context: Context) {
             remove(coverDisplayDimension1Key)
             remove(coverDisplayDimension2Key)
             putBoolean(blackedOutModeKey, false)
-            putString(dateFormatKey, defaultDateFormat)
-            putString(timeFormatKey, defaultTimeFormat)
             putBoolean(developerModeKey, false)
             putBoolean(showDummyProfileKey, false)
             putBoolean(checkForPreReleasesKey, false)

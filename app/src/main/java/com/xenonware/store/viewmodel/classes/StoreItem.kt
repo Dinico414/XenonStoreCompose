@@ -16,6 +16,7 @@ data class StoreItem(
     val iconPath: String,
     val githubUrl: String,
     val packageName: String,
+    val isCustom: Boolean = false, // Added this line
 
     var state: AppEntryState = AppEntryState.NOT_INSTALLED,
     var installedVersion: String = "",

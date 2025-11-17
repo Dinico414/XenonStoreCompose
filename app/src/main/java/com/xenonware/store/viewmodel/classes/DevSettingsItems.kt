@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -21,7 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,6 +48,7 @@ import com.xenonware.store.ui.res.SettingsSwitchMenuTile
 import com.xenonware.store.ui.res.SettingsSwitchTile
 import com.xenonware.store.ui.res.SettingsTile
 import com.xenonware.store.ui.res.XenonDialog
+import com.xenonware.store.utils.Utils.Companion.getCurrentLanguage
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.SettingsViewModel
 
@@ -74,7 +73,7 @@ fun DevSettingsItems(
     val isShowDummyProfileEnabled by viewModel.showDummyProfileState.collectAsState()
     val isAddButtonEnabled by viewModel.addButtonState.collectAsState()
 
-    LocalContext.current
+    val context = LocalContext.current
     LocalHapticFeedback.current
 
     val actualInnerGroupRadius = if (useGroupStyling) innerGroupRadius else 0.dp
@@ -129,12 +128,11 @@ fun DevSettingsItems(
             title = stringResource(id = R.string.developer_options_title),
             subtitle = "",
             checked = isDeveloperModeEnabled,
-            onCheckedChange = { newCheckedState ->
-                viewModel.setDeveloperModeEnabled(newCheckedState)
+            onCheckedChange = {
+                viewModel.setDeveloperModeEnabled(it)
             },
             onClick = {
-                val newCheckedState = !isDeveloperModeEnabled
-                viewModel.setDeveloperModeEnabled(newCheckedState)
+                viewModel.setDeveloperModeEnabled(!isDeveloperModeEnabled)
             },
             shape = tileShapeOverride ?: if (!isDeveloperModeEnabled) standaloneShape else topShape,
             backgroundColor = tileBackgroundColor,
@@ -151,12 +149,11 @@ fun DevSettingsItems(
                 title = stringResource(id = R.string.show_dummy_profile_title),
                 subtitle = "",
                 checked = isShowDummyProfileEnabled,
-                onCheckedChange = { newCheckedState ->
-                    viewModel.setShowDummyProfileEnabled(newCheckedState)
+                onCheckedChange = { 
+                    viewModel.setShowDummyProfileEnabled(it) 
                 },
-                onClick = {
-                    val newCheckedState = !isShowDummyProfileEnabled
-                    viewModel.setShowDummyProfileEnabled(newCheckedState)
+                onClick = { 
+                    viewModel.setShowDummyProfileEnabled(!isShowDummyProfileEnabled)
                 },
                 shape = tileShapeOverride ?: bottomShape,
                 backgroundColor = tileBackgroundColor,
@@ -198,7 +195,7 @@ fun DevSettingsItems(
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
 
-            )
+                )
 
 
             if (showInstallMethodDialog) {
@@ -206,7 +203,7 @@ fun DevSettingsItems(
                     onDismissRequest = { showInstallMethodDialog = false },
                     title = stringResource(R.string.select_install_method_title),
                     properties = DialogProperties(usePlatformDefaultWidth = true),
-                    ) {
+                ) {
                     Column {
                         InstallMethod.values().forEach { method ->
                             val isEnabled =
@@ -247,55 +244,44 @@ fun DevSettingsItems(
                     }
                 }
             }
-//            if (showGithubAppDialog) {
-//                val githubApps by viewModel.githubApps.collectAsState()
-//                XenonDialog(
-//                    onDismissRequest = { showGithubAppDialog = false },
-//                    title = stringResource(R.string.manage_github_apps_title),
-//                    properties = DialogProperties(usePlatformDefaultWidth = true),
-//                ) {
-//                    Column {
-//                        if (githubApps.isEmpty()) {
-//                            Text(
-//                                text = stringResource(R.string.no_github_apps_added),
-//                                modifier = Modifier.padding(16.dp)
-//                            )
-//                        } else {
-//                            githubApps.forEach { app ->
-//                                Row(
-//                                    modifier = Modifier
-//                                        .fillMaxWidth()
-//                                        .padding(vertical = 8.dp),
-//                                    verticalAlignment = Alignment.CenterVertically,
-//                                    horizontalArrangement = Arrangement.SpaceBetween
-//                                ) {
-//                                    IconButton(onClick = { viewModel.onEditGitHubApp(app) }) {
-//                                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))
-//                                    }
-//                                    Text(
-//                                        text = app.name,
-//                                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-//                                    )
-//                                    IconButton(onClick = { viewModel.onDeleteGitHubApp(app) }) {
-//                                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
-//                                    }
-//                                }
-//                            }
-//                        }
-//
-//                        // Add new app button
-//                        TextButton(
-//                            onClick = {
-//                                viewModel.onAddGitHubApp()
-//                                showGithubAppDialog = false
-//                            },
-//                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-//                        ) {
-//                            Text(stringResource(R.string.add_new_github_app))
-//                        }
-//                    }
-//                }
-//            }
+            if (showGithubAppDialog) {
+                val githubApps by viewModel.githubApps.collectAsState()
+                XenonDialog(
+                    onDismissRequest = { showGithubAppDialog = false },
+                    title = stringResource(R.string.manage_github_apps_title),
+                    properties = DialogProperties(usePlatformDefaultWidth = true),
+                ) {
+                    Column {
+                        if (githubApps.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.no_github_apps_added),
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        } else {
+                            githubApps.forEach { app ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    IconButton(onClick = { viewModel.onEditGitHubApp(app) }) {
+                                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))
+                                    }
+                                    Text(
+                                        text = app.getName(getCurrentLanguage(context.resources)),
+                                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                                    )
+                                    IconButton(onClick = { viewModel.onDeleteGitHubApp(app) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

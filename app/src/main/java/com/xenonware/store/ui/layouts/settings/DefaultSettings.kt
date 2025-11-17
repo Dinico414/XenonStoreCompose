@@ -75,7 +75,6 @@ fun DefaultSettings(
     val selectedLanguageTagInDialog by viewModel.selectedLanguageTagInDialog.collectAsState()
 
     viewModel.availableDateFormats
-    val currentFormattedDateTime by viewModel.currentFormattedDateTime.collectAsState()
 
     // Note: These strings ("HH:mm", etc) do nothing here, but I left them as provided
     remember { viewModel.systemShortTimePattern }
@@ -162,7 +161,6 @@ fun DefaultSettings(
                     applyCoverTheme = applyCoverTheme,
                     coverThemeEnabled = coverThemeEnabled,
                     currentLanguage = currentLanguage,
-                    currentFormat = currentFormattedDateTime,
                     appVersion = appVersion,
                     onNavigateToDeveloperOptions = onNavigateToDeveloperOptions
                 )

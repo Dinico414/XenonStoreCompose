@@ -66,7 +66,6 @@ fun CoverSettings(
     val selectedLanguageTagInDialog by viewModel.selectedLanguageTagInDialog.collectAsState()
 
     viewModel.availableDateFormats
-    val currentFormattedDateTime by viewModel.currentFormattedDateTime.collectAsState()
 
     remember { viewModel.systemShortTimePattern }
     "HH:mm"
@@ -135,7 +134,6 @@ fun CoverSettings(
                     applyCoverTheme = applyCoverThemeActual,
                     coverThemeEnabled = coverThemeEnabled,
                     currentLanguage = currentLanguage,
-                    currentFormat = currentFormattedDateTime,
                     appVersion = appVersion,
                     tileBackgroundColor = coverScreenBackgroundColor,
                     tileContentColor = coverScreenContentColor,

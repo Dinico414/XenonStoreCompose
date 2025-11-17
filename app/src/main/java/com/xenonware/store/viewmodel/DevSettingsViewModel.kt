@@ -7,9 +7,11 @@ import androidx.lifecycle.viewModelScope
 import com.xenonware.store.InstallMethod
 import com.xenonware.store.SharedPreferenceManager
 import com.xenonware.store.ShizukuManager
+import com.xenonware.store.viewmodel.classes.StoreItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -31,11 +33,38 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
     private val _installMethodState = MutableStateFlow(sharedPreferenceManager.installMethod)
     val installMethodState: StateFlow<InstallMethod> = _installMethodState
 
+    private val _githubApps = MutableStateFlow<List<StoreItem>>(emptyList())
+    val githubApps: StateFlow<List<StoreItem>> = _githubApps.asStateFlow()
+
     val isShizukuAvailable: StateFlow<Boolean> = ShizukuManager.isAvailable.stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            false
-        )
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        false
+    )
+
+    init {
+        loadGithubApps()
+    }
+
+    private fun loadGithubApps() {
+        viewModelScope.launch {
+            _githubApps.value = sharedPreferenceManager.loadCustomStoreItems()
+        }
+    }
+
+    fun onEditGitHubApp(app: StoreItem) {
+        // TODO: Implement edit functionality
+    }
+
+    fun onDeleteGitHubApp(app: StoreItem) {
+        viewModelScope.launch {
+            val currentApps = _githubApps.value.toMutableList()
+            if (currentApps.remove(app)) {
+                sharedPreferenceManager.saveCustomStoreItems(currentApps)
+                _githubApps.value = currentApps
+            }
+        }
+    }
 
     fun setDeveloperModeEnabled(enabled: Boolean) {
         viewModelScope.launch {

@@ -42,7 +42,8 @@ import java.io.InputStreamReader
 
 class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _fullStoreItems = MutableStateFlow<List<StoreItem>>(emptyList())
+    private val _cloudStoreItems = MutableStateFlow<List<StoreItem>>(emptyList())
+    private val _customStoreItems = MutableStateFlow<List<StoreItem>>(emptyList())
     private val _storeItems = MutableStateFlow<List<StoreItem>>(emptyList())
     val storeItems: StateFlow<List<StoreItem>> = _storeItems.asStateFlow()
 
@@ -93,6 +94,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private var cachedJsonHash: Int = 0
 
     init {
+        loadCustomStoreItems()
         fetchAndRefreshAppList()
         checkForXenonStoreUpdate()
 
@@ -106,6 +108,14 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         getApplication<Application>().registerReceiver(packageInstallReceiver, intentFilter)
     }
 
+    private fun loadCustomStoreItems() {
+        viewModelScope.launch {
+            val customItems = sharedPreferenceManager.loadCustomStoreItems()
+            _customStoreItems.value = customItems
+            refreshAllAppItemsStates(false, isCustomList = true)
+        }
+    }
+
     private inner class PackageInstallReceiver : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val packageName = intent?.data?.schemeSpecificPart ?: return
@@ -116,18 +126,33 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     fun handlePackageChanged(packageName: String) {
         viewModelScope.launch {
-            val currentList = _fullStoreItems.value
-            val itemIndex = currentList.indexOfFirst { it.packageName == packageName }
+            val allItems = _cloudStoreItems.value + _customStoreItems.value
+            val itemIndex = allItems.indexOfFirst { it.packageName == packageName }
+
             if (itemIndex != -1) {
-                val itemToRefresh = currentList[itemIndex]
+                val itemToRefresh = allItems[itemIndex]
                 val refreshedItem = refreshAppItemBlocking(
                     itemToRefresh.copy(),
                     githubInfoUseCache = true,
                     forceStateReEvaluation = true
                 )
-                val newList = currentList.toMutableList()
-                newList[itemIndex] = refreshedItem
-                _fullStoreItems.value = newList.toList()
+
+                if (itemToRefresh.isCustom) {
+                    val newList = _customStoreItems.value.toMutableList()
+                    val customIndex = newList.indexOfFirst { it.packageName == packageName }
+                    if (customIndex != -1) {
+                        newList[customIndex] = refreshedItem
+                        _customStoreItems.value = newList.toList()
+                    }
+                } else {
+                    val newList = _cloudStoreItems.value.toMutableList()
+                    val cloudIndex = newList.indexOfFirst { it.packageName == packageName }
+                    if (cloudIndex != -1) {
+                        newList[cloudIndex] = refreshedItem
+                        _cloudStoreItems.value = newList.toList()
+                    }
+                }
+
                 filterStoreItems(_searchQuery.value)
                 Log.d(TAG, "Refreshed item $packageName (state: ${refreshedItem.state}) due to package change.")
             } else if (packageName == XENON_STORE_PACKAGE_NAME) {
@@ -138,37 +163,42 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     fun verifyAndRefreshPendingInstallations() {
         viewModelScope.launch {
-            val itemsToCheck = _fullStoreItems.value.filter { it.state == AppEntryState.INSTALLING }
+            val allItems = _cloudStoreItems.value + _customStoreItems.value
+            val itemsToCheck = allItems.filter { it.state == AppEntryState.INSTALLING }
             if (itemsToCheck.isEmpty()) return@launch
 
             Log.d(TAG, "Verifying ${itemsToCheck.size} items in INSTALLING state.")
-            var listChanged = false
-            val currentFullList = _fullStoreItems.value.toMutableList()
+            var cloudListChanged = false
+            var customListChanged = false
+            val currentCloudList = _cloudStoreItems.value.toMutableList()
+            val currentCustomList = _customStoreItems.value.toMutableList()
 
             itemsToCheck.forEach { item ->
                 val installedVersion = getInstalledAppVersion(item.packageName)
-                if (installedVersion == null || (item.newVersion.isNotEmpty() && installedVersion != item.newVersion)) {
-                    Log.d(TAG, "Installation for ${item.packageName} likely cancelled or failed. Current installed: $installedVersion, Target: ${item.newVersion}. Reverting state.")
-                    val refreshedItem = refreshAppItemBlocking(item.copy(), githubInfoUseCache = true, forceStateReEvaluation = true)
-                    val itemIndex = currentFullList.indexOfFirst { it.packageName == item.packageName }
-                    if (itemIndex != -1 && currentFullList[itemIndex].state != refreshedItem.state) {
-                        currentFullList[itemIndex] = refreshedItem
-                        listChanged = true
+                val needsRevert = installedVersion == null || (item.newVersion.isNotEmpty() && installedVersion != item.newVersion)
+                val logMessage = if (needsRevert) "likely cancelled or failed" else "might be installed"
+
+                Log.d(TAG, "Installation for ${item.packageName} $logMessage. Current installed: $installedVersion, Target: ${item.newVersion}. Reverting/Refreshing state.")
+                val refreshedItem = refreshAppItemBlocking(item.copy(), githubInfoUseCache = true, forceStateReEvaluation = true)
+
+                if (item.isCustom) {
+                    val itemIndex = currentCustomList.indexOfFirst { it.packageName == item.packageName }
+                    if (itemIndex != -1 && currentCustomList[itemIndex].state != refreshedItem.state) {
+                        currentCustomList[itemIndex] = refreshedItem
+                        customListChanged = true
                     }
                 } else {
-                    Log.d(TAG, "Item ${item.packageName} is in INSTALLING state, but version check ($installedVersion vs ${item.newVersion}) suggests it might be installed. Refreshing.")
-                    val refreshedItem = refreshAppItemBlocking(item.copy(), githubInfoUseCache = true, forceStateReEvaluation = true)
-                     val itemIndex = currentFullList.indexOfFirst { it.packageName == item.packageName }
-                    if (itemIndex != -1 && currentFullList[itemIndex].state != refreshedItem.state) {
-                        currentFullList[itemIndex] = refreshedItem
-                        listChanged = true
+                    val itemIndex = currentCloudList.indexOfFirst { it.packageName == item.packageName }
+                    if (itemIndex != -1 && currentCloudList[itemIndex].state != refreshedItem.state) {
+                        currentCloudList[itemIndex] = refreshedItem
+                        cloudListChanged = true
                     }
                 }
             }
-            if (listChanged) {
-                _fullStoreItems.value = currentFullList.toList()
-                filterStoreItems(_searchQuery.value)
-            }
+
+            if (cloudListChanged) _cloudStoreItems.value = currentCloudList.toList()
+            if (customListChanged) _customStoreItems.value = currentCustomList.toList()
+            if (cloudListChanged || customListChanged) filterStoreItems(_searchQuery.value)
         }
     }
 
@@ -176,42 +206,52 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     fun fetchAndRefreshAppList(useCache: Boolean = true) {
         viewModelScope.launch {
             _currentActionInfo.value = "Refreshing app list..."
+
             val urlString = CLOUD_RUN_API_URL + CLOUD_API_ENDPOINT
             downloadToString(urlString, object : DownloadListener<String> {
                 override fun onCompleted(result: String) {
                     val hash = result.hashCode()
-                    if (useCache && cachedJsonHash != 0 && _fullStoreItems.value.isNotEmpty() && cachedJsonHash == hash) {
-                        Log.d(TAG, "App list JSON is unchanged, refreshing existing items states with useCache = true.")
-                        refreshAllAppItemsStates(true)
+                    if (useCache && cachedJsonHash != 0 && _cloudStoreItems.value.isNotEmpty() && cachedJsonHash == hash) {
+                        Log.d(TAG, "App list JSON is unchanged, refreshing existing cloud items states with useCache = true.")
+                        refreshAllAppItemsStates(true, isCustomList = false) // Just refresh cloud states
                         _currentActionInfo.value = "App list refreshed (cached)."
-                        showToast("App list refreshed!") // Show toast on completion
+                        showToast("App list refreshed!")
                         return
                     }
                     cachedJsonHash = hash
                     Log.d(TAG, "Parsing new app list JSON or cache miss/invalidated.")
-                    val appList = parseAppListJson(result)
-                    _fullStoreItems.value = appList // Store the full list
-                    refreshAllAppItemsStates(false)
-                    filterStoreItems(_searchQuery.value) // Apply current search query
+
+                    val cloudList = parseAppListJson(result)
+                    _cloudStoreItems.value = cloudList
+                    refreshAllAppItemsStates(false, isCustomList = false) // Refresh new cloud list
                     _currentActionInfo.value = "App list updated."
-                    showToast("App list refreshed!") // Show toast on completion
+                    showToast("App list refreshed!")
                 }
 
                 override fun onFailure(error: String) {
                     _error.value = "Failed to fetch app list from Cloud Run: $error"
                     _currentActionInfo.value = null
-                    showToast("Failed to refresh app list.") // Show toast on failure
+                    showToast("Failed to refresh app list. Loading local apps only.")
+                    // On failure, we don't clear the existing cloud list, just show error
+                    // The custom list is already loaded and remains visible.
                 }
             }, useCache)
         }
     }
 
-    private fun refreshAllAppItemsStates(useCache: Boolean) {
+    private fun refreshAllAppItemsStates(useCache: Boolean, isCustomList: Boolean) {
         viewModelScope.launch {
-            val updatedList = _fullStoreItems.value.map { item ->
-                refreshAppItemBlocking(item.copy(), githubInfoUseCache = useCache, forceStateReEvaluation = false)
+            if (isCustomList) {
+                val updatedList = _customStoreItems.value.map { item ->
+                    refreshAppItemBlocking(item.copy(), githubInfoUseCache = useCache, forceStateReEvaluation = false)
+                }
+                _customStoreItems.value = updatedList
+            } else {
+                val updatedList = _cloudStoreItems.value.map { item ->
+                    refreshAppItemBlocking(item.copy(), githubInfoUseCache = useCache, forceStateReEvaluation = false)
+                }
+                _cloudStoreItems.value = updatedList
             }
-            _fullStoreItems.value = updatedList
             filterStoreItems(_searchQuery.value)
         }
     }
@@ -418,7 +458,8 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     fun installApp(storeItem: StoreItem, context: Context) {
         viewModelScope.launch {
-            val currentItemState = _fullStoreItems.value.firstOrNull { it.packageName == storeItem.packageName } // Use full list
+            val allItems = _cloudStoreItems.value + _customStoreItems.value
+            val currentItemState = allItems.firstOrNull { it.packageName == storeItem.packageName }
             val itemToInstall = currentItemState?.copy() ?: storeItem.copy()
 
             _currentActionInfo.value = "Preparing to install ${itemToInstall.getName(
@@ -469,58 +510,58 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addGitHubRepoConfig(owner: String, repo: String, packageName: String, gitHubPAT: String?) {
         viewModelScope.launch {
-            // Create a new StoreItem from the provided data
             val newItem = StoreItem(
-                nameMap = hashMapOf("en" to repo), // Default name to repo name
-                iconPath = "", // No icon initially
+                nameMap = hashMapOf("en" to repo),
+                iconPath = "",
                 githubUrl = "https://github.com/$owner/$repo",
-                packageName = packageName
+                packageName = packageName,
+                isCustom = true
             )
-
-            // Add the new item to the main list and refresh it
-            val currentList = _fullStoreItems.value.toMutableList()
-            currentList.add(newItem)
-            _fullStoreItems.value = currentList.toList()
-            handlePackageChanged(packageName) // This will trigger a refresh for the new item
-
-            // TODO: Persist the new repository config using SharedPreferenceManager or a database
-            // sharedPreferenceManager.saveGitHubRepo(owner, repo, packageName, gitHubPAT)
-
-            // Logic for scheduling updates based on PAT
-            if (gitHubPAT.isNullOrEmpty()) {
-                Log.d(TAG, "Scheduling daily update check for $owner/$repo.")
-                // TODO: Implement WorkManager to schedule a daily worker
-                // val dailyWorkRequest = OneTimeWorkRequestBuilder<UpdateWorker>()
-                //     .setInitialDelay(24, TimeUnit.HOURS)
-                //     .setInputData(workDataOf("owner" to owner, "repo" to repo))
-                //     .build()
-                // WorkManager.getInstance(getApplication()).enqueue(dailyWorkRequest)
+            val customItems = _customStoreItems.value.toMutableList()
+            if (customItems.none { it.packageName == packageName }) {
+                customItems.add(newItem)
+                sharedPreferenceManager.saveCustomStoreItems(customItems)
+                _customStoreItems.value = customItems.toList()
+                handlePackageChanged(packageName) // Refresh the new item
+                showToast("Added $repo to the list!")
             } else {
-                Log.d(TAG, "Scheduling half-hourly update check for $owner/$repo.")
-                // TODO: Implement WorkManager to schedule a periodic worker
-                // val periodicWorkRequest = PeriodicWorkRequestBuilder<UpdateWorker>(30, TimeUnit.MINUTES)
-                //     .setInputData(workDataOf("owner" to owner, "repo" to repo, "pat" to gitHubPAT))
-                //     .build()
-                // WorkManager.getInstance(getApplication()).enqueueUniquePeriodicWork(
-                //     "$owner/$repo",
-                //     ExistingPeriodicWorkPolicy.REPLACE,
-                //     periodicWorkRequest
-                // )
+                showToast("$repo is already in the custom list.")
             }
-            showToast("Added $repo to the list!")
+        }
+    }
+
+    fun removeCustomStoreItem(packageName: String) {
+        viewModelScope.launch {
+            val customItems = _customStoreItems.value.toMutableList()
+            val removed = customItems.removeAll { it.packageName == packageName }
+            if (removed) {
+                sharedPreferenceManager.saveCustomStoreItems(customItems)
+                _customStoreItems.value = customItems.toList()
+                filterStoreItems(_searchQuery.value)
+                showToast("Removed app from custom list.")
+            }
         }
     }
 
 
     private fun updateItemInList(updatedItem: StoreItem) {
         viewModelScope.launch {
-            val currentList = _fullStoreItems.value.toMutableList() // Use full list
-            val itemIndex = currentList.indexOfFirst { it.packageName == updatedItem.packageName }
-            if (itemIndex != -1) {
-                currentList[itemIndex] = updatedItem
-                _fullStoreItems.value = currentList.toList() // Update the full list
-                filterStoreItems(_searchQuery.value) // Re-filter to update visible list
+            if (updatedItem.isCustom) {
+                val currentList = _customStoreItems.value.toMutableList()
+                val itemIndex = currentList.indexOfFirst { it.packageName == updatedItem.packageName }
+                if (itemIndex != -1) {
+                    currentList[itemIndex] = updatedItem
+                    _customStoreItems.value = currentList.toList()
+                }
+            } else {
+                val currentList = _cloudStoreItems.value.toMutableList()
+                val itemIndex = currentList.indexOfFirst { it.packageName == updatedItem.packageName }
+                if (itemIndex != -1) {
+                    currentList[itemIndex] = updatedItem
+                    _cloudStoreItems.value = currentList.toList()
+                }
             }
+            filterStoreItems(_searchQuery.value)
         }
     }
 
@@ -547,7 +588,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 job.join()
                 exitCode = process.waitFor()
 
-                val logMessage = "Root command '$command'\\nExit code: $exitCode\\nStdout:\\n$output\\nStderr:\\n$errorOutput"
+                val logMessage = "Root command '$command'\nExit code: $exitCode\nStdout:\n$output\nStderr:\n$errorOutput"
                 if (exitCode == 0) {
                     Log.d(TAG, logMessage)
                 } else {
@@ -625,7 +666,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                         Log.d(TAG, "Root: APK copied to $tempApkPath. Output: $copyMessage")
 
                         // 2. Set permissions (optional but good practice)
-                        executeRootCommand("chmod 644 \"$tempApkPath\"") // Best effort
+                        executeRootCommand("chmod 644  \"$tempApkPath\"") // Best effort
 
                         // 3. Install from /data/local/tmp/
                         val (installSuccess, installMessage) = executeRootCommand("pm install -g -r \"$tempApkPath\"")
@@ -731,25 +772,36 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun updateItemState(packageName: String, newState: AppEntryState, bytesDownloaded: Long = 0, fileSize: Long = 0) {
         viewModelScope.launch {
-            val currentList = _fullStoreItems.value.toMutableList() // Use full list
-            val itemIndex = currentList.indexOfFirst { it.packageName == packageName }
-            if (itemIndex != -1) {
-                val currentItem = currentList[itemIndex]
+            val cloudList = _cloudStoreItems.value.toMutableList()
+            val customList = _customStoreItems.value.toMutableList()
+
+            val cloudIndex = cloudList.indexOfFirst { it.packageName == packageName }
+            val customIndex = customList.indexOfFirst { it.packageName == packageName }
+
+            if (cloudIndex != -1) {
+                val currentItem = cloudList[cloudIndex]
                 val updatedItem = currentItem.copy(
                     state = newState,
                     bytesDownloaded = if (newState == AppEntryState.DOWNLOADING) bytesDownloaded else 0,
-                    fileSize = when (newState) {
-                        AppEntryState.DOWNLOADING if fileSize > 0 -> fileSize
-                        AppEntryState.DOWNLOADING if currentItem.fileSize > 0 -> currentItem.fileSize
-                        else -> 0
-                    }
+                    fileSize = if (newState == AppEntryState.DOWNLOADING && fileSize > 0) fileSize else if (newState == AppEntryState.DOWNLOADING) currentItem.fileSize else 0
                 )
-                if (currentList[itemIndex] != updatedItem) {
-                    currentList[itemIndex] = updatedItem
-                    _fullStoreItems.value = currentList.toList() // Update the full list
-                    filterStoreItems(_searchQuery.value) // Re-filter to update visible list
+                if (cloudList[cloudIndex] != updatedItem) {
+                    cloudList[cloudIndex] = updatedItem
+                    _cloudStoreItems.value = cloudList.toList()
+                }
+            } else if (customIndex != -1) {
+                val currentItem = customList[customIndex]
+                val updatedItem = currentItem.copy(
+                    state = newState,
+                    bytesDownloaded = if (newState == AppEntryState.DOWNLOADING) bytesDownloaded else 0,
+                    fileSize = if (newState == AppEntryState.DOWNLOADING && fileSize > 0) fileSize else if (newState == AppEntryState.DOWNLOADING) currentItem.fileSize else 0
+                )
+                if (customList[customIndex] != updatedItem) {
+                    customList[customIndex] = updatedItem
+                    _customStoreItems.value = customList.toList()
                 }
             }
+            filterStoreItems(_searchQuery.value)
         }
     }
 
@@ -819,17 +871,18 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun filterStoreItems(query: String) {
+        val combinedList = _customStoreItems.value + _cloudStoreItems.value
+        val distinctList = combinedList.distinctBy { it.packageName }
+
         if (query.isBlank()) {
-            _storeItems.value = _fullStoreItems.value
+            _storeItems.value = distinctList
             return
         }
         val lowerCaseQuery = query.lowercase()
-        val filteredList = _fullStoreItems.value.filter { storeItem ->
-            // Check app name (defaulting to English for search if no other locale matches)
+        val filteredList = distinctList.filter { storeItem ->
             val appNameMatches = storeItem.nameMap.any { (_, name) ->
                 name.lowercase().contains(lowerCaseQuery)
-            } || storeItem.packageName.lowercase().contains(lowerCaseQuery) // Check package name
-
+            } || storeItem.packageName.lowercase().contains(lowerCaseQuery)
             appNameMatches
         }
         _storeItems.value = filteredList
