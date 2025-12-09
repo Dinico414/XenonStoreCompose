@@ -21,60 +21,52 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.xenon.mylibrary.values.ExtraLargePadding
 import com.xenon.mylibrary.values.LargeCornerRadius
 import com.xenon.mylibrary.values.LargestPadding
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SettingsTile(
-    title: String,
-    subtitle: String,
-    onClick: (() -> Unit)?,
-    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String = "",
+    onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     icon: (@Composable () -> Unit)? = null,
     backgroundColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     shape: Shape = RoundedCornerShape(LargeCornerRadius),
-    iconSpacing: Dp = ExtraLargePadding,
     horizontalPadding: Dp = LargestPadding,
     verticalPadding: Dp = ExtraLargePadding,
+    iconSpacing: Dp = ExtraLargePadding,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .height(IntrinsicSize.Min)
             .clip(shape)
             .background(backgroundColor)
             .combinedClickable(
+                enabled = onClick != null || onLongClick != null,
                 onClick = { onClick?.invoke() },
                 onLongClick = { onLongClick?.invoke() },
-                role = Role.Button,
-                enabled = onClick != null || onLongClick != null
+                role = Role.Button
             )
-            .padding(horizontal = horizontalPadding, vertical = verticalPadding)
-            .height(IntrinsicSize.Min),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(ExtraLargePadding)
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        icon?.let {
-            it()
-        }
+        icon?.invoke()
+
         Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(start = iconSpacing)
         ) {
-            Text(
-                text = title, style = MaterialTheme.typography.titleMedium, color = contentColor
-            )
+            Text(text = title, style = MaterialTheme.typography.titleMedium, color = contentColor)
             if (subtitle.isNotEmpty()) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = subtitleColor
-                )
+                Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = subtitleColor)
             }
         }
     }
