@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.xenon.mylibrary.QuicksandTitleVariable
+import com.xenon.mylibrary.res.GoogleProfilBorderNoGoogle
 import com.xenon.mylibrary.values.ExtraLargePadding
 import com.xenon.mylibrary.values.LargeCornerRadius
 import com.xenon.mylibrary.values.LargestPadding
@@ -39,11 +40,11 @@ import com.xenonware.store.R
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SettingsGoogleTile(
+    modifier: Modifier = Modifier,
     title: String,
     subtitle: String,
     onClick: (() -> Unit)?,
     onLongClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
     backgroundColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -71,7 +72,7 @@ fun SettingsGoogleTile(
         Box (
             contentAlignment = Alignment.Center,
         ) {
-            GoogleProfilBorder(
+            GoogleProfilBorderNoGoogle(
                 modifier = Modifier.size(48.dp),
             )
             Image(

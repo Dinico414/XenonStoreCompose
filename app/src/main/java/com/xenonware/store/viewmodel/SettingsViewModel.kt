@@ -16,9 +16,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.xenon.mylibrary.res.LanguageOption
 import com.xenonware.store.R
 import com.xenonware.store.SharedPreferenceManager
-import com.xenonware.store.ui.res.LanguageOption
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -373,7 +373,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private fun prepareLanguageOptions() {
         val application = getApplication<Application>()
-        val languages = mutableListOf(LanguageOption(
+        val languages = mutableListOf(
+            LanguageOption(
                 application.getString(R.string.system_default), ""
             )
         )

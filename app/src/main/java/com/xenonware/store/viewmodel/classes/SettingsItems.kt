@@ -23,6 +23,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.xenon.mylibrary.res.SettingsSwitchMenuTile
+import com.xenon.mylibrary.res.SettingsSwitchTile
+import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.LargerPadding
 import com.xenon.mylibrary.values.MediumCornerRadius
@@ -31,9 +34,6 @@ import com.xenon.mylibrary.values.SmallSpacing
 import com.xenon.mylibrary.values.SmallestCornerRadius
 import com.xenonware.store.R
 import com.xenonware.store.ui.res.SettingsGoogleTile
-import com.xenonware.store.ui.res.SettingsSwitchMenuTile
-import com.xenonware.store.ui.res.SettingsSwitchTile
-import com.xenonware.store.ui.res.SettingsTile
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.SettingsViewModel
 

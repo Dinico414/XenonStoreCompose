@@ -70,6 +70,7 @@ import com.xenonware.store.R
 import com.xenonware.store.utils.Utils
 import com.xenonware.store.viewmodel.classes.AppEntryState
 import com.xenonware.store.viewmodel.classes.StoreItem
+import androidx.compose.ui.res.stringResource
 
 private fun Dp.toPx(context: android.content.Context): Float {
     return this.value * context.resources.displayMetrics.density
@@ -109,14 +110,14 @@ fun StoreItemCell(
     val language = Utils.getCurrentLanguage(context.resources)
 
     val installButtonText = when (storeItem.state) {
-        AppEntryState.NOT_INSTALLED -> context.getString(R.string.install)
-        AppEntryState.INSTALLED_AND_OUTDATED -> context.getString(R.string.update)
+        AppEntryState.NOT_INSTALLED -> stringResource(R.string.install)
+        AppEntryState.INSTALLED_AND_OUTDATED -> stringResource(R.string.update)
         AppEntryState.INSTALLING -> {
-            if (storeItem.installedVersion.isNotEmpty()) context.getString(R.string.update)
-            else context.getString(R.string.install)
+            if (storeItem.installedVersion.isNotEmpty()) stringResource(R.string.update)
+            else stringResource(R.string.install)
         }
 
-        else -> context.getString(R.string.install)
+        else -> stringResource(R.string.install)
     }
 
     Row(
@@ -315,7 +316,7 @@ fun StoreItemCell(
                             if (isUpdateAvailable && storeItem.newVersion.isNotEmpty()) {
                                 if (storeItem.installedVersion.isNotEmpty()) {
                                     Text(
-                                        text = context.getString(
+                                        text = stringResource(
                                             R.string.version_with_prefix, storeItem.installedVersion
                                         ),
                                         style = MaterialTheme.typography.bodySmall,
@@ -331,7 +332,7 @@ fun StoreItemCell(
                                     Spacer(modifier = Modifier.width(4.dp))
                                 }
                                 Text(
-                                    text = context.getString(
+                                    text = stringResource(
                                         R.string.version_without_prefix, storeItem.newVersion
                                     ),
                                     style = MaterialTheme.typography.bodySmall,
@@ -339,7 +340,7 @@ fun StoreItemCell(
                                 )
                             } else if (storeItem.installedVersion.isNotEmpty()) {
                                 Text(
-                                    text = context.getString(
+                                    text = stringResource(
                                         R.string.version_with_prefix, storeItem.installedVersion
                                     ),
                                     style = MaterialTheme.typography.bodySmall,
@@ -347,7 +348,7 @@ fun StoreItemCell(
                                 )
                             } else if (storeItem.newVersion.isNotEmpty()) {
                                 Text(
-                                    text = context.getString(
+                                    text = stringResource(
                                         R.string.version_with_prefix, storeItem.newVersion
                                     ),
                                     style = MaterialTheme.typography.bodySmall,
@@ -469,7 +470,7 @@ fun StoreItemCell(
                                     .height(40.dp),
                                 enabled = storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED
                             ) {
-                                Text(text = context.getString(R.string.open))
+                                Text(text = stringResource(R.string.open))
                             }
 
                             Box(
@@ -495,7 +496,7 @@ fun StoreItemCell(
                                 ) {}
                                 Icon(
                                     imageVector = Icons.Filled.Delete,
-                                    contentDescription = context.getString(R.string.uninstall),
+                                    contentDescription = stringResource(R.string.uninstall),
                                     modifier = Modifier.size(24.dp)
                                 )
                             }

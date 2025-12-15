@@ -1,7 +1,10 @@
 package com.xenonware.store.ui.layouts.store
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -15,11 +18,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -65,10 +70,16 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.unit.max
 import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.res.FloatingToolbarContent
+import com.xenon.mylibrary.res.GoogleProfilBorderNoGoogle
+import com.xenon.mylibrary.res.SpannedModeFAB
+import com.xenon.mylibrary.res.XenonSnackbar
+import com.xenon.mylibrary.theme.DeviceConfigProvider
+import com.xenon.mylibrary.theme.LocalDeviceConfig
 import com.xenon.mylibrary.values.ExtraLargeSpacing
+import com.xenon.mylibrary.values.LargePadding
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
@@ -76,9 +87,8 @@ import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.store.R
 import com.xenonware.store.ui.res.DialogGitHubApps
 import com.xenonware.store.ui.res.DialogShareSelector
-import com.xenonware.store.ui.res.GoogleProfilBorder
 import com.xenonware.store.ui.res.StoreItemCell
-import com.xenonware.store.ui.res.XenonSnackbar
+import com.xenonware.store.ui.theme.extendedMaterialColorScheme
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.StoreViewModel
@@ -104,6 +114,8 @@ fun CompactStore(
 
 
     ) {
+    DeviceConfigProvider(appSize = appSize) {
+        val deviceConfig = LocalDeviceConfig.current
     val context = LocalContext.current
     val storeItems by storeViewModel.storeItems.collectAsState()
 
@@ -238,6 +250,30 @@ fun CompactStore(
             }
         },
         bottomBar = {
+            val bottomPaddingNavigationBar =
+                WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            val imePaddingValues = WindowInsets.ime.asPaddingValues()
+            val imeHeight = imePaddingValues.calculateBottomPadding()
+
+            val targetBottomPadding =
+                remember(imeHeight, bottomPaddingNavigationBar, imePaddingValues) {
+                    val calculatedPadding = if (imeHeight > bottomPaddingNavigationBar) {
+                        imeHeight + LargePadding
+                    } else {
+                        max(
+                            bottomPaddingNavigationBar,
+                            imePaddingValues.calculateTopPadding()
+                        ) + LargePadding
+                    }
+                    max(calculatedPadding, 0.dp)
+                }
+
+            val animatedBottomPadding by animateDpAsState(
+                targetValue = targetBottomPadding, animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow
+                ), label = "bottomPaddingAnimation"
+            )
            FloatingToolbarContent(
                 hazeState = hazeState,
                 onSearchQueryChanged = { newQuery ->
@@ -247,7 +283,8 @@ fun CompactStore(
                 currentSearchQuery = currentSearchQuery,
                 lazyListState = lazyListState,
                 allowToolbarScrollBehavior = !isAppBarCollapsible,
-                selectedNoteIds = emptyList(),
+               isSelectedColor = extendedMaterialColorScheme.inverseErrorContainer,
+               selectedNoteIds = emptyList(),
                 onClearSelection = { },
                 isAddModeActive = false,
                 onAddModeToggle = {
@@ -355,6 +392,16 @@ fun CompactStore(
                     }
                 },
                isFabEnabled = isAddButtonEnabled,
+               isSpannedMode = deviceConfig.isSpannedMode,
+               fabOnLeftInSpannedMode = deviceConfig.fabOnLeft,
+               spannedModeHingeGap = deviceConfig.hingeGapDp,
+               spannedModeFab = {
+                   SpannedModeFAB(
+                       hazeState = hazeState,
+                       onClick = deviceConfig.toggleFabSide,
+                       modifier = Modifier.padding(bottom = animatedBottomPadding),
+                   )
+               }
                )
         },
 
@@ -391,7 +438,7 @@ fun CompactStore(
                     Box(
                         contentAlignment = Alignment.Center,
                     ) {
-                        GoogleProfilBorder(
+                        GoogleProfilBorderNoGoogle(
                             modifier = Modifier.size(32.dp),
                         )
                         Image(
@@ -449,4 +496,4 @@ fun CompactStore(
                 }
             })
     }
-}
+}}

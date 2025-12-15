@@ -12,7 +12,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import com.xenon.mylibrary.res.XenonTextFieldV2
+import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.res.XenonTextField
 import com.xenonware.store.R
 
 @Composable
@@ -38,7 +39,7 @@ fun DialogGitHubApps (
         contentManagesScrolling = true,
     ) {
         Column {
-            XenonTextFieldV2(
+            XenonTextField(
                 value = owner,
                 onValueChange = onOwnerChange,
                 placeholder = { Text("Developer / Owner *")},
@@ -48,7 +49,7 @@ fun DialogGitHubApps (
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            XenonTextFieldV2(
+            XenonTextField(
                 value = repo,
                 onValueChange = onRepoChange,
                 placeholder = { Text("Repository *")},
@@ -58,7 +59,7 @@ fun DialogGitHubApps (
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            XenonTextFieldV2(
+            XenonTextField(
                 value = packageName,
                 onValueChange = onPackageNameChange,
                 placeholder = { Text("Package Name *")},
@@ -68,7 +69,7 @@ fun DialogGitHubApps (
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            XenonTextFieldV2(
+            XenonTextField(
                 value = gitHubPAT,
                 onValueChange = onGitHubPATChange,
                 placeholder = { Text("GitHub PAT *")},
