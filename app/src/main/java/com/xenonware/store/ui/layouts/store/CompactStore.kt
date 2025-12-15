@@ -119,8 +119,6 @@ fun CompactStore(
     val context = LocalContext.current
     val storeItems by storeViewModel.storeItems.collectAsState()
 
-//    val isAppBarCollapsible = rememberAppBarExpandableState(layoutType, isLandscape, appSize)
-
     val hazeState = rememberHazeState()
     val snackbarHostState = remember { SnackbarHostState() }
     var currentSearchQuery by remember { mutableStateOf("") }
@@ -151,34 +149,10 @@ fun CompactStore(
 
     val lazyListState = rememberLazyListState()
 
-
-
-    val coverLayout = layoutType == LayoutType.COVER
-
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp
-    val screenHeight = configuration.screenHeightDp
-
-    val density = LocalDensity.current
-    val appWidthDp = with(density) { appSize.width.toDp() }
-    val appHeightDp = with(density) { appSize.height.toDp() }
-
-    val currentAspectRatio = if (isLandscape) {
-        appWidthDp / appHeightDp
-    } else {
-        appHeightDp / appWidthDp
-    }
-
-    val aspectRatioConditionMet = if (isLandscape) {
-        currentAspectRatio > 0.5625f
-    } else {
-        currentAspectRatio < 1.77f
-    }
-
     val isAppBarCollapsible = when (layoutType) {
         LayoutType.COVER -> false
         LayoutType.SMALL -> false
-        LayoutType.COMPACT -> !isLandscape || !aspectRatioConditionMet
+        LayoutType.COMPACT -> !isLandscape
         LayoutType.MEDIUM -> true
         LayoutType.EXPANDED -> true
     }
