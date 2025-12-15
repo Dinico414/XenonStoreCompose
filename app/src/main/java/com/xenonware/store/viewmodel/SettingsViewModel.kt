@@ -18,7 +18,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.xenon.mylibrary.res.LanguageOption
 import com.xenonware.store.R
-import com.xenonware.store.SharedPreferenceManager
+import com.xenonware.store.data.SharedPreferenceManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

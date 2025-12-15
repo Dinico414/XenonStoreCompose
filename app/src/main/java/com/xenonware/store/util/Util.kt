@@ -1,8 +1,8 @@
-package com.xenonware.store.utils
+package com.xenonware.store.util
 
 import android.content.res.Resources
 
-class Utils {
+class Util {
     companion object {
         fun getCurrentLanguage(resources: Resources): String {
             return resources.configuration.locales.get(0).language

@@ -31,12 +31,15 @@ data class ExtendedMaterialColorScheme(
 )
 
 val LocalExtendedMaterialColorScheme = staticCompositionLocalOf<ExtendedMaterialColorScheme> {
-    error("No ExtendedMaterialColorScheme provided. Did you forget to wrap your Composable in XenonStoreTheme?")
+    error("No ExtendedMaterialColorScheme provided. Did you forget to wrap your Composable in TodolistTheme?")
+}
+
+val LocalIsDarkTheme = staticCompositionLocalOf<Boolean> {
+    error("No IsDarkTheme provided")
 }
 
 val extendedMaterialColorScheme: ExtendedMaterialColorScheme
     @Composable @ReadOnlyComposable get() = LocalExtendedMaterialColorScheme.current
-
 
 private val DarkColorScheme = darkColorScheme(
     primary = primaryDark,
@@ -114,27 +117,37 @@ private val LightColorScheme = lightColorScheme(
     surfaceContainerHighest = surfaceContainerHighestLight
 )
 
-fun Color.decreaseBrightness(factor: Float): Color {
-    val hsv = FloatArray(3)
-    ColorUtils.colorToHSL(this.toArgb(), hsv)
 
-    hsv[2] = hsv[2] * factor.coerceIn(0f, 1f)
-
-    return Color(ColorUtils.HSLToColor(hsv))
+fun Color.adjustTone(targetTone: Float): Color {
+    val hsl = FloatArray(3)
+    ColorUtils.colorToHSL(this.toArgb(), hsl)
+    hsl[2] = targetTone.coerceIn(0f, 100f) / 100f
+    return Color(ColorUtils.HSLToColor(hsl))
 }
+
 fun ColorScheme.toBlackedOut(): ColorScheme {
     return this.copy(
-        background = surfaceDimDark.decreaseBrightness(0.5f),
+        background = Color.Black,
         surfaceContainer = Color.Black,
-        surfaceBright = surfaceDimDark
+        surfaceBright = surfaceDim,
+        surfaceDim = surfaceDim.adjustTone(2f)
     )
 }
 
+fun ColorScheme.toCoverMode(): ColorScheme {
+    return this.copy(
+        background = Color.Black, surfaceContainer = Color.Black, surfaceBright = Color.Black
+    )
+}
+
+
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun StoreTheme(
+fun XenonTheme(
     darkTheme: Boolean,
     useBlackedOutDarkTheme: Boolean = false,
+    isCoverMode: Boolean = false,
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
@@ -146,10 +159,10 @@ fun StoreTheme(
         } else {
             DarkColorScheme
         }
-        if (useBlackedOutDarkTheme) {
-            baseDarkScheme.toBlackedOut()
-        } else {
-            baseDarkScheme
+        when {
+            isCoverMode -> baseDarkScheme.toCoverMode()
+            useBlackedOutDarkTheme -> baseDarkScheme.toBlackedOut()
+            else -> baseDarkScheme
         }
     } else {
         if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -189,9 +202,14 @@ fun StoreTheme(
         }
     }
 
-    CompositionLocalProvider(LocalExtendedMaterialColorScheme provides extendedColorScheme) {
+    CompositionLocalProvider(LocalExtendedMaterialColorScheme provides extendedColorScheme,
+        LocalIsDarkTheme provides darkTheme
+    ) {
         MaterialTheme(
-            colorScheme = baseColorScheme, typography = Typography, motionScheme = expressive(), content = content
+            colorScheme = baseColorScheme,
+            typography = Typography,
+            motionScheme = expressive(),
+            content = content
         )
     }
 }

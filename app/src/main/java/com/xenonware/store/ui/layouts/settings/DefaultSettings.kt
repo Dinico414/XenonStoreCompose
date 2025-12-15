@@ -1,6 +1,5 @@
 package com.xenonware.store.ui.layouts.settings
 
-import android.icu.util.VersionInfo
 import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -23,6 +22,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
@@ -32,7 +32,6 @@ import com.xenon.mylibrary.res.DialogClearDataConfirmation
 import com.xenon.mylibrary.res.DialogCoverDisplaySelection
 import com.xenon.mylibrary.res.DialogLanguageSelection
 import com.xenon.mylibrary.res.DialogResetSettingsConfirmation
-import com.xenon.mylibrary.res.DialogSignOut
 import com.xenon.mylibrary.res.DialogThemeSelection
 import com.xenon.mylibrary.res.DialogVersionNumber
 import com.xenon.mylibrary.res.ThemeSetting
@@ -40,7 +39,7 @@ import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.store.R
-import com.xenonware.store.SharedPreferenceManager
+import com.xenonware.store.data.SharedPreferenceManager
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.SettingsViewModel
 import com.xenonware.store.viewmodel.classes.SettingsItems
@@ -119,10 +118,12 @@ fun DefaultSettings(
         }
     }
 
-    val isAppBarCollapsible = when (layoutType) {
+    val configuration = LocalConfiguration.current
+    val appHeight = configuration.screenHeightDp.dp
+    val isAppBarExpandable = when (layoutType) {
         LayoutType.COVER -> false
         LayoutType.SMALL -> false
-        LayoutType.COMPACT -> !isLandscape
+        LayoutType.COMPACT -> !isLandscape && appHeight >= 460.dp
         LayoutType.MEDIUM -> true
         LayoutType.EXPANDED -> true
     }
@@ -131,6 +132,7 @@ fun DefaultSettings(
 
     ActivityScreen(
         titleText = stringResource(id = R.string.settings),
+        expandable = isAppBarExpandable,
         navigationIconStartPadding = MediumPadding,
         navigationIconPadding = MediumPadding,
         navigationIconSpacing = NoSpacing,
@@ -144,7 +146,6 @@ fun DefaultSettings(
         onNavigationIconClick = onNavigateBack,
         hasNavigationIconExtraContent = false,
         actions = {},
-        expandable = isAppBarCollapsible,
         modifier = Modifier.hazeSource(hazeState),
         content = { _ ->
             Column(

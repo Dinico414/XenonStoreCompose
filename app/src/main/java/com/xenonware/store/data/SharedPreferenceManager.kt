@@ -1,4 +1,4 @@
-package com.xenonware.store
+package com.xenonware.store.data
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -7,7 +7,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.core.content.edit
 import com.xenonware.store.viewmodel.ThemeSetting
 import com.xenonware.store.viewmodel.classes.StoreItem
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.math.max
 import kotlin.math.min

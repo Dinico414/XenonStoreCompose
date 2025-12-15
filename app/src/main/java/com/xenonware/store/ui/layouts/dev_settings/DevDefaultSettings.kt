@@ -12,9 +12,8 @@ import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -41,18 +40,20 @@ fun DevDefaultSettings(
     val hazeState = rememberHazeState()
     val context = LocalContext.current
 
-
-    val isAppBarCollapsible = when (layoutType) {
+    val configuration = LocalConfiguration.current
+    val appHeight = configuration.screenHeightDp.dp
+    val isAppBarExpandable = when (layoutType) {
         LayoutType.COVER -> false
         LayoutType.SMALL -> false
-        LayoutType.COMPACT -> !isLandscape
+        LayoutType.COMPACT -> !isLandscape && appHeight >= 460.dp
         LayoutType.MEDIUM -> true
         LayoutType.EXPANDED -> true
     }
 
+
     ActivityScreen(
         titleText = stringResource(id = R.string.developer_options_title),
-        expandable = isAppBarCollapsible,
+        expandable = isAppBarExpandable,
         navigationIconStartPadding = MediumPadding,
         navigationIconPadding = MediumPadding,
         navigationIconSpacing = NoSpacing,

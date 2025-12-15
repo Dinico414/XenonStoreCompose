@@ -1,7 +1,7 @@
 package com.xenonware.store.viewmodel.classes
 
 import android.content.Context
-import com.xenonware.store.utils.Utils // Assuming Utils.getCurrentLanguage
+import com.xenonware.store.util.Util // Assuming Util.getCurrentLanguage
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -39,12 +39,12 @@ data class StoreItem(
 
     fun isOutdated(): Boolean {
         if (installedVersion.isEmpty() || newVersion.isEmpty()) return false
-        return Utils.Companion.isNewerVersion(installedVersion, newVersion)
+        return Util.Companion.isNewerVersion(installedVersion, newVersion)
     }
 
     fun isNewerVersion(remoteVersion: String): Boolean {
         if (newVersion.isEmpty() && remoteVersion.isNotEmpty()) return true
-        return Utils.Companion.isNewerVersion(newVersion, remoteVersion)
+        return Util.Companion.isNewerVersion(newVersion, remoteVersion)
     }
 
     fun getDrawableId(context: Context): Int {

@@ -1,6 +1,7 @@
 package com.xenonware.store
 
 import android.app.Application
+import com.xenonware.store.util.ShizukuManager
 
 class MainApplication : Application() {
 

@@ -4,9 +4,9 @@ import android.app.Application
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.xenonware.store.InstallMethod
-import com.xenonware.store.SharedPreferenceManager
-import com.xenonware.store.ShizukuManager
+import com.xenonware.store.data.InstallMethod
+import com.xenonware.store.data.SharedPreferenceManager
+import com.xenonware.store.util.ShizukuManager
 import com.xenonware.store.viewmodel.classes.StoreItem
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow

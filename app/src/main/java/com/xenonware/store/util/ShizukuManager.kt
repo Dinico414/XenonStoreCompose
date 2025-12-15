@@ -1,4 +1,4 @@
-package com.xenonware.store
+package com.xenonware.store.util
 
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow

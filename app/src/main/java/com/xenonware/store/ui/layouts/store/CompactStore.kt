@@ -65,12 +65,12 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.res.FloatingToolbarContent
 import com.xenon.mylibrary.res.GoogleProfilBorderNoGoogle
@@ -105,369 +105,366 @@ import kotlinx.coroutines.flow.collectLatest
 )
 @Composable
 fun CompactStore(
-    storeViewModel: StoreViewModel,
-    devSettingsViewModel: DevSettingsViewModel,
+    viewModel: StoreViewModel,
     layoutType: LayoutType,
     isLandscape: Boolean,
     appSize: IntSize,
     onOpenSettings: () -> Unit,
-
-
-    ) {
+) {
     DeviceConfigProvider(appSize = appSize) {
         val deviceConfig = LocalDeviceConfig.current
-    val context = LocalContext.current
-    val storeItems by storeViewModel.storeItems.collectAsState()
+        val context = LocalContext.current
+        val storeItems by viewModel.storeItems.collectAsState()
+        val devSettingsViewModel: DevSettingsViewModel = viewModel()
 
-    val hazeState = rememberHazeState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    var currentSearchQuery by remember { mutableStateOf("") }
-    var isSearchActive by rememberSaveable { mutableStateOf(false) }
-    var showShareDialog by rememberSaveable { mutableStateOf(false) }
-    var showGitHubDialog by remember { mutableStateOf(false) }
+        val hazeState = rememberHazeState()
+        val snackbarHostState = remember { SnackbarHostState() }
+        var currentSearchQuery by remember { mutableStateOf("") }
+        var isSearchActive by rememberSaveable { mutableStateOf(false) }
+        var showShareDialog by rememberSaveable { mutableStateOf(false) }
+        var showGitHubDialog by remember { mutableStateOf(false) }
 
-    // State variables for GitHub dialog inputs
-    var ownerInput by rememberSaveable { mutableStateOf("") }
-    var repoInput by rememberSaveable { mutableStateOf("") }
-    var packageNameInput by rememberSaveable { mutableStateOf("") }
-    var gitHubPATInput by rememberSaveable { mutableStateOf("") }
-
-
-    val isAddButtonEnabled by devSettingsViewModel.addButtonState.collectAsState()
-    val showDummyProfile by devSettingsViewModel.showDummyProfileState.collectAsState()
-    val isDeveloperModeEnabled by devSettingsViewModel.devModeToggleState.collectAsState()
-
-    val shouldShowNavigationElements by remember(isDeveloperModeEnabled, showDummyProfile) {
-        derivedStateOf {
-            val isMainIconPresent = false
-            val isExtraIconPresent = isDeveloperModeEnabled && showDummyProfile
-            isMainIconPresent || isExtraIconPresent
-        }
-    }
-    val xenonStoreUpdateInfo by storeViewModel.xenonStoreUpdateInfo.collectAsState()
-    val xenonStoreDownloadProgress by storeViewModel.xenonStoreDownloadProgress.collectAsState()
-
-    val lazyListState = rememberLazyListState()
-
-    val isAppBarCollapsible = when (layoutType) {
-        LayoutType.COVER -> false
-        LayoutType.SMALL -> false
-        LayoutType.COMPACT -> !isLandscape
-        LayoutType.MEDIUM -> true
-        LayoutType.EXPANDED -> true
-    }
+        // State variables for GitHub dialog inputs
+        var ownerInput by rememberSaveable { mutableStateOf("") }
+        var repoInput by rememberSaveable { mutableStateOf("") }
+        var packageNameInput by rememberSaveable { mutableStateOf("") }
+        var gitHubPATInput by rememberSaveable { mutableStateOf("") }
 
 
-    LaunchedEffect(Unit) {
-        storeViewModel.error.collectLatest { errorMsg ->
-            if (errorMsg != null) {
-                snackbarHostState.showSnackbar(
-                    message = errorMsg, duration = SnackbarDuration.Long
-                )
-                storeViewModel.clearError()
+        val isAddButtonEnabled by devSettingsViewModel.addButtonState.collectAsState()
+        val showDummyProfile by devSettingsViewModel.showDummyProfileState.collectAsState()
+        val isDeveloperModeEnabled by devSettingsViewModel.devModeToggleState.collectAsState()
+
+        val shouldShowNavigationElements by remember(isDeveloperModeEnabled, showDummyProfile) {
+            derivedStateOf {
+                val isMainIconPresent = false
+                val isExtraIconPresent = isDeveloperModeEnabled && showDummyProfile
+                isMainIconPresent || isExtraIconPresent
             }
         }
-    }
-    LaunchedEffect(Unit) {
-        storeViewModel.currentActionInfo.collectLatest { infoMsg ->
-            if (infoMsg != null) {
-            }
+        val xenonStoreUpdateInfo by viewModel.xenonStoreUpdateInfo.collectAsState()
+        val xenonStoreDownloadProgress by viewModel.xenonStoreDownloadProgress.collectAsState()
+
+        val lazyListState = rememberLazyListState()
+
+        val configuration = LocalConfiguration.current
+        val appHeight = configuration.screenHeightDp.dp
+        val isAppBarExpandable = when (layoutType) {
+            LayoutType.COVER -> false
+            LayoutType.SMALL -> false
+            LayoutType.COMPACT -> !isLandscape && appHeight >= 460.dp
+            LayoutType.MEDIUM -> true
+            LayoutType.EXPANDED -> true
         }
-    }
 
-    if (showShareDialog) {
-        DialogShareSelector(onDismissRequest = { showShareDialog = false })
-    }
-
-    if (showGitHubDialog) {
-        DialogGitHubApps(
-            onDismissRequest = { showGitHubDialog = false },
-            onConfirm = {
-                storeViewModel.addGitHubRepoConfig(
-                    owner = ownerInput,
-                    repo = repoInput,
-                    packageName = packageNameInput,
-                    gitHubPAT = if (gitHubPATInput.isEmpty()) null else gitHubPATInput,
-                    isUpdate = false
-                )
-                showGitHubDialog = false
-                // Clear input fields after confirmation
-                ownerInput = ""
-                repoInput = ""
-                packageNameInput = ""
-                gitHubPATInput = ""
-            },
-            owner = ownerInput,
-            onOwnerChange = { ownerInput = it },
-            repo = repoInput,
-            onRepoChange = { repoInput = it },
-            packageName = packageNameInput,
-            onPackageNameChange = { packageNameInput = it },
-            gitHubPAT = gitHubPATInput,
-            onGitHubPATChange = { gitHubPATInput = it }
-        )
-    }
-
-
-    fun resetGitHubDialogState() {
-
-    }
-
-    Scaffold(
-        snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState) { snackbarData ->
-                XenonSnackbar(
-                    snackbarData = snackbarData, modifier = Modifier.padding(
-                        horizontal = 16.dp, vertical = 12.dp
+        LaunchedEffect(Unit) {
+            viewModel.error.collectLatest { errorMsg ->
+                if (errorMsg != null) {
+                    snackbarHostState.showSnackbar(
+                        message = errorMsg, duration = SnackbarDuration.Long
                     )
-                )
-            }
-        },
-        bottomBar = {
-            val bottomPaddingNavigationBar =
-                WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-            val imePaddingValues = WindowInsets.ime.asPaddingValues()
-            val imeHeight = imePaddingValues.calculateBottomPadding()
-
-            val targetBottomPadding =
-                remember(imeHeight, bottomPaddingNavigationBar, imePaddingValues) {
-                    val calculatedPadding = if (imeHeight > bottomPaddingNavigationBar) {
-                        imeHeight + LargePadding
-                    } else {
-                        max(
-                            bottomPaddingNavigationBar,
-                            imePaddingValues.calculateTopPadding()
-                        ) + LargePadding
-                    }
-                    max(calculatedPadding, 0.dp)
+                    viewModel.clearError()
                 }
+            }
+        }
+        LaunchedEffect(Unit) {
+            viewModel.currentActionInfo.collectLatest { infoMsg ->
+                if (infoMsg != null) {
+                }
+            }
+        }
 
-            val animatedBottomPadding by animateDpAsState(
-                targetValue = targetBottomPadding, animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessLow
-                ), label = "bottomPaddingAnimation"
-            )
-           FloatingToolbarContent(
-                hazeState = hazeState,
-                onSearchQueryChanged = { newQuery ->
-                    currentSearchQuery = newQuery
-                    storeViewModel.setSearchQuery(newQuery)
-                },
-                currentSearchQuery = currentSearchQuery,
-                lazyListState = lazyListState,
-                allowToolbarScrollBehavior = !isAppBarCollapsible,
-               isSelectedColor = extendedMaterialColorScheme.inverseErrorContainer,
-               selectedNoteIds = emptyList(),
-                onClearSelection = { },
-                isAddModeActive = false,
-                onAddModeToggle = {
-                    resetGitHubDialogState()
-                    showGitHubDialog = true
-                },
-                isSearchActive = isSearchActive,
-                onIsSearchActiveChange = { isSearchActive = it },
-                defaultContent = { iconsAlphaDuration, showActionIconsExceptSearch ->
-                    Row {
-                        val updateButtonAnimationDuration = 300
-                        val iconAlphaTarget = if (isSearchActive) 0f else 1f
+        if (showShareDialog) {
+            DialogShareSelector(onDismissRequest = { showShareDialog = false })
+        }
 
-                        val updateIconAlpha by animateFloatAsState(
-                            targetValue = iconAlphaTarget, animationSpec = tween(
-                                durationMillis = iconsAlphaDuration,
-                                delayMillis = if (isSearchActive) 0 else 0
-                            ), label = "FilterIconAlpha"
+        if (showGitHubDialog) {
+            DialogGitHubApps(
+                onDismissRequest = { showGitHubDialog = false },
+                onConfirm = {
+                    viewModel.addGitHubRepoConfig(
+                        owner = ownerInput,
+                        repo = repoInput,
+                        packageName = packageNameInput,
+                        gitHubPAT = if (gitHubPATInput.isEmpty()) null else gitHubPATInput,
+                        isUpdate = false
+                    )
+                    showGitHubDialog = false
+                    // Clear input fields after confirmation
+                    ownerInput = ""
+                    repoInput = ""
+                    packageNameInput = ""
+                    gitHubPATInput = ""
+                },
+                owner = ownerInput,
+                onOwnerChange = { ownerInput = it },
+                repo = repoInput,
+                onRepoChange = { repoInput = it },
+                packageName = packageNameInput,
+                onPackageNameChange = { packageNameInput = it },
+                gitHubPAT = gitHubPATInput,
+                onGitHubPATChange = { gitHubPATInput = it })
+        }
+
+
+        fun resetGitHubDialogState() {
+
+        }
+
+        Scaffold(
+            snackbarHost = {
+                SnackbarHost(hostState = snackbarHostState) { snackbarData ->
+                    XenonSnackbar(
+                        snackbarData = snackbarData, modifier = Modifier.padding(
+                            horizontal = 16.dp, vertical = 12.dp
                         )
-                        AnimatedVisibility(
-                            visible = xenonStoreUpdateInfo != null,
-                            enter = fadeIn(animationSpec = tween(durationMillis = updateButtonAnimationDuration)) + scaleIn(
-                                animationSpec = tween(durationMillis = updateButtonAnimationDuration),
-                                initialScale = 0.8f,
-                                transformOrigin = TransformOrigin.Center
-                            ),
-                            exit = fadeOut(animationSpec = tween(durationMillis = updateButtonAnimationDuration)) + scaleOut(
-                                animationSpec = tween(durationMillis = updateButtonAnimationDuration),
-                                targetScale = 0.8f,
-                                transformOrigin = TransformOrigin.Center
+                    )
+                }
+            },
+            bottomBar = {
+                val bottomPaddingNavigationBar =
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                val imePaddingValues = WindowInsets.ime.asPaddingValues()
+                val imeHeight = imePaddingValues.calculateBottomPadding()
+
+                val targetBottomPadding =
+                    remember(imeHeight, bottomPaddingNavigationBar, imePaddingValues) {
+                        val calculatedPadding = if (imeHeight > bottomPaddingNavigationBar) {
+                            imeHeight + LargePadding
+                        } else {
+                            max(
+                                bottomPaddingNavigationBar, imePaddingValues.calculateTopPadding()
+                            ) + LargePadding
+                        }
+                        max(calculatedPadding, 0.dp)
+                    }
+
+                val animatedBottomPadding by animateDpAsState(
+                    targetValue = targetBottomPadding, animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow
+                    ), label = "bottomPaddingAnimation"
+                )
+                FloatingToolbarContent(
+                    hazeState = hazeState,
+                    onSearchQueryChanged = { newQuery ->
+                        currentSearchQuery = newQuery
+                        viewModel.setSearchQuery(newQuery)
+                    },
+                    currentSearchQuery = currentSearchQuery,
+                    lazyListState = lazyListState,
+                    allowToolbarScrollBehavior = !isAppBarExpandable,
+                    isSelectedColor = extendedMaterialColorScheme.inverseErrorContainer,
+                    selectedNoteIds = emptyList(),
+                    onClearSelection = { },
+                    isAddModeActive = false,
+                    onAddModeToggle = {
+                        resetGitHubDialogState()
+                        showGitHubDialog = true
+                    },
+                    isSearchActive = isSearchActive,
+                    onIsSearchActiveChange = { isSearchActive = it },
+                    defaultContent = { iconsAlphaDuration, showActionIconsExceptSearch ->
+                        Row {
+                            val updateButtonAnimationDuration = 300
+                            val iconAlphaTarget = if (isSearchActive) 0f else 1f
+
+                            val updateIconAlpha by animateFloatAsState(
+                                targetValue = iconAlphaTarget, animationSpec = tween(
+                                    durationMillis = iconsAlphaDuration,
+                                    delayMillis = if (isSearchActive) 0 else 0
+                                ), label = "FilterIconAlpha"
                             )
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxHeight()
-                                    .padding(horizontal = 4.dp),
-                                contentAlignment = Alignment.Center
+                            AnimatedVisibility(
+                                visible = xenonStoreUpdateInfo != null,
+                                enter = fadeIn(animationSpec = tween(durationMillis = updateButtonAnimationDuration)) + scaleIn(
+                                    animationSpec = tween(durationMillis = updateButtonAnimationDuration),
+                                    initialScale = 0.8f,
+                                    transformOrigin = TransformOrigin.Center
+                                ),
+                                exit = fadeOut(animationSpec = tween(durationMillis = updateButtonAnimationDuration)) + scaleOut(
+                                    animationSpec = tween(durationMillis = updateButtonAnimationDuration),
+                                    targetScale = 0.8f,
+                                    transformOrigin = TransformOrigin.Center
+                                )
                             ) {
                                 Box(
-                                    contentAlignment = Alignment.Center,
                                     modifier = Modifier
-                                        .size(40.dp)
-                                        .alpha(updateIconAlpha)
-                                        .clip(RoundedCornerShape(100f))
-                                        .background(colorScheme.primary)
-                                        .clickable(
-                                            enabled = !isSearchActive && showActionIconsExceptSearch,
-                                            onClick = {
-                                                storeViewModel.downloadAndInstallXenonStoreUpdate(context)
-                                            }
-                                        ),
+                                        .fillMaxHeight()
+                                        .padding(horizontal = 4.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Download,
-                                        contentDescription = stringResource(R.string.update),
-                                        tint = colorScheme.onPrimary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    if (xenonStoreDownloadProgress > 0f && xenonStoreDownloadProgress < 1f) {
-                                        CircularProgressIndicator(
-                                            progress = { xenonStoreDownloadProgress },
-                                            modifier = Modifier.size(36.dp),
-                                            color = colorScheme.onPrimary,
-                                            trackColor = Color.Transparent,
-                                            strokeWidth = 5.dp
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .alpha(updateIconAlpha)
+                                            .clip(RoundedCornerShape(100f))
+                                            .background(colorScheme.primary)
+                                            .clickable(
+                                                enabled = !isSearchActive && showActionIconsExceptSearch,
+                                                onClick = {
+                                                    viewModel.downloadAndInstallXenonStoreUpdate(
+                                                        context
+                                                    )
+                                                }),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Download,
+                                            contentDescription = stringResource(R.string.update),
+                                            tint = colorScheme.onPrimary,
+                                            modifier = Modifier.size(24.dp)
                                         )
+                                        if (xenonStoreDownloadProgress > 0f && xenonStoreDownloadProgress < 1f) {
+                                            CircularProgressIndicator(
+                                                progress = { xenonStoreDownloadProgress },
+                                                modifier = Modifier.size(36.dp),
+                                                color = colorScheme.onPrimary,
+                                                trackColor = Color.Transparent,
+                                                strokeWidth = 5.dp
+                                            )
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        val shareIconAlpha by animateFloatAsState(
-                            targetValue = iconAlphaTarget, animationSpec = tween(
-                                durationMillis = iconsAlphaDuration,
-                                delayMillis = if (isSearchActive) 100 else 0
-                            ), label = "FilterIconAlpha"
-                        )
-                        IconButton(
-                            onClick = { showShareDialog = true },
-                            modifier = Modifier.alpha(shareIconAlpha),
-                            enabled = !isSearchActive && showActionIconsExceptSearch
-                        ) {
-                            Icon(
-                                Icons.Filled.Share,
-                                contentDescription = stringResource(R.string.share_store_action),
-                                tint = colorScheme.onSurface
+                            val shareIconAlpha by animateFloatAsState(
+                                targetValue = iconAlphaTarget, animationSpec = tween(
+                                    durationMillis = iconsAlphaDuration,
+                                    delayMillis = if (isSearchActive) 100 else 0
+                                ), label = "FilterIconAlpha"
                             )
-                        }
-                        val settingsIconAlpha by animateFloatAsState(
-                            targetValue = iconAlphaTarget, animationSpec = tween(
-                                durationMillis = iconsAlphaDuration,
-                                delayMillis = if (isSearchActive) 200 else 0
-                            ), label = "SettingsIconAlpha"
-                        )
-                        IconButton(
-                            onClick = onOpenSettings,
-                            modifier = Modifier.alpha(settingsIconAlpha),
-                            enabled = !isSearchActive && showActionIconsExceptSearch
-                        ) {
-                            Icon(
-                                Icons.Filled.Settings,
-                                contentDescription = stringResource(R.string.settings),
-                                tint = colorScheme.onSurface
+                            IconButton(
+                                onClick = { showShareDialog = true },
+                                modifier = Modifier.alpha(shareIconAlpha),
+                                enabled = !isSearchActive && showActionIconsExceptSearch
+                            ) {
+                                Icon(
+                                    Icons.Filled.Share,
+                                    contentDescription = stringResource(R.string.share_store_action),
+                                    tint = colorScheme.onSurface
+                                )
+                            }
+                            val settingsIconAlpha by animateFloatAsState(
+                                targetValue = iconAlphaTarget, animationSpec = tween(
+                                    durationMillis = iconsAlphaDuration,
+                                    delayMillis = if (isSearchActive) 200 else 0
+                                ), label = "SettingsIconAlpha"
                             )
+                            IconButton(
+                                onClick = onOpenSettings,
+                                modifier = Modifier.alpha(settingsIconAlpha),
+                                enabled = !isSearchActive && showActionIconsExceptSearch
+                            ) {
+                                Icon(
+                                    Icons.Filled.Settings,
+                                    contentDescription = stringResource(R.string.settings),
+                                    tint = colorScheme.onSurface
+                                )
+                            }
                         }
-                    }
-                },
-               isFabEnabled = isAddButtonEnabled,
-               isSpannedMode = deviceConfig.isSpannedMode,
-               fabOnLeftInSpannedMode = deviceConfig.fabOnLeft,
-               spannedModeHingeGap = deviceConfig.hingeGapDp,
-               spannedModeFab = {
-                   SpannedModeFAB(
-                       hazeState = hazeState,
-                       onClick = deviceConfig.toggleFabSide,
-                       modifier = Modifier.padding(bottom = animatedBottomPadding),
-                   )
-               }
-               )
-        },
-
-
-
-        ) { scaffoldPadding ->
-        ActivityScreen(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding()
-                .hazeSource(hazeState)
-                .onSizeChanged { newSize ->
-                },
-            titleText = stringResource(id = R.string.app_name),
-            expandable = isAppBarCollapsible,
-            navigationIconStartPadding = if (shouldShowNavigationElements) SmallPadding else 0.dp,
-            navigationIconPadding = if (shouldShowNavigationElements) {
-                if (isDeveloperModeEnabled && showDummyProfile) SmallPadding else MediumPadding
-            } else {
-                0.dp
-            },
-            navigationIconSpacing = if (shouldShowNavigationElements) NoSpacing else 0.dp,
-
-            navigationIcon = {},
-
-            hasNavigationIconExtraContent = if (shouldShowNavigationElements) {
-                isDeveloperModeEnabled && showDummyProfile
-            } else {
-                false
-            },
-
-            navigationIconExtraContent = if (shouldShowNavigationElements && isDeveloperModeEnabled && showDummyProfile) {
-                {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        GoogleProfilBorderNoGoogle(
-                            modifier = Modifier.size(32.dp),
+                    },
+                    isFabEnabled = isAddButtonEnabled,
+                    isSpannedMode = deviceConfig.isSpannedMode,
+                    fabOnLeftInSpannedMode = deviceConfig.fabOnLeft,
+                    spannedModeHingeGap = deviceConfig.hingeGapDp,
+                    spannedModeFab = {
+                        SpannedModeFAB(
+                            hazeState = hazeState,
+                            onClick = deviceConfig.toggleFabSide,
+                            modifier = Modifier.padding(bottom = animatedBottomPadding),
                         )
-                        Image(
-                            painter = painterResource(id = R.mipmap.default_icon),
-                            contentDescription = stringResource(R.string.open_navigation_menu),
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
-                }
-            } else {
-                {}
+                    })
             },
-            actions = {},
-            content = { _ ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = ExtraLargeSpacing)
-                ) {
-                    if (storeItems.isEmpty()) {
+
+
+            ) { scaffoldPadding ->
+            ActivityScreen(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding()
+                    .hazeSource(hazeState)
+                    .onSizeChanged { newSize ->
+                    },
+                titleText = stringResource(id = R.string.app_name),
+                expandable = isAppBarExpandable,
+                navigationIconStartPadding = if (shouldShowNavigationElements) SmallPadding else 0.dp,
+                navigationIconPadding = if (shouldShowNavigationElements) {
+                    if (isDeveloperModeEnabled && showDummyProfile) SmallPadding else MediumPadding
+                } else {
+                    0.dp
+                },
+                navigationIconSpacing = if (shouldShowNavigationElements) NoSpacing else 0.dp,
+
+                navigationIcon = {},
+
+                hasNavigationIconExtraContent = if (shouldShowNavigationElements) {
+                    isDeveloperModeEnabled && showDummyProfile
+                } else {
+                    false
+                },
+
+                navigationIconExtraContent = if (shouldShowNavigationElements && isDeveloperModeEnabled && showDummyProfile) {
+                    {
                         Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Text(
-                                text = stringResource(R.string.nothing_in_store_yet),
-                                style = MaterialTheme.typography.bodyLarge,
+                            GoogleProfilBorderNoGoogle(
+                                modifier = Modifier.size(32.dp),
+                            )
+                            Image(
+                                painter = painterResource(id = R.mipmap.default_icon),
+                                contentDescription = stringResource(R.string.open_navigation_menu),
+                                modifier = Modifier.size(26.dp)
                             )
                         }
                     }
-                    else {
-                        LazyColumn(
-                            state = lazyListState,
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(
-                                top = LargestPadding,
-                                bottom = scaffoldPadding.calculateBottomPadding() + MediumPadding
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(MediumPadding)
-                        ) {
-                            itemsIndexed(
-                                storeItems, key = { _, item -> item.packageName }) { _, storeItem ->
-                                StoreItemCell(storeItem = storeItem, onInstall = { item ->
-                                    storeViewModel.installApp(item, context)
-                                }, onUninstall = { item ->
-                                    storeViewModel.uninstallApp(item, context)
-                                }, onOpen = { item ->
-                                    storeViewModel.openApp(item, context)
-                                })
+                } else {
+                    {}
+                },
+                actions = {},
+                content = { _ ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = ExtraLargeSpacing)
+                    ) {
+                        if (storeItems.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.nothing_in_store_yet),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            }
+                        } else {
+                            LazyColumn(
+                                state = lazyListState,
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(
+                                    top = LargestPadding,
+                                    bottom = scaffoldPadding.calculateBottomPadding() + MediumPadding
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(MediumPadding)
+                            ) {
+                                itemsIndexed(
+                                    storeItems,
+                                    key = { _, item -> item.packageName }) { _, storeItem ->
+                                    StoreItemCell(storeItem = storeItem, onInstall = { item ->
+                                        viewModel.installApp(item, context)
+                                    }, onUninstall = { item ->
+                                        viewModel.uninstallApp(item, context)
+                                    }, onOpen = { item ->
+                                        viewModel.openApp(item, context)
+                                    })
+                                }
                             }
                         }
                     }
-                }
-            })
+                })
+        }
     }
-}}
+}

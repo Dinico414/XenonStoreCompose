@@ -1,10 +1,6 @@
 package com.xenonware.store.ui.layouts
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.IntSize
 import com.xenonware.store.ui.layouts.settings.CoverSettings
 import com.xenonware.store.ui.layouts.settings.DefaultSettings
 import com.xenonware.store.viewmodel.LayoutType
@@ -17,27 +13,24 @@ fun SettingsLayout(
     isLandscape: Boolean,
     layoutType: LayoutType,
     onNavigateToDeveloperOptions: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
-        when (layoutType) {
-            LayoutType.COVER -> {
-                CoverSettings(
-                    onNavigateBack = onNavigateBack,
-                    viewModel = viewModel,
-                    onNavigateToDeveloperOptions = onNavigateToDeveloperOptions
-                )
-            }
+    when (layoutType) {
+        LayoutType.COVER -> {
+            CoverSettings(
+                onNavigateBack = onNavigateBack,
+                viewModel = viewModel,
+                onNavigateToDeveloperOptions = onNavigateToDeveloperOptions
+            )
+        }
 
-            LayoutType.SMALL, LayoutType.COMPACT, LayoutType.MEDIUM, LayoutType.EXPANDED -> {
-                DefaultSettings(
-                    onNavigateBack = onNavigateBack,
-                    viewModel = viewModel,
-                    layoutType = layoutType,
-                    isLandscape = isLandscape,
-                    onNavigateToDeveloperOptions = onNavigateToDeveloperOptions
-                )
-            }
+        LayoutType.SMALL, LayoutType.COMPACT, LayoutType.MEDIUM, LayoutType.EXPANDED -> {
+            DefaultSettings(
+                onNavigateBack = onNavigateBack,
+                viewModel = viewModel,
+                isLandscape = isLandscape,
+                layoutType = layoutType,
+                onNavigateToDeveloperOptions = onNavigateToDeveloperOptions
+            )
         }
     }
 }

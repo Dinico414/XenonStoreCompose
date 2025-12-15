@@ -12,11 +12,11 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.xenonware.store.InstallMethod
-import com.xenonware.store.SharedPreferenceManager
-import com.xenonware.store.ShizukuManager
-import com.xenonware.store.utils.Utils.Companion.getCurrentLanguage
-import com.xenonware.store.utils.Utils.Companion.isNewerVersion
+import com.xenonware.store.data.InstallMethod
+import com.xenonware.store.data.SharedPreferenceManager
+import com.xenonware.store.util.ShizukuManager
+import com.xenonware.store.util.Util.Companion.getCurrentLanguage
+import com.xenonware.store.util.Util.Companion.isNewerVersion
 import com.xenonware.store.viewmodel.classes.AppEntryState
 import com.xenonware.store.viewmodel.classes.StoreItem
 import kotlinx.coroutines.Dispatchers

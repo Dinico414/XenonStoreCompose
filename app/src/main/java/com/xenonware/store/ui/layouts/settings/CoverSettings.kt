@@ -100,7 +100,7 @@ fun CoverSettings(
 
     ActivityScreen(
         titleText = stringResource(id = R.string.settings),
-
+        expandable = false,
         navigationIconStartPadding = MediumPadding,
         navigationIconPadding = MediumPadding,
         navigationIconSpacing = NoSpacing,
@@ -116,7 +116,6 @@ fun CoverSettings(
         onNavigationIconClick = onNavigateBack,
         hasNavigationIconExtraContent = false,
         actions = {},
-        // isAppBarCollapsible = false,
         screenBackgroundColor = coverScreenBackgroundColor,
         contentBackgroundColor = coverScreenBackgroundColor,
         appBarNavigationIconContentColor = coverScreenContentColor,
@@ -129,8 +128,7 @@ fun CoverSettings(
                     .verticalScroll(rememberScrollState())
                     .padding(
                         bottom = WindowInsets.safeDrawing.asPaddingValues()
-                            .calculateBottomPadding() + MediumPadding,
-                        top = MediumPadding
+                            .calculateBottomPadding() + MediumPadding, top = MediumPadding
                     )
             ) {
                 SettingsItems(
@@ -174,7 +172,8 @@ fun CoverSettings(
                 .fillMaxSize()
                 .hazeEffect(hazeState)
         ) {
-            DialogCoverDisplaySelection(onConfirm = {
+            DialogCoverDisplaySelection(
+                onConfirm = {
                 viewModel.saveCoverDisplayMetrics(
                     containerSize
                 )

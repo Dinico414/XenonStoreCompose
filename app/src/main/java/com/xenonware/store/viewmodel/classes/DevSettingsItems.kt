@@ -47,10 +47,10 @@ import com.xenon.mylibrary.values.MediumCornerRadius
 import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenon.mylibrary.values.SmallSpacing
 import com.xenon.mylibrary.values.SmallestCornerRadius
-import com.xenonware.store.InstallMethod
+import com.xenonware.store.data.InstallMethod
 import com.xenonware.store.R
 import com.xenonware.store.ui.res.DialogGitHubApps
-import com.xenonware.store.utils.Utils.Companion.getCurrentLanguage
+import com.xenonware.store.util.Util.Companion.getCurrentLanguage
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.SettingsViewModel
 
