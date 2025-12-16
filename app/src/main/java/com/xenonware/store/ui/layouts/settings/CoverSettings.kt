@@ -100,6 +100,7 @@ fun CoverSettings(
 
     ActivityScreen(
         titleText = stringResource(id = R.string.settings),
+        flexModel = null,
         expandable = false,
         navigationIconStartPadding = MediumPadding,
         navigationIconPadding = MediumPadding,

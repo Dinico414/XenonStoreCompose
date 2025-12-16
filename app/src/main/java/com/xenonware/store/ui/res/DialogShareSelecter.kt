@@ -31,8 +31,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
-import com.xenon.mylibrary.QuicksandTitleVariable
 import com.xenon.mylibrary.res.XenonDialog
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenonware.store.R
 import java.io.File
 import java.io.FileOutputStream

@@ -1,5 +1,6 @@
 package com.xenonware.store.ui.layouts.store
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -72,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xenon.mylibrary.ActivityScreen
+import com.xenon.mylibrary.FlexTopContainer
 import com.xenon.mylibrary.res.FloatingToolbarContent
 import com.xenon.mylibrary.res.GoogleProfilBorderNoGoogle
 import com.xenon.mylibrary.res.SpannedModeFAB
@@ -85,10 +87,15 @@ import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.store.R
+import com.xenonware.store.ui.layouts.settings.DefaultSettings
 import com.xenonware.store.ui.res.DialogGitHubApps
 import com.xenonware.store.ui.res.DialogShareSelector
+import com.xenonware.store.ui.res.SettingsGoogleTile
 import com.xenonware.store.ui.res.StoreItemCell
 import com.xenonware.store.ui.theme.extendedMaterialColorScheme
+import com.xenonware.store.ui.theme.onErrorDark
+import com.xenonware.store.ui.theme.primaryDark
+import com.xenonware.store.ui.theme.primaryLight
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.StoreViewModel
@@ -386,6 +393,7 @@ fun CompactStore(
                     .onSizeChanged { newSize ->
                     },
                 titleText = stringResource(id = R.string.app_name),
+                flexModel = null,
                 expandable = isAppBarExpandable,
                 navigationIconStartPadding = if (shouldShowNavigationElements) SmallPadding else 0.dp,
                 navigationIconPadding = if (shouldShowNavigationElements) {
@@ -464,7 +472,8 @@ fun CompactStore(
                             }
                         }
                     }
-                })
+                }
+            )
         }
     }
 }
