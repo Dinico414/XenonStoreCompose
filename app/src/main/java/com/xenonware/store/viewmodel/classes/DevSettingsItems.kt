@@ -86,7 +86,7 @@ fun DevSettingsItems(
 
     SwitchDefaults.colors()
 
-    val isShizukuAvailable by viewModel.isShizukuAvailable.collectAsState()
+    val isShizukuAvailable  = true/*by viewModel.isShizukuAvailable.collectAsState()*/
     var showInstallMethodDialog by remember { mutableStateOf(false) }
     val currentInstallMethod by viewModel.installMethodState.collectAsState()
     var showGithubAppDialog by remember { mutableStateOf(false) }

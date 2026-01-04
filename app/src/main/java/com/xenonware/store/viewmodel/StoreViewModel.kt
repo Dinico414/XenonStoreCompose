@@ -1,6 +1,7 @@
 package com.xenonware.store.viewmodel
 
 import android.app.Application
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -20,6 +21,7 @@ import com.xenonware.store.util.Util.Companion.isNewerVersion
 import com.xenonware.store.viewmodel.classes.AppEntryState
 import com.xenonware.store.viewmodel.classes.StoreItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,7 +40,9 @@ import rikka.shizuku.Shizuku
 import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
 import java.io.InputStreamReader
+import java.util.Scanner
 
 class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -627,6 +631,71 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+    private suspend fun performShizukuInstall(
+        apkFile: File,
+        packageName: String,
+        isXenonStoreUpdate: Boolean
+    ) {
+        _currentActionInfo.value = "Installing $packageName via Shizuku (silent)..."
+
+        try {
+            // Reflection to access private Shizuku.newProcess
+            val shizukuClass = Class.forName("rikka.shizuku.Shizuku")
+            val newProcessMethod = shizukuClass.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            )
+            newProcessMethod.isAccessible = true
+
+            val command = arrayOf("pm", "install", "-r", "-g", apkFile.absolutePath)
+            // Add "-d" here if you want downgrade support: arrayOf("pm", "install", "-r", "-g", "-d", apkFile.absolutePath)
+
+            val remoteProcess = newProcessMethod.invoke(
+                null,
+                command,
+                null as Array<String>?,
+                null as String?
+            )
+
+            // Read output using pure Java (Scanner)
+            val inputStream = remoteProcess!!.javaClass.getMethod("getInputStream")
+                .invoke(remoteProcess) as java.io.InputStream
+            val output = Scanner(inputStream).useDelimiter("\\A").let { scanner ->
+                if (scanner.hasNext()) scanner.next() else ""
+            }
+
+            val errorStream = remoteProcess.javaClass.getMethod("getErrorStream")
+                .invoke(remoteProcess) as java.io.InputStream
+            val error = Scanner(errorStream).useDelimiter("\\A").let { scanner ->
+                if (scanner.hasNext()) scanner.next() else ""
+            }
+
+            val exitCode = remoteProcess.javaClass.getMethod("waitFor")
+                .invoke(remoteProcess) as Int
+
+            remoteProcess.javaClass.getMethod("destroy").invoke(remoteProcess)
+
+            if (exitCode == 0 && output.contains("Success", ignoreCase = true)) {
+                Log.d(TAG, "Shizuku install success: $output")
+                _currentActionInfo.value = "Installation successful via Shizuku."
+                delay(1500L)
+                handlePackageChanged(packageName)
+            } else {
+                val msg =
+                    "Shizuku install failed (code $exitCode):\nOutput: $output\nError: $error"
+                Log.e(TAG, msg)
+                _error.value =
+                    if (error.isNotEmpty()) error.trim() else "Installation failed (no details)"
+                if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Shizuku install exception", e)
+            _error.value = "Shizuku error: ${e.message ?: "Unknown error"}"
+            if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+        }
+    }
 
     private fun initiateInstall(apkFile: File, context: Context, packageName: String, isXenonStoreUpdate: Boolean = false) {
         viewModelScope.launch {
@@ -637,40 +706,76 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 when (installMethod) {
                     InstallMethod.SHIZUKU -> {
-                        _currentActionInfo.value = "Waiting for Shizuku service..."
-                        val isReady = withTimeoutOrNull(5000L) {
-                         ShizukuManager.isAvailable.first { it }
-                        } ?: false
+                        _currentActionInfo.value = "Preparing Shizuku installation..."
 
-                        if (!isReady) {
-                            _error.value = "Shizuku service not available. Please start Shizuku and try again."
-                            Log.e(TAG, "Timed out waiting for Shizuku binder.")
-                            if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
-                            return@launch
-                        }
-
-                        Log.d(TAG, "Shizuku service is ready. Proceeding with installation.")
                         if (Shizuku.isPreV11()) {
-                            _error.value = "Shizuku version too old."
-                            Log.e(TAG, "Shizuku is pre-v11, not supported by this request method.")
+                            _error.value = "Shizuku version too old (pre-v11 not supported)."
                             if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
                             return@launch
                         }
-                        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
-                            Log.i(TAG, "Shizuku permission not granted. Requesting...")
-                            _currentActionInfo.value = "Requesting Shizuku permission..."
-                            Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
-                            _error.value = "Shizuku permission required. Please grant it and try again."
-                            // TODO: IMPORTANT! The app (Activity) needs to handle the Shizuku permission result.
-                            if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
-                            return@launch
+
+                        val doInstall = {
+                            viewModelScope.launch {
+                                _currentActionInfo.value = "Installing $packageName via Shizuku (silent)..."
+
+                                try {
+                                    val shizukuClass = Class.forName("rikka.shizuku.Shizuku")
+                                    val newProcess = shizukuClass.getDeclaredMethod(
+                                        "newProcess",
+                                        Array<String>::class.java,
+                                        Array<String>::class.java,
+                                        String::class.java
+                                    ).apply { isAccessible = true }
+
+                                    val process = newProcess.invoke(
+                                        null,
+                                        arrayOf("pm", "install", "-r", "-g", apkFile.absolutePath),
+                                        null as Array<String>?,
+                                        null as String?
+                                    )!!
+
+                                    val output = Scanner(
+                                        process.javaClass.getMethod("getInputStream").invoke(process) as InputStream
+                                    ).useDelimiter("\\A").use { if (it.hasNext()) it.next() else "" }
+
+                                    val error = Scanner(
+                                        process.javaClass.getMethod("getErrorStream").invoke(process) as InputStream
+                                    ).useDelimiter("\\A").use { if (it.hasNext()) it.next() else "" }
+
+                                    val exitCode = process.javaClass.getMethod("waitFor").invoke(process) as Int
+                                    process.javaClass.getMethod("destroy").invoke(process)
+
+                                    if (exitCode == 0 && output.contains("Success", ignoreCase = true)) {
+                                        Log.d(TAG, "Shizuku install success: $output")
+                                        _currentActionInfo.value = "Installation successful via Shizuku."
+                                        delay(1500L)
+                                        handlePackageChanged(packageName)
+                                    } else {
+                                        Log.e(TAG, "Shizuku install failed ($exitCode): $error")
+                                        _error.value = error.takeIf { it.isNotEmpty() }?.trim() ?: "Installation failed"
+                                        if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Shizuku install exception", e)
+                                    _error.value = "Shizuku error: ${e.message ?: "Unknown"}"
+                                    if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+                                }
+                            }
+                        }
+
+                        if (Shizuku.pingBinder()) {
+                            doInstall()
                         } else {
-                            _currentActionInfo.value = "Using Shizuku to install $packageName..."
-                            Log.d(TAG, "Shizuku permission granted. Proceeding with Shizuku installation logic.")
-                            // TODO: Implement actual Shizuku installation logic here.
-                            _error.value = "Shizuku installation not fully implemented. Install failed."
-                            Log.e(TAG, "Shizuku installation API call is a TODO.")
-                            if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
+                            _currentActionInfo.value = "Waiting for Shizuku service... (open Shizuku app if stuck)"
+                            showToast("Open the Shizuku app once if installation doesn't start")
+
+                            val listener = object : Shizuku.OnBinderReceivedListener {
+                                override fun onBinderReceived() {
+                                    Shizuku.removeBinderReceivedListener(this)
+                                    doInstall()
+                                }
+                            }
+                            Shizuku.addBinderReceivedListener(listener)
                         }
                     }
                     InstallMethod.ROOT -> {

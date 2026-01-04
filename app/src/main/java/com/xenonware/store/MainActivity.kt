@@ -17,13 +17,12 @@ import com.xenonware.store.ui.theme.ScreenEnvironment
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.StoreViewModel
-
-// Import Toast and related Compose UI components
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.xenonware.store.data.SharedPreferenceManager
 import kotlinx.coroutines.launch
+import rikka.shizuku.Shizuku
 
 class MainActivity : ComponentActivity() {
 
@@ -37,6 +36,14 @@ class MainActivity : ComponentActivity() {
 
     private val SETTINGS_REQUEST_CODE = 1001
 
+    // Listener für die Shizuku-Berechtigung
+    private val requestPermissionResultListener = Shizuku.OnRequestPermissionResultListener { _, grantResult ->
+        if (grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            viewModel.showToast("Shizuku permission granted!")
+        } else {
+            viewModel.showToast("Shizuku permission denied.")
+        }
+    }
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,6 +52,9 @@ class MainActivity : ComponentActivity() {
         sharedPreferenceManager = SharedPreferenceManager(applicationContext)
         viewModel = ViewModelProvider(this).get(StoreViewModel::class.java)
         devSettingsViewModel = ViewModelProvider(this).get(DevSettingsViewModel::class.java)
+
+        // Shizuku Permission Listener registrieren
+        Shizuku.addRequestPermissionResultListener(requestPermissionResultListener)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -73,7 +83,7 @@ class MainActivity : ComponentActivity() {
                 themePreference = lastAppliedTheme,
                 coverTheme = applyCoverTheme,
                 blackedOutModeEnabled = lastAppliedBlackedOutMode
-                ) { layoutType, isLandscape ->
+            ) { layoutType, isLandscape ->
                 XenonApp(
                     viewModel = viewModel,
                     layoutType = layoutType,
@@ -88,11 +98,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        Shizuku.removeRequestPermissionResultListener(requestPermissionResultListener)
+    }
+
     override fun onResume() {
         super.onResume()
         viewModel.fetchAndRefreshAppList(useCache = false)
         viewModel.verifyAndRefreshPendingInstallations()
-
 
         val currentThemePref = sharedPreferenceManager.theme
         val currentCoverThemeEnabled = sharedPreferenceManager.coverThemeEnabled
@@ -120,7 +134,6 @@ class MainActivity : ComponentActivity() {
             viewModel.fetchAndRefreshAppList(useCache = false)
         }
     }
-
 
     private fun updateAppCompatDelegateTheme(themePref: Int) {
         if (themePref >= 0 && themePref < sharedPreferenceManager.themeFlag.size) {
