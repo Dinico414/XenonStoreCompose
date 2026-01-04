@@ -1,12 +1,13 @@
 package com.xenonware.store.viewmodel
 
+import android.app.Activity
 import android.app.Application
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import androidx.core.content.FileProvider
@@ -15,7 +16,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xenonware.store.data.InstallMethod
 import com.xenonware.store.data.SharedPreferenceManager
-import com.xenonware.store.util.ShizukuManager
 import com.xenonware.store.util.Util.Companion.getCurrentLanguage
 import com.xenonware.store.util.Util.Companion.isNewerVersion
 import com.xenonware.store.viewmodel.classes.AppEntryState
@@ -25,10 +25,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
@@ -109,7 +107,15 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             addAction(Intent.ACTION_PACKAGE_REPLACED)
             addDataScheme("package")
         }
-        getApplication<Application>().registerReceiver(packageInstallReceiver, intentFilter)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            getApplication<Application>().registerReceiver(
+                packageInstallReceiver,
+                intentFilter,
+                Context.RECEIVER_NOT_EXPORTED
+            )
+        } else {
+            getApplication<Application>().registerReceiver(packageInstallReceiver, intentFilter)
+        }
     }
 
     fun onCustomAppsUpdated() {
@@ -706,17 +712,20 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 when (installMethod) {
                     InstallMethod.SHIZUKU -> {
-                        _currentActionInfo.value = "Preparing Shizuku installation..."
+                        _currentActionInfo.value = "Shizuku: Vorbereitung..."
 
                         if (Shizuku.isPreV11()) {
-                            _error.value = "Shizuku version too old (pre-v11 not supported)."
+                            _error.value = "Shizuku-Version zu alt (pre-v11 nicht unterstützt)."
                             if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
                             return@launch
                         }
 
-                        val doInstall = {
+                        Log.d(TAG, "Shizuku pingBinder at start: ${Shizuku.pingBinder()}")
+
+                        val performInstall = {
                             viewModelScope.launch {
-                                _currentActionInfo.value = "Installing $packageName via Shizuku (silent)..."
+                                Log.d(TAG, "Starting Shizuku install execution...")
+                                _currentActionInfo.value = "Installiere $packageName leise via Shizuku..."
 
                                 try {
                                     val shizukuClass = Class.forName("rikka.shizuku.Shizuku")
@@ -745,39 +754,50 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                                     val exitCode = process.javaClass.getMethod("waitFor").invoke(process) as Int
                                     process.javaClass.getMethod("destroy").invoke(process)
 
+                                    Log.d(TAG, "pm install output: $output")
+                                    Log.d(TAG, "pm install error: $error")
+                                    Log.d(TAG, "pm install exitCode: $exitCode")
+
                                     if (exitCode == 0 && output.contains("Success", ignoreCase = true)) {
-                                        Log.d(TAG, "Shizuku install success: $output")
-                                        _currentActionInfo.value = "Installation successful via Shizuku."
+                                        Log.d(TAG, "Shizuku-Installation erfolgreich")
+                                        _currentActionInfo.value = "Installation via Shizuku erfolgreich!"
                                         delay(1500L)
                                         handlePackageChanged(packageName)
                                     } else {
-                                        Log.e(TAG, "Shizuku install failed ($exitCode): $error")
-                                        _error.value = error.takeIf { it.isNotEmpty() }?.trim() ?: "Installation failed"
+                                        Log.e(TAG, "Shizuku-Installation fehlgeschlagen")
+                                        _error.value = error.takeIf { it.isNotEmpty() }?.trim() ?: "Installation fehlgeschlagen"
                                         if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
                                     }
                                 } catch (e: Exception) {
-                                    Log.e(TAG, "Shizuku install exception", e)
-                                    _error.value = "Shizuku error: ${e.message ?: "Unknown"}"
+                                    Log.e(TAG, "Shizuku-Exception während Installation", e)
+                                    _error.value = "Shizuku-Fehler: ${e.message ?: "Unbekannt"}"
                                     if (!isXenonStoreUpdate) handlePackageChanged(packageName) else resetXenonStoreUpdateState()
                                 }
                             }
                         }
 
                         if (Shizuku.pingBinder()) {
-                            doInstall()
+                            Log.d(TAG, "Binder already available – installing immediately")
+                            performInstall()
                         } else {
-                            _currentActionInfo.value = "Waiting for Shizuku service... (open Shizuku app if stuck)"
-                            showToast("Open the Shizuku app once if installation doesn't start")
+                            _currentActionInfo.value = "Warte auf Shizuku-Service..."
+                            showToast("Aktiviere Shizuku automatisch...")
+
+                            // Force binder by launching transparent activity
+                            val intent = Intent(getApplication<Application>(), TransparentActivity::class.java)
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            getApplication<Application>().startActivity(intent)
 
                             val listener = object : Shizuku.OnBinderReceivedListener {
                                 override fun onBinderReceived() {
                                     Shizuku.removeBinderReceivedListener(this)
-                                    doInstall()
+                                    performInstall()
                                 }
                             }
                             Shizuku.addBinderReceivedListener(listener)
                         }
                     }
+
                     InstallMethod.ROOT -> {
                         _currentActionInfo.value = "Attempting Root installation for $packageName..."
                         val tempApkName = "install_${apkFile.name}" // Ensure unique temp name
@@ -1026,5 +1046,12 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         getApplication<Application>().unregisterReceiver(packageInstallReceiver)
         client.dispatcher.executorService.shutdown() // Gracefully shutdown OkHttp
         client.connectionPool.evictAll()
+    }
+}
+
+class TransparentActivity : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        finish()  // Immediately close – invisible to user
     }
 }

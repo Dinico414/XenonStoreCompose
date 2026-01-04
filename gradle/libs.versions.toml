@@ -27,6 +27,7 @@ material3Adaptive = "1.0.0-alpha06"
 xenonCommons = "2.3.2"
 #noinspection UnusedVersionCatalogEntry
 xenonUi = "3.1"
+playServicesCast = "22.2.0"
 
 
 [libraries]
@@ -67,6 +68,7 @@ ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 xenon-commons = { module = "com.github.Dinico414:Xenon-Commons", version.ref = "xenonCommons" }
 androidx-material3-window-size-class1-android = { group = "androidx.compose.material3", name = "material3-window-size-class-android", version.ref = "material3WindowSizeClassAndroid" }
 androidx-material3-adaptive = { group = "androidx.compose.material3", name = "material3-adaptive", version.ref = "material3Adaptive" }
+play-services-cast = { group = "com.google.android.gms", name = "play-services-cast", version.ref = "playServicesCast" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

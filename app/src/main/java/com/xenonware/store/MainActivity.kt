@@ -1,6 +1,9 @@
 package com.xenonware.store
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,16 +14,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntSize
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.xenonware.store.data.SharedPreferenceManager
 import com.xenonware.store.ui.layouts.MainLayout
 import com.xenonware.store.ui.theme.ScreenEnvironment
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.StoreViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import com.xenonware.store.data.SharedPreferenceManager
 import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
 
@@ -44,6 +47,24 @@ class MainActivity : ComponentActivity() {
             viewModel.showToast("Shizuku permission denied.")
         }
     }
+    private val installResultReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val status = intent?.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)
+            val packageName = intent?.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME)
+            val message = intent?.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+            if (status == PackageInstaller.STATUS_SUCCESS) {
+                viewModel.showToast("Installation of $packageName successful!")
+                viewModel.handlePackageChanged(packageName ?: return)
+            } else {
+                viewModel.showToast("Installation of $packageName failed: $message")
+                viewModel.handlePackageChanged(packageName ?: return)
+            }
+        }
+    }
+
+// In onCreate():
+
+// In onDestroy():
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,8 +73,6 @@ class MainActivity : ComponentActivity() {
         sharedPreferenceManager = SharedPreferenceManager(applicationContext)
         viewModel = ViewModelProvider(this).get(StoreViewModel::class.java)
         devSettingsViewModel = ViewModelProvider(this).get(DevSettingsViewModel::class.java)
-
-        // Shizuku Permission Listener registrieren
         Shizuku.addRequestPermissionResultListener(requestPermissionResultListener)
 
         lifecycleScope.launch {
@@ -101,6 +120,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         Shizuku.removeRequestPermissionResultListener(requestPermissionResultListener)
+        unregisterReceiver(installResultReceiver)
     }
 
     override fun onResume() {
