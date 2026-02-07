@@ -1,11 +1,12 @@
+import com.android.build.api.dsl.ApplicationExtension
+
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     kotlin("plugin.serialization") version "1.9.24"
 }
 
-android {
+configure<ApplicationExtension> {
     namespace = "com.xenonware.store"
     compileSdk = 36
 
@@ -17,28 +18,34 @@ android {
         versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "XENON_COMMONS_VERSION", "\"${libs.versions.xenonCommons.get()}\"")
+        buildConfigField(
+            "String", "XENON_COMMONS_VERSION", "\"${libs.versions.xenonCommons.get()}\""
+        )
         buildConfigField("String", "XENON_UI_VERSION", "\"${libs.versions.xenonUi.get()}\"")
     }
 
     buildTypes {
-        debug {
+        getByName("debug") {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-d"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("debug")
-            buildConfigField("String", "XENON_COMMONS_VERSION", "\"${libs.versions.xenonCommons.get()}\"")
+            buildConfigField(
+                "String", "XENON_COMMONS_VERSION", "\"${libs.versions.xenonCommons.get()}\""
+            )
             buildConfigField("String", "XENON_UI_VERSION", "\"${libs.versions.xenonUi.get()}\"")
         }
-        release {
+        getByName("release") {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("debug")
-            buildConfigField("String", "XENON_COMMONS_VERSION", "\"${libs.versions.xenonCommons.get()}\"")
+            buildConfigField(
+                "String", "XENON_COMMONS_VERSION", "\"${libs.versions.xenonCommons.get()}\""
+            )
             buildConfigField("String", "XENON_UI_VERSION", "\"${libs.versions.xenonUi.get()}\"")
         }
     }
@@ -46,32 +53,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
-    kotlinOptions {
-        jvmTarget = "21"
-    }
     buildFeatures {
         compose = true
         buildConfig = true
     }
-    applicationVariants.all {
-        outputs.all {
-            val outputFileName = if (buildType.name == "release") {
-                "XenonStore.apk"
-            } else if (buildType.name == "debug") {
-                "XenonStore-debug.apk"
-            } else {
-                "${project.name}-${buildType.name}.apk"
-            }
-            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
-                outputFileName
-        }
-    }
 }
 
 dependencies {
-
     implementation(libs.coil.compose)
-
     implementation(libs.xenon.commons)
     implementation(libs.androidx.material3.window.size.class1.android)
     implementation(libs.androidx.material3.adaptive)
