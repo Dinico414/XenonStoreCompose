@@ -1,5 +1,6 @@
 package com.xenonware.store.ui.layouts.settings
 
+import android.annotation.SuppressLint
 import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -38,6 +39,7 @@ import com.xenon.mylibrary.res.ThemeSetting
 import com.xenon.mylibrary.values.LargestPadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
+import com.xenonware.store.BuildConfig
 import com.xenonware.store.R
 import com.xenonware.store.data.SharedPreferenceManager
 import com.xenonware.store.viewmodel.LayoutType
@@ -46,8 +48,8 @@ import com.xenonware.store.viewmodel.classes.SettingsItems
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import com.xenonware.store.BuildConfig
 
+@SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DefaultSettings(
@@ -77,10 +79,7 @@ fun DefaultSettings(
 
     viewModel.availableDateFormats
 
-    // Note: These strings ("HH:mm", etc) do nothing here, but I left them as provided
     remember { viewModel.systemShortTimePattern }
-    "HH:mm"
-    "h:mm a"
 
     val packageManager = context.packageManager
     val packageName = context.packageName
@@ -132,7 +131,6 @@ fun DefaultSettings(
 
     ActivityScreen(
         titleText = stringResource(id = R.string.settings),
-        flexModel = null,
         expandable = isAppBarExpandable,
         navigationIconStartPadding = MediumPadding,
         navigationIconPadding = MediumPadding,

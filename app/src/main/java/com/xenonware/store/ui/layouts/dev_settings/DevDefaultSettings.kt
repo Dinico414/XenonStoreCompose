@@ -1,5 +1,6 @@
 package com.xenonware.store.ui.layouts.dev_settings
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +30,7 @@ import com.xenonware.store.viewmodel.classes.DevSettingsItems
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
+@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun DevDefaultSettings(
     onNavigateBack: () -> Unit,
@@ -53,7 +55,6 @@ fun DevDefaultSettings(
 
     ActivityScreen(
         titleText = stringResource(id = R.string.developer_options_title),
-        flexModel = null,
         expandable = isAppBarExpandable,
         navigationIconStartPadding = MediumPadding,
         navigationIconPadding = MediumPadding,
@@ -83,7 +84,7 @@ fun DevDefaultSettings(
             }
         },
         modifier = Modifier.hazeSource(hazeState),
-        content = { innerPadding ->
+        content = { _ ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()

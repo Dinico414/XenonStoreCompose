@@ -71,9 +71,6 @@ fun CoverSettings(
     viewModel.availableDateFormats
 
     remember { viewModel.systemShortTimePattern }
-    "HH:mm"
-    "h:mm a"
-
 
     val packageManager = context.packageManager
     val packageName = context.packageName
@@ -100,7 +97,6 @@ fun CoverSettings(
 
     ActivityScreen(
         titleText = stringResource(id = R.string.settings),
-        flexModel = null,
         expandable = false,
         navigationIconStartPadding = MediumPadding,
         navigationIconPadding = MediumPadding,
