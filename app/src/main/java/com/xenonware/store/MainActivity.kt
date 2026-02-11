@@ -62,9 +62,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-// In onCreate():
-
-// In onDestroy():
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -120,7 +117,6 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         Shizuku.removeRequestPermissionResultListener(requestPermissionResultListener)
-        unregisterReceiver(installResultReceiver)
     }
 
     override fun onResume() {

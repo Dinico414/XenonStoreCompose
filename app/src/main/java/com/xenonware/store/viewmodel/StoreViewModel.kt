@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -50,6 +51,8 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     val storeItems: StateFlow<List<StoreItem>> = _storeItems.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
+
+    private var isPackageReceiverRegistered = false
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -101,13 +104,14 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         checkForXenonStoreUpdate()
 
         packageInstallReceiver = PackageInstallReceiver()
+        val appContext = getApplication<Application>().applicationContext
         val intentFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
             addAction(Intent.ACTION_PACKAGE_REMOVED)
             addAction(Intent.ACTION_PACKAGE_REPLACED)
             addDataScheme("package")
         }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             getApplication<Application>().registerReceiver(
                 packageInstallReceiver,
                 intentFilter,
@@ -115,6 +119,22 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             )
         } else {
             getApplication<Application>().registerReceiver(packageInstallReceiver, intentFilter)
+        }
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                appContext.registerReceiver(
+                    packageInstallReceiver,
+                    intentFilter,
+                    Context.RECEIVER_NOT_EXPORTED
+                )
+            } else {
+                appContext.registerReceiver(packageInstallReceiver, intentFilter)
+            }
+            isPackageReceiverRegistered = true
+            Log.d(TAG, "PackageInstallReceiver registered successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to register PackageInstallReceiver", e)
         }
     }
 
@@ -667,13 +687,13 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
             // Read output using pure Java (Scanner)
             val inputStream = remoteProcess!!.javaClass.getMethod("getInputStream")
-                .invoke(remoteProcess) as java.io.InputStream
+                .invoke(remoteProcess) as InputStream
             val output = Scanner(inputStream).useDelimiter("\\A").let { scanner ->
                 if (scanner.hasNext()) scanner.next() else ""
             }
 
             val errorStream = remoteProcess.javaClass.getMethod("getErrorStream")
-                .invoke(remoteProcess) as java.io.InputStream
+                .invoke(remoteProcess) as InputStream
             val error = Scanner(errorStream).useDelimiter("\\A").let { scanner ->
                 if (scanner.hasNext()) scanner.next() else ""
             }
@@ -1040,14 +1060,32 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         _storeItems.value = filteredList
     }
 
-
     override fun onCleared() {
         super.onCleared()
-        getApplication<Application>().unregisterReceiver(packageInstallReceiver)
-        client.dispatcher.executorService.shutdown() // Gracefully shutdown OkHttp
-        client.connectionPool.evictAll()
-    }
-}
+
+        if (isPackageReceiverRegistered) {
+            try {
+                getApplication<Application>().applicationContext
+                    .unregisterReceiver(packageInstallReceiver)
+                Log.d(TAG, "PackageInstallReceiver unregistered")
+            } catch (e: IllegalArgumentException) {
+                Log.w(TAG, "Package receiver already unregistered or not found", e)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error unregistering package receiver", e)
+            }
+            isPackageReceiverRegistered = false
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                client.dispatcher.executorService.shutdown()
+                client.connectionPool.evictAll()
+                Log.d(TAG, "OkHttp resources cleaned up")
+            } catch (e: Exception) {
+                Log.w(TAG, "Non-critical cleanup error in OkHttp", e)
+            }
+        }
+    }}
 
 class TransparentActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
