@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -61,7 +61,7 @@ fun DevDefaultSettings(
         navigationIconSpacing = NoSpacing,
         navigationIcon = {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = stringResource(R.string.navigate_back_description),
                 modifier = Modifier.size(24.dp)
             )
@@ -78,7 +78,7 @@ fun DevDefaultSettings(
                 Runtime.getRuntime().exit(0)
             }) {
                 Icon(
-                    imageVector = Icons.Filled.RestartAlt,
+                    imageVector = Icons.Rounded.RestartAlt,
                     contentDescription = stringResource(R.string.restart_app_description)
                 )
             }

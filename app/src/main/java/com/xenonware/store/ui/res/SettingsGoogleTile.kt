@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,8 +30,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.res.GoogleProfilBorderNoGoogle
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.values.ExtraLargePadding
 import com.xenon.mylibrary.values.LargeCornerRadius
 import com.xenon.mylibrary.values.LargestPadding
@@ -100,7 +100,7 @@ fun SettingsGoogleTile(
             }
         }
         Icon(
-            imageVector = Icons.Filled.ChevronRight,
+            imageVector = Icons.Rounded.ChevronRight,
             contentDescription = "Navigate",
             tint = arrowColor,
             modifier = Modifier.size(24.dp)

@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -62,7 +62,7 @@ fun DialogShareSelector(
                         modifier = Modifier.weight(1f),
                         icon = {
                             Icon(
-                                imageVector = Icons.Filled.Link,
+                                imageVector = Icons.Rounded.Link,
                                 contentDescription = stringResource(R.string.share_via_link),
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.primary
@@ -79,14 +79,14 @@ fun DialogShareSelector(
                         modifier = Modifier.weight(1f),
                         icon = {
                             Icon(
-                                imageVector = Icons.Filled.InsertDriveFile,
+                                imageVector = Icons.AutoMirrored.Rounded.InsertDriveFile,
                                 contentDescription = stringResource(R.string.share_via_file),
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         },
                         title = stringResource(R.string.share_via_file),
-                        subtitle = stringResource(R.string.recommended),
+                        subtitle = "",
                         onClick = {
                             shareFile(context)
                             onDismissRequest()
@@ -110,7 +110,7 @@ fun ShareOptionBox(
             .height(150.dp)
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .clip(RoundedCornerShape(4.dp)), color = MaterialTheme.colorScheme.surfaceBright
+            .clip(RoundedCornerShape(4.dp)), color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -176,7 +176,7 @@ private fun shareFile(context: Context) {
 }
 
 private fun shareLink(context: Context) {
-    val storeUrl = "https://xenonware.com"
+    val storeUrl = "https://xenonware.com/download"
     val shareIntent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, storeUrl)

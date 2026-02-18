@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -47,8 +47,8 @@ import com.xenon.mylibrary.values.MediumCornerRadius
 import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenon.mylibrary.values.SmallSpacing
 import com.xenon.mylibrary.values.SmallestCornerRadius
-import com.xenonware.store.data.InstallMethod
 import com.xenonware.store.R
+import com.xenonware.store.data.InstallMethod
 import com.xenonware.store.ui.res.DialogGitHubApps
 import com.xenonware.store.util.Util.Companion.getCurrentLanguage
 import com.xenonware.store.viewmodel.DevSettingsViewModel
@@ -279,7 +279,7 @@ fun DevSettingsItems(
                                         showAddEditGithubAppDialog = true
                                     }) {
                                         Icon(
-                                            Icons.Default.Edit,
+                                            Icons.Rounded.Edit,
                                             contentDescription = stringResource(R.string.edit)
                                         )
                                     }
@@ -291,7 +291,7 @@ fun DevSettingsItems(
                                     )
                                     IconButton(onClick = { viewModel.onDeleteGitHubApp(app) }) {
                                         Icon(
-                                            Icons.Default.Delete,
+                                            Icons.Rounded.Delete,
                                             contentDescription = stringResource(R.string.delete)
                                         )
                                     }

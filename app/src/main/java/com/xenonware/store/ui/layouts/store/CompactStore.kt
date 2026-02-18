@@ -33,9 +33,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -311,7 +311,7 @@ fun CompactStore(
                                                 }),
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Filled.Download,
+                                            imageVector = Icons.Rounded.Download,
                                             contentDescription = stringResource(R.string.update),
                                             tint = colorScheme.onPrimary,
                                             modifier = Modifier.size(24.dp)
@@ -341,7 +341,7 @@ fun CompactStore(
                                 enabled = !isSearchActive && showActionIconsExceptSearch
                             ) {
                                 Icon(
-                                    Icons.Filled.Share,
+                                    Icons.Rounded.Share,
                                     contentDescription = stringResource(R.string.share_store_action),
                                     tint = colorScheme.onSurface
                                 )
@@ -358,7 +358,7 @@ fun CompactStore(
                                 enabled = !isSearchActive && showActionIconsExceptSearch
                             ) {
                                 Icon(
-                                    Icons.Filled.Settings,
+                                    Icons.Rounded.Settings,
                                     contentDescription = stringResource(R.string.settings),
                                     tint = colorScheme.onSurface
                                 )

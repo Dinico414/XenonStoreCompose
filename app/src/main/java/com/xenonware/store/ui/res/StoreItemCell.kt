@@ -27,7 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Button
@@ -53,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,7 +71,6 @@ import com.xenonware.store.R
 import com.xenonware.store.util.Util
 import com.xenonware.store.viewmodel.classes.AppEntryState
 import com.xenonware.store.viewmodel.classes.StoreItem
-import androidx.compose.ui.res.stringResource
 
 private fun Dp.toPx(context: android.content.Context): Float {
     return this.value * context.resources.displayMetrics.density
@@ -495,7 +495,7 @@ fun StoreItemCell(
                                     )
                                 ) {}
                                 Icon(
-                                    imageVector = Icons.Filled.Delete,
+                                    imageVector = Icons.Rounded.Delete,
                                     contentDescription = stringResource(R.string.uninstall),
                                     modifier = Modifier.size(24.dp)
                                 )
