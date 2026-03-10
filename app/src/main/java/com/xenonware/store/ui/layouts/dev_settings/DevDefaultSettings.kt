@@ -91,8 +91,7 @@ fun DevDefaultSettings(
                     .verticalScroll(rememberScrollState())
             ) {
                 DevSettingsItems(
-                    settingsViewModel = settingsViewModel,
-                    viewModel = viewModel,
+                    viewModel = viewModel
                 )
             }
         }

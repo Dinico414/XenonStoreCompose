@@ -52,11 +52,9 @@ import com.xenonware.store.data.InstallMethod
 import com.xenonware.store.ui.res.DialogGitHubApps
 import com.xenonware.store.util.Util.Companion.getCurrentLanguage
 import com.xenonware.store.viewmodel.DevSettingsViewModel
-import com.xenonware.store.viewmodel.SettingsViewModel
 
 @Composable
 fun DevSettingsItems(
-    settingsViewModel: SettingsViewModel,
     viewModel: DevSettingsViewModel,
     modifier: Modifier = Modifier,
     innerGroupRadius: Dp = SmallestCornerRadius,
@@ -211,7 +209,7 @@ fun DevSettingsItems(
                     properties = DialogProperties(usePlatformDefaultWidth = true),
                 ) {
                     Column {
-                        InstallMethod.values().forEach { method ->
+                        InstallMethod.entries.forEach { method ->
                             val isEnabled =
                                 if (method == InstallMethod.SHIZUKU) isShizukuAvailable else true
                             Row(modifier = Modifier

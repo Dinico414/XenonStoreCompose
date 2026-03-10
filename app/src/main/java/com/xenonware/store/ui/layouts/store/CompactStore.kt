@@ -11,7 +11,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -51,7 +50,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,10 +69,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.android.gms.auth.api.identity.Identity
 import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.res.FloatingToolbarContent
-import com.xenon.mylibrary.res.GoogleProfilBorderNoGoogle
+import com.xenon.mylibrary.res.GoogleProfilBorder
+import com.xenon.mylibrary.res.GoogleProfilePicture
 import com.xenon.mylibrary.res.SpannedModeFAB
 import com.xenon.mylibrary.res.XenonSnackbar
 import com.xenon.mylibrary.theme.DeviceConfigProvider
@@ -86,6 +87,8 @@ import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenon.mylibrary.values.SmallPadding
 import com.xenonware.store.R
+import com.xenonware.store.presentation.sign_in.GoogleAuthUiClient
+import com.xenonware.store.presentation.sign_in.SignInViewModel
 import com.xenonware.store.ui.res.DialogGitHubApps
 import com.xenonware.store.ui.res.DialogShareSelector
 import com.xenonware.store.ui.res.StoreItemCell
@@ -132,18 +135,21 @@ fun CompactStore(
         var packageNameInput by rememberSaveable { mutableStateOf("") }
         var gitHubPATInput by rememberSaveable { mutableStateOf("") }
 
+        // ============================================================================
+        // 8. Authentication & Google Sign-in
+        // ============================================================================
+        val googleAuthUiClient = remember {
+            GoogleAuthUiClient(
+                context = context.applicationContext,
+                oneTapClient = Identity.getSignInClient(context.applicationContext)
+            )
+        }
+        val signInViewModel: SignInViewModel = viewModel()
+        val state by signInViewModel.state.collectAsStateWithLifecycle()
+        val userData = googleAuthUiClient.getSignedInUser()
 
         val isAddButtonEnabled by devSettingsViewModel.addButtonState.collectAsState()
-        val showDummyProfile by devSettingsViewModel.showDummyProfileState.collectAsState()
-        val isDeveloperModeEnabled by devSettingsViewModel.devModeToggleState.collectAsState()
 
-        val shouldShowNavigationElements by remember(isDeveloperModeEnabled, showDummyProfile) {
-            derivedStateOf {
-                val isMainIconPresent = false
-                val isExtraIconPresent = isDeveloperModeEnabled && showDummyProfile
-                isMainIconPresent || isExtraIconPresent
-            }
-        }
         val xenonStoreUpdateInfo by viewModel.xenonStoreUpdateInfo.collectAsState()
         val xenonStoreDownloadProgress by viewModel.xenonStoreDownloadProgress.collectAsState()
 
@@ -171,7 +177,9 @@ fun CompactStore(
         }
         LaunchedEffect(Unit) {
             viewModel.currentActionInfo.collectLatest { infoMsg ->
-                if (infoMsg != null) {
+                when {
+                    infoMsg != null -> {
+                    }
                 }
             }
         }
@@ -192,7 +200,6 @@ fun CompactStore(
                         isUpdate = false
                     )
                     showGitHubDialog = false
-                    // Clear input fields after confirmation
                     ownerInput = ""
                     repoInput = ""
                     packageNameInput = ""
@@ -385,39 +392,31 @@ fun CompactStore(
                     .fillMaxSize()
                     .padding()
                     .hazeSource(hazeState)
-                    .onSizeChanged { newSize ->
+                    .onSizeChanged { _ ->
                     },
                 titleText = stringResource(id = R.string.app_name),
                 expandable = isAppBarExpandable,
-                navigationIconStartPadding = if (shouldShowNavigationElements) SmallPadding else 0.dp,
-                navigationIconPadding = if (shouldShowNavigationElements) {
-                        if (isDeveloperModeEnabled && showDummyProfile) SmallPadding else MediumPadding
-                    } else {
-                        0.dp
-                    },
-                navigationIconSpacing = if (shouldShowNavigationElements) NoSpacing else 0.dp,
-                hasNavigationIconExtraContent = if (shouldShowNavigationElements) {
-                        isDeveloperModeEnabled && showDummyProfile
-                    } else {
-                        false
-                    },
-                navigationIconExtraContent = if (shouldShowNavigationElements && isDeveloperModeEnabled && showDummyProfile) {
-                    {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            GoogleProfilBorderNoGoogle(
+                navigationIconStartPadding = if (state.isSignInSuccessful) SmallPadding else 0.dp,
+                navigationIconPadding = if (state.isSignInSuccessful) SmallPadding else 0.dp,
+                navigationIconSpacing = NoSpacing,
+                hasNavigationIconExtraContent = state.isSignInSuccessful,
+                navigationIconExtraContent = {
+                    if (state.isSignInSuccessful) {
+                        Box(contentAlignment = Alignment.Center) {
+                            GoogleProfilBorder(
+                                isSignedIn = true,
                                 modifier = Modifier.size(32.dp),
+                                strokeWidth = 2.5.dp
                             )
-                            Image(
-                                painter = painterResource(id = R.mipmap.default_icon),
-                                contentDescription = stringResource(R.string.open_navigation_menu),
+
+                            GoogleProfilePicture(
+                                noAccIcon = painterResource(id = R.drawable.default_icon),
+                                profilePictureUrl = userData?.profilePictureUrl,
+                                contentDescription = stringResource(R.string.profile_picture),
                                 modifier = Modifier.size(26.dp)
                             )
                         }
                     }
-                } else {
-                    {}
                 },
                 navigationIcon = {},
                 actions = {},

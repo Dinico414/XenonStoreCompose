@@ -15,6 +15,7 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
 import com.xenonware.store.data.InstallMethod
 import com.xenonware.store.data.SharedPreferenceManager
 import com.xenonware.store.util.Util.Companion.getCurrentLanguage
@@ -44,6 +45,8 @@ import java.io.InputStreamReader
 import java.util.Scanner
 
 class StoreViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val auth = FirebaseAuth.getInstance()
 
     private val _cloudStoreItems = MutableStateFlow<List<StoreItem>>(emptyList())
     private val _customStoreItems = MutableStateFlow<List<StoreItem>>(emptyList())
@@ -281,6 +284,12 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             }, useCache)
         }
     }
+
+    fun onSignedIn() {
+        val uid = auth.currentUser?.uid ?: return
+    }
+
+
 
     private fun refreshAllAppItemsStates(useCache: Boolean, isCustomList: Boolean) {
         viewModelScope.launch {

@@ -1,15 +1,18 @@
 package com.xenonware.store
 
-import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
-import android.content.pm.PackageInstaller
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntSize
@@ -18,7 +21,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.gms.auth.api.identity.Identity
 import com.xenonware.store.data.SharedPreferenceManager
+import com.xenonware.store.presentation.sign_in.GoogleAuthUiClient
+import com.xenonware.store.presentation.sign_in.SignInEvent
+import com.xenonware.store.presentation.sign_in.SignInViewModel
 import com.xenonware.store.ui.layouts.MainLayout
 import com.xenonware.store.ui.theme.ScreenEnvironment
 import com.xenonware.store.viewmodel.DevSettingsViewModel
@@ -26,12 +33,24 @@ import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.StoreViewModel
 import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var sharedPreferenceManager: SharedPreferenceManager
     private lateinit var viewModel: StoreViewModel
     private lateinit var devSettingsViewModel: DevSettingsViewModel
+    private val signInViewModel: SignInViewModel by viewModels {
+        SignInViewModel.SignInViewModelFactory(application)
+    }
+
+    private lateinit var sharedPreferenceManager: SharedPreferenceManager
+
+    private val googleAuthUiClient by lazy {
+        GoogleAuthUiClient(
+            context = applicationContext,
+            oneTapClient = Identity.getSignInClient(applicationContext)
+        )
+    }
 
     private var lastAppliedTheme: Int = -1
     private var lastAppliedCoverThemeEnabled: Boolean = false
@@ -47,21 +66,6 @@ class MainActivity : ComponentActivity() {
             viewModel.showToast("Shizuku permission denied.")
         }
     }
-    private val installResultReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val status = intent?.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)
-            val packageName = intent?.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME)
-            val message = intent?.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
-            if (status == PackageInstaller.STATUS_SUCCESS) {
-                viewModel.showToast("Installation of $packageName successful!")
-                viewModel.handlePackageChanged(packageName ?: return)
-            } else {
-                viewModel.showToast("Installation of $packageName failed: $message")
-                viewModel.handlePackageChanged(packageName ?: return)
-            }
-        }
-    }
-
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,6 +99,13 @@ class MainActivity : ComponentActivity() {
             val currentContainerSize = LocalWindowInfo.current.containerSize
             val applyCoverTheme = sharedPreferenceManager.isCoverThemeApplied(currentContainerSize)
 
+            LaunchedEffect(Unit) {
+                signInViewModel.signInEvent.collect { event ->
+                    if (event is SignInEvent.SignedInSuccessfully) {
+                        viewModel.onSignedIn()
+                    }
+                }
+            }
             ScreenEnvironment(
                 themePreference = lastAppliedTheme,
                 coverTheme = applyCoverTheme,
@@ -107,7 +118,7 @@ class MainActivity : ComponentActivity() {
                     appSize = currentContainerSize,
                     onOpenSettings = {
                         val intent = Intent(currentContext, SettingsActivity::class.java)
-                        startActivityForResult(intent, SETTINGS_REQUEST_CODE)
+                        currentContext.startActivity(intent)
                     }
                 )
             }
@@ -121,15 +132,26 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        lifecycleScope.launch {
+            val user = googleAuthUiClient.getSignedInUser()
+            val isSignedIn = user != null
+
+            sharedPreferenceManager.isUserLoggedIn = isSignedIn
+            signInViewModel.updateSignInState(isSignedIn)
+
+            if (isSignedIn) {
+                viewModel.onSignedIn()
+            }
+        }
         viewModel.fetchAndRefreshAppList(useCache = false)
         viewModel.verifyAndRefreshPendingInstallations()
 
         val currentThemePref = sharedPreferenceManager.theme
-        val currentCoverThemeEnabled = sharedPreferenceManager.coverThemeEnabled
+        val currentCoverThemeEnabledSetting = sharedPreferenceManager.coverThemeEnabled
         val currentBlackedOutMode = sharedPreferenceManager.blackedOutModeEnabled
 
         if (currentThemePref != lastAppliedTheme ||
-            currentCoverThemeEnabled != lastAppliedCoverThemeEnabled ||
+            currentCoverThemeEnabledSetting != lastAppliedCoverThemeEnabled ||
             currentBlackedOutMode != lastAppliedBlackedOutMode
         ) {
             if (currentThemePref != lastAppliedTheme) {
@@ -137,7 +159,7 @@ class MainActivity : ComponentActivity() {
             }
 
             lastAppliedTheme = currentThemePref
-            lastAppliedCoverThemeEnabled = currentCoverThemeEnabled
+            lastAppliedCoverThemeEnabled = currentCoverThemeEnabledSetting
             lastAppliedBlackedOutMode = currentBlackedOutMode
 
             recreate()
@@ -149,6 +171,21 @@ class MainActivity : ComponentActivity() {
         if (requestCode == SETTINGS_REQUEST_CODE && resultCode == RESULT_OK) {
             viewModel.fetchAndRefreshAppList(useCache = false)
         }
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        var context = newBase
+        val prefs = SharedPreferenceManager(newBase)
+        val savedTag = prefs.languageTag
+        if (savedTag.isNotEmpty() && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            val locale = Locale.forLanguageTag(savedTag)
+            Locale.setDefault(locale)
+            val config = Configuration(newBase.resources.configuration)
+            config.setLocale(locale)
+            config.setLayoutDirection(locale)
+            context = newBase.createConfigurationContext(config)
+        }
+        super.attachBaseContext(ContextWrapper(context))
     }
 
     private fun updateAppCompatDelegateTheme(themePref: Int) {

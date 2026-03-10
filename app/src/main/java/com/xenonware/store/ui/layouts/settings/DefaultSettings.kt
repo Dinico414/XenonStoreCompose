@@ -33,6 +33,7 @@ import com.xenon.mylibrary.res.DialogClearDataConfirmation
 import com.xenon.mylibrary.res.DialogCoverDisplaySelection
 import com.xenon.mylibrary.res.DialogLanguageSelection
 import com.xenon.mylibrary.res.DialogResetSettingsConfirmation
+import com.xenon.mylibrary.res.DialogSignOut
 import com.xenon.mylibrary.res.DialogThemeSelection
 import com.xenon.mylibrary.res.DialogVersionNumber
 import com.xenon.mylibrary.res.ThemeSetting
@@ -42,6 +43,8 @@ import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.store.BuildConfig
 import com.xenonware.store.R
 import com.xenonware.store.data.SharedPreferenceManager
+import com.xenonware.store.presentation.sign_in.GoogleAuthUiClient
+import com.xenonware.store.presentation.sign_in.SignInState
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.SettingsViewModel
 import com.xenonware.store.viewmodel.classes.SettingsItems
@@ -58,6 +61,11 @@ fun DefaultSettings(
     layoutType: LayoutType,
     isLandscape: Boolean,
     onNavigateToDeveloperOptions: () -> Unit,
+    state: SignInState,
+    googleAuthUiClient: GoogleAuthUiClient,
+    onSignInClick: () -> Unit,
+    onSignOutClick: () -> Unit,
+    onConfirmSignOut: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -71,6 +79,8 @@ fun DefaultSettings(
     val showResetSettingsDialog by viewModel.showResetSettingsDialog.collectAsState()
     val showCoverSelectionDialog by viewModel.showCoverSelectionDialog.collectAsState()
     val showVersionDialog by viewModel.showVersionDialog.collectAsState()
+    val showSignOutDialog by viewModel.showSignOutDialog.collectAsState()
+
     val coverThemeEnabled by viewModel.enableCoverTheme.collectAsState()
 
     val showLanguageDialog by viewModel.showLanguageDialog.collectAsState()
@@ -166,7 +176,11 @@ fun DefaultSettings(
                     coverThemeEnabled = coverThemeEnabled,
                     currentLanguage = currentLanguage,
                     appVersion = appVersion,
-                    onNavigateToDeveloperOptions = onNavigateToDeveloperOptions
+                    onNavigateToDeveloperOptions = onNavigateToDeveloperOptions,
+                    state = state,
+                    googleAuthUiClient = googleAuthUiClient,
+                    onSignInClick = onSignInClick,
+                    onSignOutClick = onSignOutClick
                 )
             }
         })
@@ -194,7 +208,8 @@ fun DefaultSettings(
                 .fillMaxSize()
                 .hazeEffect(hazeState)
         ) {
-            DialogCoverDisplaySelection(onConfirm = {
+            DialogCoverDisplaySelection(
+                onConfirm = {
                 viewModel.saveCoverDisplayMetrics(
                     containerSize
                 )
@@ -273,19 +288,19 @@ fun DefaultSettings(
             )
         }
     }
-//    if (showSignOutDialog) {
-//        Box(
-//            modifier = Modifier
-//                .fillMaxSize()
-//                .hazeEffect(hazeState)
-//        ) {
-//            DialogSignOut(
-//                onConfirm = onConfirmSignOut,
-//                onDismiss = { viewModel.dismissSignOutDialog() },
-//                dialogTitle = stringResource(id = R.string.sign_out),
-//                confirmText = stringResource(id = R.string.confirm),
-//                descriptionText = stringResource(id = R.string.sign_out_description)
-//            )
-//        }
-//    }
+    if (showSignOutDialog) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeEffect(hazeState)
+        ) {
+            DialogSignOut(
+                onConfirm = onConfirmSignOut,
+                onDismiss = { viewModel.dismissSignOutDialog() },
+                dialogTitle = stringResource(id = R.string.sign_out),
+                confirmText = stringResource(id = R.string.confirm),
+                descriptionText = stringResource(id = R.string.sign_out_description)
+            )
+        }
+    }
 }

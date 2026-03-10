@@ -11,7 +11,6 @@ import kotlinx.serialization.json.Json
 import kotlin.math.max
 import kotlin.math.min
 
-// Enum for Install Method
 enum class InstallMethod {
     DEFAULT,
     SHIZUKU,
@@ -21,50 +20,28 @@ enum class InstallMethod {
 class SharedPreferenceManager(context: Context) {
 
     private val prefsName = "StorePrefs"
+    private val isUserLoggedInKey = "is_user_logged_in"
     private val themeKey = "app_theme"
+    private val blackedOutModeKey = "blacked_out_mode_enabled"
     private val coverThemeEnabledKey = "cover_theme_enabled"
     private val coverDisplayDimension1Key = "cover_display_dimension_1"
     private val coverDisplayDimension2Key = "cover_display_dimension_2"
-    private val blackedOutModeKey = "blacked_out_mode_enabled"
-    private val dateFormatKey = "date_format_key"
-    private val timeFormatKey = "time_format_key"
+    private val languageTagKey = "app_language_tag"
     private val developerModeKey = "developer_mode_enabled"
     private val showDummyProfileKey = "show_dummy_profile_enabled"
     private val addButtonStateKey = "add_button_state_enabled"
     private val checkForPreReleasesKey = "check_for_pre_releases"
     private val installMethodKey = "install_method"
-    private val customStoreItemsKey = "custom_store_items" // Key for custom apps
+    private val customStoreItemsKey = "custom_store_items"
 
     internal val sharedPreferences: SharedPreferences =
         context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
 
-    private val json = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-        prettyPrint = true // Makes debugging JSON easier
-    }
+    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-
-    // --- Custom Store Items ---
-    fun saveCustomStoreItems(items: List<StoreItem>) {
-        val jsonString = json.encodeToString(items)
-        sharedPreferences.edit { putString(customStoreItemsKey, jsonString) }
-    }
-
-    fun loadCustomStoreItems(): List<StoreItem> {
-        val jsonString = sharedPreferences.getString(customStoreItemsKey, null)
-        return if (jsonString != null && jsonString.isNotEmpty()) {
-            try {
-                json.decodeFromString<List<StoreItem>>(jsonString)
-            } catch (e: Exception) {
-                // Handle potential deserialization errors
-                emptyList()
-            }
-        } else {
-            emptyList()
-        }
-    }
-    // -------------------------
+    var isUserLoggedIn: Boolean
+        get() = sharedPreferences.getBoolean(isUserLoggedInKey, false)
+        set(value) = sharedPreferences.edit { putBoolean(isUserLoggedInKey, value) }
 
     var theme: Int
         get() = sharedPreferences.getInt(themeKey, ThemeSetting.SYSTEM.ordinal)
@@ -75,6 +52,10 @@ class SharedPreferenceManager(context: Context) {
         AppCompatDelegate.MODE_NIGHT_YES,
         AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
     )
+
+    var blackedOutModeEnabled: Boolean
+        get() = sharedPreferences.getBoolean(blackedOutModeKey, false)
+        set(value) = sharedPreferences.edit { putBoolean(blackedOutModeKey, value) }
 
     var coverThemeEnabled: Boolean
         get() = sharedPreferences.getBoolean(coverThemeEnabledKey, false)
@@ -93,10 +74,13 @@ class SharedPreferenceManager(context: Context) {
             }
         }
 
+    var languageTag: String
+        get() = sharedPreferences.getString(languageTagKey, "") ?: ""
+        set(value) = sharedPreferences.edit { putString(languageTagKey, value) }
 
-    var blackedOutModeEnabled: Boolean
-        get() = sharedPreferences.getBoolean(blackedOutModeKey, false)
-        set(value) = sharedPreferences.edit { putBoolean(blackedOutModeKey, value) }
+    var checkForPreReleases: Boolean
+        get() = sharedPreferences.getBoolean(checkForPreReleasesKey, false)
+        set(value) = sharedPreferences.edit { putBoolean(checkForPreReleasesKey, value) }
 
     var developerModeEnabled: Boolean
         get() = sharedPreferences.getBoolean(developerModeKey, false)
@@ -110,40 +94,16 @@ class SharedPreferenceManager(context: Context) {
         get() = sharedPreferences.getBoolean(addButtonStateKey, false)
         set(value) = sharedPreferences.edit { putBoolean(addButtonStateKey, value) }
 
-
-    var checkForPreReleases: Boolean
-        get() = sharedPreferences.getBoolean(checkForPreReleasesKey, false)
-        set(value) = sharedPreferences.edit { putBoolean(checkForPreReleasesKey, value) }
-
-    // New property for install method
     var installMethod: InstallMethod
         get() {
             val methodName = sharedPreferences.getString(installMethodKey, InstallMethod.DEFAULT.name)
             return try {
                 InstallMethod.valueOf(methodName ?: InstallMethod.DEFAULT.name)
-            } catch (e: IllegalArgumentException) {
+            } catch (_: IllegalArgumentException) {
                 InstallMethod.DEFAULT
             }
         }
         set(value) = sharedPreferences.edit { putString(installMethodKey, value.name) }
-
-
-    fun getBoolean(key: String, defaultValue: Boolean): Boolean {
-        return sharedPreferences.getBoolean(key, defaultValue)
-    }
-
-    fun putBoolean(key: String, value: Boolean) {
-        sharedPreferences.edit { putBoolean(key, value) }
-    }
-
-    fun getString(key: String, defaultValue: String?): String? {
-        return sharedPreferences.getString(key, defaultValue)
-    }
-
-    fun putString(key: String, value: String?) {
-        sharedPreferences.edit { putString(key, value) }
-    }
-
 
     fun isCoverThemeApplied(currentDisplaySize: IntSize): Boolean {
         if (!coverThemeEnabled) return false
@@ -153,6 +113,24 @@ class SharedPreferenceManager(context: Context) {
         val currentDimension1 = min(currentDisplaySize.width, currentDisplaySize.height)
         val currentDimension2 = max(currentDisplaySize.width, currentDisplaySize.height)
         return currentDimension1 == storedDimension1 && currentDimension2 == storedDimension2
+    }
+
+    fun saveCustomStoreItems(items: List<StoreItem>) {
+        val jsonString = json.encodeToString(items)
+        sharedPreferences.edit { putString(customStoreItemsKey, jsonString) }
+    }
+
+    fun loadCustomStoreItems(): List<StoreItem> {
+        val jsonString = sharedPreferences.getString(customStoreItemsKey, null)
+        return if (!jsonString.isNullOrEmpty()) {
+            try {
+                json.decodeFromString<List<StoreItem>>(jsonString)
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
     }
 
     fun clearSettings() {
@@ -165,7 +143,7 @@ class SharedPreferenceManager(context: Context) {
             putBoolean(developerModeKey, false)
             putBoolean(showDummyProfileKey, false)
             putBoolean(checkForPreReleasesKey, false)
-            putString(installMethodKey, InstallMethod.DEFAULT.name) // Added reset
+            putString(installMethodKey, InstallMethod.DEFAULT.name)
         }
     }
 }
