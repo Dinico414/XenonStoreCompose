@@ -10,6 +10,7 @@ import com.google.android.gms.auth.api.identity.SignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.UnsupportedApiCallException
 import com.google.firebase.Firebase
 import com.google.firebase.auth.GoogleAuthProvider
@@ -36,8 +37,7 @@ class GoogleAuthUiClient(
         return try {
             oneTapClient.beginSignIn(buildSignInRequest()).await()
         } catch (e: Exception) {
-            if (e is UnsupportedApiCallException ||
-                e.message?.contains("auth_api_credentials_begin_sign_in", ignoreCase = true) == true) {
+            if (e is UnsupportedApiCallException || e is ApiException) {
                 return null
             }
             throw e
@@ -118,7 +118,7 @@ class GoogleAuthUiClient(
     private fun buildSignInRequest(): BeginSignInRequest {
         return BeginSignInRequest.Builder().setGoogleIdTokenRequestOptions(
             BeginSignInRequest.GoogleIdTokenRequestOptions.builder().setSupported(true)
-                .setFilterByAuthorizedAccounts(false)
+                .setFilterByAuthorizedAccounts(true)
                 .setServerClientId(context.getString(R.string.default_web_client_id)).build()
         ).setAutoSelectEnabled(true).build()
 
