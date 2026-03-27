@@ -259,7 +259,7 @@ fun SettingsItems(
     Spacer(Modifier.height(actualInnerGroupSpacing))
     SettingsTile(
         title = stringResource(R.string.reset_settings),
-        subtitle = "",
+        subtitle = stringResource(R.string.reset_all_settings_description),
         onClick = {
             viewModel.onResetSettingsClicked(); haptic.performHapticFeedback(
             HapticFeedbackType.LongPress

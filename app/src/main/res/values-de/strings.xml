@@ -15,6 +15,7 @@
     <string name="date_time_format"><![CDATA[Zeit & Datums Format]]></string>
     <string name="language">Sprache</string>
     <string name="reset_settings">Alle Einstellungen zurücksetzen</string>
+    <string name="reset_all_settings_description">Dies beeinflusst nur die Einstellungen</string>
     <string name="settings">Einstellungen</string>
     <string name="settings_menu_item">Einstellungen</string>
     <string name="sign_out">Sign out</string>
