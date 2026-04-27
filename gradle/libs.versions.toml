@@ -1,6 +1,6 @@
 [versions]
 accompanistSystemuicontroller = "0.36.0"
-agp = "9.1.1"
+agp = "9.2.0"
 animationGraphics = "1.11.0"
 api = "13.1.5"
 coilCompose = "2.7.0"
@@ -28,12 +28,13 @@ firebaseAuth = "24.0.1"
 credentials = "1.6.0"
 credentialsPlayServicesAuth = "1.6.0"
 googleid = "1.2.0"
+playServicesAuth = "21.5.1"
+workRuntimeKtx = "2.11.2"
+workRuntimeKtxVersion = "2.11.2"
 
 xenonCommons = "2.4.8"
 #noinspection UnusedVersionCatalogEntry
 xenonUi = "3.1"
-playServicesAuth = "21.5.1"
-
 
 
 [libraries]
@@ -79,6 +80,8 @@ androidx-credentials = { group = "androidx.credentials", name = "credentials", v
 androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentialsPlayServicesAuth" }
 googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtx" }
+work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtxVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
