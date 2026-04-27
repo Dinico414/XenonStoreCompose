@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.xenonware.store.TransparentActivity
 import com.xenonware.store.data.InstallMethod
 import com.xenonware.store.data.SharedPreferenceManager
 import com.xenonware.store.util.Util.Companion.getCurrentLanguage
@@ -67,9 +68,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
         const val TAG = "XenonStoreVM"
         const val XENON_STORE_PACKAGE = "com.xenonware.store"
-        
-        // --- LINK YOUR GOOGLE CLOUD STORAGE HERE ---
-// Change this line (around line 90) to your bucket name:
         const val BASE_CLOUD_URL = "https://storage.googleapis.com/xenon-store-bucket"
         const val APPS_JSON_URL = "$BASE_CLOUD_URL/apps.json"
     }
@@ -196,9 +194,15 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun performInstallation(apk: File, pkg: String, context: Context) {
         val method = sharedPreferenceManager.installMethod
         when (method) {
-            InstallMethod.SHIZUKU -> executeShizukuInstall(apk, pkg)
+            InstallMethod.SHIZUKU -> executeShizukuInstall(apk, pkg, context)
             InstallMethod.ROOT -> {
-                if (executeRootCommand("pm install -r ${apk.absolutePath}")) {
+                // To improve root reliability, we copy to /data/local/tmp first
+                val tmpApk = File("/data/local/tmp/${pkg}.apk")
+                val copyCmd = "cp ${apk.absolutePath} ${tmpApk.absolutePath} && chmod 666 ${tmpApk.absolutePath}"
+                val installCmd = "pm install -r ${tmpApk.absolutePath}"
+                val cleanupCmd = "rm ${tmpApk.absolutePath}"
+                
+                if (executeRootCommand("$copyCmd && $installCmd && $cleanupCmd")) {
                     handlePackageChanged(pkg)
                 } else {
                     _error.value = "Root installation failed."
@@ -218,22 +222,38 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun executeRootCommand(cmd: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            Runtime.getRuntime().exec(arrayOf("su", "-c", cmd)).waitFor() == 0
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
+            process.waitFor() == 0
         } catch (_: Exception) { false }
     }
 
-    private fun executeShizukuInstall(apk: File, pkg: String) {
+    private fun executeShizukuInstall(apk: File, pkg: String, context: Context) {
         if (!Shizuku.pingBinder()) {
-            _error.value = "Shizuku not running."
+            val intent = Intent(context, TransparentActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            _error.value = "Shizuku not ready. Please authorize and try again."
             return
         }
+
+        if (Shizuku.checkSelfPermission() != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            Shizuku.requestPermission(0)
+            _error.value = "Requesting Shizuku permission..."
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val shizukuClass = Class.forName("rikka.shizuku.Shizuku")
                 val newProcess = shizukuClass.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java).apply { isAccessible = true }
                 val process = newProcess.invoke(null, arrayOf("pm", "install", "-r", apk.absolutePath), null, null)!!
                 val exitCode = process.javaClass.getMethod("waitFor").invoke(process) as Int
-                if (exitCode == 0) handlePackageChanged(pkg) else withContext(Dispatchers.Main) { _error.value = "Shizuku install failed." }
+                if (exitCode == 0) {
+                    handlePackageChanged(pkg)
+                } else {
+                    withContext(Dispatchers.Main) { _error.value = "Shizuku install failed (code $exitCode)." }
+                }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { _error.value = "Shizuku error: ${e.message}" }
             }
@@ -317,7 +337,16 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun checkForXenonStoreUpdate() {
-        // Automatically check XenonStore repo for updates
+        viewModelScope.launch {
+            // Find XenonStore in the cloud list
+            val xenonStoreItem = originalCloudItems.find { it.packageName == XENON_STORE_PACKAGE } ?: return@launch
+            if (xenonStoreItem.isOutdated()) {
+                _xenonStoreUpdateInfo.value = GithubReleaseInfo(
+                    version = xenonStoreItem.newVersion,
+                    downloadUrl = xenonStoreItem.downloadUrl
+                )
+            }
+        }
     }
 
     private inner class PackageInstallReceiver : android.content.BroadcastReceiver() {
@@ -401,7 +430,9 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         val info = _xenonStoreUpdateInfo.value ?: return
         viewModelScope.launch {
             _currentActionInfo.value = "Updating Xenon Store..."
-            val dest = File(context.filesDir, "xenon_store_update.apk")
+            val installDir = File(context.filesDir, "apks")
+            if (!installDir.exists()) installDir.mkdirs()
+            val dest = File(installDir, "xenon_store_update.apk")
             downloadFile(info.downloadUrl, dest,
                 onProgress = { current, total ->
                     _xenonStoreDownloadProgress.value = current.toFloat() / total

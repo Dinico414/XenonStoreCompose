@@ -65,7 +65,7 @@
             android:theme="@style/Theme.XenonStore" />
 
         <activity
-            android:name="viewmodel.TransparentActivity"
+            android:name=".TransparentActivity"
             android:exported="false"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
