@@ -1,40 +1,53 @@
 package com.xenonware.store.viewmodel.classes
 
 import android.content.Context
-import com.xenonware.store.util.Util // Assuming Util.getCurrentLanguage
+import com.xenonware.store.util.Util
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @Serializable
 enum class AppEntryState {
     NOT_INSTALLED,
     DOWNLOADING,
-    INSTALLING, // Added this state
+    INSTALLING,
     INSTALLED,
     INSTALLED_AND_OUTDATED
 }
 
 @Serializable
-data class StoreItem(
-    val nameMap: Map<String, String>,
-    val iconPath: String,
-    val githubUrl: String,
-    val packageName: String,
-    val isCustom: Boolean = false, // Added this line
+data class StoreResponse(
+    val protocolVersion: String,
+    val appList: List<StoreItem>
+)
 
-    var state: AppEntryState = AppEntryState.NOT_INSTALLED,
-    var installedVersion: String = "",
-    var newVersion: String = "",
-    var downloadUrl: String = "",
-    var bytesDownloaded: Long = 0L,
-    var fileSize: Long = 0L
+@Serializable
+data class StoreItem(
+    @SerialName("name") val name: String = "",
+    @SerialName("names") val nameMap: Map<String, String> = emptyMap(),
+    @SerialName("icon") val iconPath: String,
+    @SerialName("githubUrl") val githubUrl: String,
+    @SerialName("packageName") val packageName: String,
+    val isCustom: Boolean = false,
+
+    @Transient var state: AppEntryState = AppEntryState.NOT_INSTALLED,
+    @Transient var installedVersion: String = "",
+    @SerialName("version") var newVersion: String = "",
+    @SerialName("downloadUrl") var downloadUrl: String = "",
+    @Transient var bytesDownloaded: Long = 0L,
+    @Transient var fileSize: Long = 0L,
+
+    @SerialName("preVersion") var preVersion: String? = null,
+    @SerialName("preDownloadUrl") var preDownloadUrl: String? = null
 ) {
     val owner: String
         get() = githubUrl.split("/").getOrNull(3) ?: ""
+
     val repo: String
         get() = githubUrl.split("/").getOrNull(4) ?: ""
 
     fun getName(language: String): String {
-        return nameMap[language] ?: nameMap["en"] ?: packageName
+        return nameMap[language] ?: nameMap["en"] ?: name.ifEmpty { packageName }
     }
 
     fun isOutdated(): Boolean {
@@ -42,14 +55,10 @@ data class StoreItem(
         return Util.Companion.isNewerVersion(installedVersion, newVersion)
     }
 
-    fun isNewerVersion(remoteVersion: String): Boolean {
-        if (newVersion.isEmpty() && remoteVersion.isNotEmpty()) return true
-        return Util.Companion.isNewerVersion(newVersion, remoteVersion)
-    }
-
     fun getDrawableId(context: Context): Int {
         return try {
-            context.resources.getIdentifier(iconPath, "drawable", context.packageName)
+            // Handles full resource strings like "@mipmap/calculator"
+            context.resources.getIdentifier(iconPath, null, null)
         } catch (e: Exception) {
             0
         }
