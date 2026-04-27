@@ -171,6 +171,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 _customStoreItems.value = updated
             } else {
                 _cloudStoreItems.value = updated
+                checkForXenonStoreUpdate()
             }
             filterItems()
         }
@@ -315,14 +316,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         
         val all = (_customStoreItems.value + _cloudStoreItems.value).distinctBy { it.packageName }
             .filter { item ->
+                // Hide Xenon Store itself from the main app list
+                if (item.packageName == XENON_STORE_PACKAGE) return@filter false
+
                 // Visibility Logic:
-                // 1. Always show custom apps.
-                // 2. If app is installed, ALWAYS show it (so user can open/uninstall).
-                // 3. If 'Check Pre-Releases' is ON, show everything.
-                // 4. If 'Check Pre-Releases' is OFF:
-                //    - Show if it has a stable version.
-                //    - Show if the latest version is NOT marked as a pre-release.
-                
                 item.isCustom || 
                 item.installedVersion.isNotEmpty() || 
                 usePre || 
@@ -412,6 +409,8 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     version = xenonStoreItem.newVersion,
                     downloadUrl = xenonStoreItem.downloadUrl
                 )
+            } else {
+                _xenonStoreUpdateInfo.value = null
             }
         }
     }

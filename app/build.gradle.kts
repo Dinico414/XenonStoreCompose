@@ -14,9 +14,9 @@ configure<ApplicationExtension> {
     defaultConfig {
         applicationId = "com.xenonware.store"
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
-        versionName = "2.1.0"
+        versionName = "2.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField(
@@ -40,7 +40,6 @@ configure<ApplicationExtension> {
         }
         getByName("release") {
             isMinifyEnabled = true
-            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
