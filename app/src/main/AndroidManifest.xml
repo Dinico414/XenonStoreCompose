@@ -17,7 +17,7 @@
         tools:ignore="AllFilesAccessPolicy,ScopedStorage" />
 
     <!-- Shizuku Permission -->
-    <uses-permission android:name="shizuku.MANAGER_APPLICATION" />
+    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
 
     <application
         android:name=".MainApplication"
@@ -68,6 +68,14 @@
             android:name=".TransparentActivity"
             android:exported="false"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
     </application>
 

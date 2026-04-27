@@ -10,7 +10,6 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.xenonware.store.TransparentActivity
 import com.xenonware.store.data.InstallMethod
 import com.xenonware.store.data.SharedPreferenceManager
 import com.xenonware.store.util.Util.Companion.getCurrentLanguage
@@ -229,11 +228,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun executeShizukuInstall(apk: File, pkg: String, context: Context) {
         if (!Shizuku.pingBinder()) {
-            val intent = Intent(context, TransparentActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-            _error.value = "Shizuku not ready. Please authorize and try again."
+            _error.value = "Shizuku not running."
             return
         }
 
@@ -246,15 +241,48 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val shizukuClass = Class.forName("rikka.shizuku.Shizuku")
-                val newProcess = shizukuClass.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java).apply { isAccessible = true }
-                val process = newProcess.invoke(null, arrayOf("pm", "install", "-r", apk.absolutePath), null, null)!!
-                val exitCode = process.javaClass.getMethod("waitFor").invoke(process) as Int
+                val newProcessMethod = shizukuClass.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
+                newProcessMethod.isAccessible = true
+                
+                val tmpPath = "/data/local/tmp/${pkg}_temp.apk"
+                
+                // 1. Copy APK to /data/local/tmp using sh and cat
+                // We use this because shell (Shizuku) often can't access app-private or even external-cache dirs on modern Android
+                val catProcess = newProcessMethod.invoke(null, arrayOf("sh", "-c", "cat > $tmpPath"), null, null) as Process
+                catProcess.outputStream.use { out ->
+                    apk.inputStream().use { inp ->
+                        inp.copyTo(out)
+                    }
+                }
+                catProcess.waitFor()
+                
+                // 2. Perform installation
+                // -r: replace, -t: allow test APKs, -d: allow downgrade, -g: grant all permissions
+                val installProcess = newProcessMethod.invoke(null, arrayOf("pm", "install", "-r", "-t", "-d", "-g", tmpPath), null, null) as Process
+                
+                // Read output streams before/during wait to prevent buffer blocking
+                val outText = installProcess.inputStream.bufferedReader().readText()
+                val errText = installProcess.errorStream.bufferedReader().readText()
+                val exitCode = installProcess.waitFor()
+                
+                Log.d(TAG, "Shizuku install exit: $exitCode")
+                Log.d(TAG, "Shizuku install stdout: $outText")
+                Log.d(TAG, "Shizuku install stderr: $errText")
+                
+                // 3. Cleanup
+                val rmProcess = newProcessMethod.invoke(null, arrayOf("rm", tmpPath), null, null) as Process
+                rmProcess.waitFor()
+
                 if (exitCode == 0) {
                     handlePackageChanged(pkg)
                 } else {
-                    withContext(Dispatchers.Main) { _error.value = "Shizuku install failed (code $exitCode)." }
+                    val errorMsg = errText.ifEmpty { outText }.ifEmpty { "Exit code $exitCode" }
+                    withContext(Dispatchers.Main) { 
+                        _error.value = "Shizuku install failed: ${errorMsg.trim().take(100)}" 
+                    }
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Shizuku install error", e)
                 withContext(Dispatchers.Main) { _error.value = "Shizuku error: ${e.message}" }
             }
         }
@@ -399,14 +427,37 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             _error.value = "Shizuku not running."
             return
         }
+
+        if (Shizuku.checkSelfPermission() != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            Shizuku.requestPermission(0)
+            _error.value = "Requesting Shizuku permission..."
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val shizukuClass = Class.forName("rikka.shizuku.Shizuku")
-                val newProcess = shizukuClass.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java).apply { isAccessible = true }
-                val process = newProcess.invoke(null, arrayOf("pm", "uninstall", pkg), null, null)!!
-                val exitCode = process.javaClass.getMethod("waitFor").invoke(process) as Int
-                if (exitCode == 0) handlePackageChanged(pkg) else withContext(Dispatchers.Main) { _error.value = "Shizuku uninstall failed." }
+                val newProcessMethod = shizukuClass.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
+                newProcessMethod.isAccessible = true
+                
+                val process = newProcessMethod.invoke(null, arrayOf("pm", "uninstall", pkg), null, null) as Process
+                
+                val outText = process.inputStream.bufferedReader().readText()
+                val errText = process.errorStream.bufferedReader().readText()
+                val exitCode = process.waitFor()
+                
+                Log.d(TAG, "Shizuku uninstall exit: $exitCode")
+
+                if (exitCode == 0) {
+                    handlePackageChanged(pkg)
+                } else {
+                    val errorMsg = errText.ifEmpty { outText }.ifEmpty { "Exit code $exitCode" }
+                    withContext(Dispatchers.Main) { 
+                        _error.value = "Shizuku uninstall failed: ${errorMsg.trim().take(100)}" 
+                    }
+                }
             } catch (e: Exception) {
+                Log.e(TAG, "Shizuku uninstall error", e)
                 withContext(Dispatchers.Main) { _error.value = "Shizuku error: ${e.message}" }
             }
         }
