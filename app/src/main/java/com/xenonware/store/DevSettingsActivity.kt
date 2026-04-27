@@ -24,8 +24,7 @@ class DevSettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         mainSettingsViewModel = ViewModelProvider(
-            this,
-            SettingsViewModel.SettingsViewModelFactory(application)
+            this, SettingsViewModel.SettingsViewModelFactory(application)
         )[SettingsViewModel::class.java]
 
         devSettingsViewModel = ViewModelProvider(this)[DevSettingsViewModel::class.java]
@@ -37,6 +36,7 @@ class DevSettingsActivity : ComponentActivity() {
             LaunchedEffect(activeNightMode) {
                 AppCompatDelegate.setDefaultNightMode(activeNightMode)
             }
+            val currentContainerSize = LocalWindowInfo.current.containerSize
 
             val persistedAppThemeIndex by mainSettingsViewModel.persistedThemeIndex.collectAsState()
             val blackedOutEnabled by mainSettingsViewModel.blackedOutModeEnabled.collectAsState()
@@ -51,7 +51,8 @@ class DevSettingsActivity : ComponentActivity() {
                     onNavigateBack = { finish() },
                     viewModel = devSettingsViewModel,
                     isLandscape = isLandscape,
-                    layoutType = layoutType
+                    layoutType = layoutType,
+                    appSize = currentContainerSize
                 )
             }
         }

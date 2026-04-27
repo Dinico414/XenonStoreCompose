@@ -122,19 +122,7 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
             _devModeToggleState.value = enabled
 
             if (!enabled) {
-                setShowDummyProfileEnabled(false)
                 setAddButtonEnabled(false)
-            }
-        }
-    }
-
-    fun setShowDummyProfileEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            if (sharedPreferenceManager.showDummyProfileEnabled != enabled) {
-                sharedPreferenceManager.showDummyProfileEnabled = enabled
-                _showDummyProfileState.value = enabled
-
-                triggerExampleDevActionThatRequiresRestart()
             }
         }
     }

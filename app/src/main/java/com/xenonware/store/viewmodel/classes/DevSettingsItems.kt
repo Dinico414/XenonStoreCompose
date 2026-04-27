@@ -70,7 +70,6 @@ fun DevSettingsItems(
     useGroupStyling: Boolean = true,
 ) {
     val isDeveloperModeEnabled by viewModel.devModeToggleState.collectAsState()
-    val isShowDummyProfileEnabled by viewModel.showDummyProfileState.collectAsState()
     val isAddButtonEnabled by viewModel.addButtonState.collectAsState()
     val editingApp by viewModel.editingApp.collectAsState()
 
@@ -138,7 +137,7 @@ fun DevSettingsItems(
             onClick = {
                 viewModel.setDeveloperModeEnabled(!isDeveloperModeEnabled)
             },
-            shape = tileShapeOverride ?: if (!isDeveloperModeEnabled) standaloneShape else topShape,
+            shape = standaloneShape,
             backgroundColor = tileBackgroundColor,
             contentColor = tileContentColor,
             subtitleColor = tileSubtitleColor,
@@ -147,25 +146,6 @@ fun DevSettingsItems(
         )
 
         if (isDeveloperModeEnabled) {
-            Spacer(modifier = Modifier.height(SmallSpacing))
-
-            SettingsSwitchTile(
-                title = stringResource(id = R.string.show_dummy_profile_title),
-                subtitle = "",
-                checked = isShowDummyProfileEnabled,
-                onCheckedChange = {
-                    viewModel.setShowDummyProfileEnabled(it)
-                },
-                onClick = {
-                    viewModel.setShowDummyProfileEnabled(!isShowDummyProfileEnabled)
-                },
-                shape = tileShapeOverride ?: bottomShape,
-                backgroundColor = tileBackgroundColor,
-                contentColor = tileContentColor,
-                subtitleColor = tileSubtitleColor,
-                horizontalPadding = tileHorizontalPadding,
-                verticalPadding = tileVerticalPadding
-            )
 
             Spacer(
                 modifier = Modifier.height(

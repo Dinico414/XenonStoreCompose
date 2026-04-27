@@ -1,6 +1,7 @@
 package com.xenonware.store.ui.layouts
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.IntSize
 import com.xenonware.store.ui.layouts.dev_settings.DevCoverSettings
 import com.xenonware.store.ui.layouts.dev_settings.DevDefaultSettings
 import com.xenonware.store.viewmodel.DevSettingsViewModel
@@ -12,7 +13,8 @@ fun DevSettingsLayout(
     viewModel: DevSettingsViewModel,
     isLandscape: Boolean,
     layoutType: LayoutType,
-) {
+    appSize: IntSize,
+    ) {
     when (layoutType) {
         LayoutType.COVER -> {
             DevCoverSettings(
@@ -26,6 +28,7 @@ fun DevSettingsLayout(
                 onNavigateBack = onNavigateBack,
                 viewModel = viewModel,
                 isLandscape = isLandscape,
+                appSize = appSize,
                 layoutType = layoutType,
             )
         }

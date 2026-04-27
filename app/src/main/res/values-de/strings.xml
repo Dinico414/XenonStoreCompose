@@ -32,7 +32,6 @@
     <string name="developer_mode_enabled">Developer mode aktive!</string>
     <string name="developer_options">Dev Einstellungen</string>
     <string name="developer_options_title">Dev Einstellungen</string>
-    <string name="show_dummy_profile_title">Einschalten von Fake Google Profil</string>
     <string name="taps_remaining_to_developer">Du bist nun %d schritten entfernt ein developer zu sein.</string>
 
     <!-- Dialog Titles -->
