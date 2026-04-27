@@ -38,7 +38,11 @@ data class StoreItem(
     @Transient var fileSize: Long = 0L,
 
     @SerialName("preVersion") var preVersion: String? = null,
-    @SerialName("preDownloadUrl") var preDownloadUrl: String? = null
+    @SerialName("preDownloadUrl") var preDownloadUrl: String? = null,
+
+    @SerialName("stableVersion") var stableVersion: String? = null,
+    @SerialName("stableDownloadUrl") var stableDownloadUrl: String? = null,
+    @SerialName("isPrerelease") var isPrerelease: Boolean = false
 ) {
     val owner: String
         get() = githubUrl.split("/").getOrNull(3) ?: ""

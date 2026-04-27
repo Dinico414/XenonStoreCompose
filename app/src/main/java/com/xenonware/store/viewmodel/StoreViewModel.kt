@@ -133,14 +133,30 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private fun refreshItemsState(isCustom: Boolean) {
         val usePre = sharedPreferenceManager.checkForPreReleases
         viewModelScope.launch {
-            val targetList = if (isCustom) _customStoreItems else _cloudStoreItems
-            val updated = targetList.value.map { item ->
+            // Use originalCloudItems as the source for cloud apps to ensure 
+            // we always have the absolute latest version available to restore
+            val sourceList = if (isCustom) {
+                _customStoreItems.value
+            } else {
+                originalCloudItems.filter { cloud ->
+                    _customStoreItems.value.none { it.packageName == cloud.packageName }
+                }
+            }
+
+            val updated = sourceList.map { item ->
                 val newItem = item.copy()
                 newItem.installedVersion = getInstalledVersion(newItem.packageName) ?: ""
-                
-                if (!newItem.isCustom && usePre && !newItem.preVersion.isNullOrEmpty()) {
-                    newItem.newVersion = newItem.preVersion!!
-                    newItem.downloadUrl = newItem.preDownloadUrl!!
+
+                // Selection Logic for Cloud Apps:
+                if (!newItem.isCustom) {
+                    if (!usePre) {
+                        // If stable only, force the version to the stable one.
+                        // If no stable version exists, we set it to empty so it doesn't trigger an update.
+                        newItem.newVersion = newItem.stableVersion ?: ""
+                        newItem.downloadUrl = newItem.stableDownloadUrl ?: ""
+                    }
+                    // If usePre is true, newItem.newVersion already contains the 
+                    // absolute latest version from the originalCloudItems.
                 }
 
                 if (newItem.installedVersion.isNotEmpty()) {
@@ -150,7 +166,12 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 newItem
             }
-            if (isCustom) _customStoreItems.value = updated else _cloudStoreItems.value = updated
+
+            if (isCustom) {
+                _customStoreItems.value = updated
+            } else {
+                _cloudStoreItems.value = updated
+            }
             filterItems()
         }
     }
@@ -290,7 +311,25 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun filterItems() {
         val query = _searchQuery.value.lowercase()
+        val usePre = sharedPreferenceManager.checkForPreReleases
+        
         val all = (_customStoreItems.value + _cloudStoreItems.value).distinctBy { it.packageName }
+            .filter { item ->
+                // Visibility Logic:
+                // 1. Always show custom apps.
+                // 2. If app is installed, ALWAYS show it (so user can open/uninstall).
+                // 3. If 'Check Pre-Releases' is ON, show everything.
+                // 4. If 'Check Pre-Releases' is OFF:
+                //    - Show if it has a stable version.
+                //    - Show if the latest version is NOT marked as a pre-release.
+                
+                item.isCustom || 
+                item.installedVersion.isNotEmpty() || 
+                usePre || 
+                item.stableVersion != null || 
+                !item.isPrerelease
+            }
+
         _storeItems.value = if (query.isEmpty()) all else all.filter { 
             it.packageName.lowercase().contains(query) || it.nameMap.values.any { n -> n.lowercase().contains(query) }
         }
@@ -366,8 +405,8 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun checkForXenonStoreUpdate() {
         viewModelScope.launch {
-            // Find XenonStore in the cloud list
-            val xenonStoreItem = originalCloudItems.find { it.packageName == XENON_STORE_PACKAGE } ?: return@launch
+            // Use the processed cloud items which already respect the pre-release setting
+            val xenonStoreItem = _cloudStoreItems.value.find { it.packageName == XENON_STORE_PACKAGE } ?: return@launch
             if (xenonStoreItem.isOutdated()) {
                 _xenonStoreUpdateInfo.value = GithubReleaseInfo(
                     version = xenonStoreItem.newVersion,
