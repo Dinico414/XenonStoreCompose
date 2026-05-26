@@ -80,6 +80,7 @@ import com.xenon.mylibrary.res.SpannedModeFAB
 import com.xenon.mylibrary.res.XenonSnackbar
 import com.xenon.mylibrary.theme.DeviceConfigProvider
 import com.xenon.mylibrary.theme.LocalDeviceConfig
+import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.values.ExtraLargeSpacing
 import com.xenon.mylibrary.values.LargePadding
 import com.xenon.mylibrary.values.LargestPadding
@@ -434,11 +435,12 @@ fun CompactStore(
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .fillMaxWidth(),
-                                contentAlignment = Alignment.Center
+                                    .padding(scaffoldPadding)
+                                    .fillMaxWidth(), contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = stringResource(R.string.nothing_in_store_yet),
+                                    fontFamily = QuicksandTitleVariable,
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
                             }
