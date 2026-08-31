@@ -39,8 +39,8 @@ configure<ApplicationExtension> {
             buildConfigField("String", "XENON_UI_VERSION", "\"${libs.versions.xenonUi.get()}\"")
         }
         getByName("release") {
+            //noinspection NotShrinkingResources
             isMinifyEnabled = true
-            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
