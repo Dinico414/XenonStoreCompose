@@ -23,6 +23,7 @@ class GoogleAuthUiClient(
     constructor(context: Context, @Suppress("UNUSED_PARAMETER") oneTapClient: Any?) : this(context)
 
     private val auth = Firebase.auth
+    private val sharedPreferenceManager = com.xenonware.store.data.SharedPreferenceManager(context)
 
     suspend fun signIn(activityContext: Context = context): SignInResult {
         return try {
@@ -76,6 +77,13 @@ class GoogleAuthUiClient(
         val googleCredentials = GoogleAuthProvider.getCredential(googleIdToken, null)
         return try {
             val user = auth.signInWithCredential(googleCredentials).await().user
+            if (user != null) {
+                sharedPreferenceManager.isUserLoggedIn = true
+                sharedPreferenceManager.googleUserId = user.uid
+                sharedPreferenceManager.googleUsername = user.displayName ?: ""
+                sharedPreferenceManager.googleEmail = user.email ?: ""
+                sharedPreferenceManager.googlePhotoUrl = user.photoUrl?.toString() ?: ""
+            }
             SignInResult(
                 data = user?.run {
                     UserData(
@@ -101,7 +109,13 @@ class GoogleAuthUiClient(
         try {
             val credentialManager = CredentialManager.create(context)
             credentialManager.clearCredentialState(ClearCredentialStateRequest())
-            auth.signOut()
+            sharedPreferenceManager.clearGoogleUser()
+            // If the Firebase auth user belongs to Google, sign out
+            val currentUser = auth.currentUser
+            val isGoogle = currentUser?.providerData?.any { it.providerId == GoogleAuthProvider.PROVIDER_ID } == true
+            if (isGoogle) {
+                auth.signOut()
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             if (e is CancellationException) throw e
@@ -109,13 +123,28 @@ class GoogleAuthUiClient(
     }
 
     fun getSignedInUser(): UserData? = try {
-        auth.currentUser?.let { user ->
-            UserData(
-                userId = user.uid,
-                username = user.displayName,
-                profilePictureUrl = user.photoUrl?.toString(),
-                email = user.email ?: ""
-            )
+        if (!sharedPreferenceManager.isUserLoggedIn) {
+            null
+        } else {
+            val currentUser = auth.currentUser
+            val isGoogleUser = currentUser?.providerData?.any { it.providerId == GoogleAuthProvider.PROVIDER_ID } == true
+            if (currentUser != null && isGoogleUser) {
+                UserData(
+                    userId = currentUser.uid,
+                    username = currentUser.displayName,
+                    profilePictureUrl = currentUser.photoUrl?.toString(),
+                    email = currentUser.email ?: ""
+                )
+            } else if (sharedPreferenceManager.googleUserId.isNotEmpty()) {
+                UserData(
+                    userId = sharedPreferenceManager.googleUserId,
+                    username = sharedPreferenceManager.googleUsername,
+                    profilePictureUrl = sharedPreferenceManager.googlePhotoUrl.ifBlank { null },
+                    email = sharedPreferenceManager.googleEmail
+                )
+            } else {
+                null
+            }
         }
     } catch (_: Exception) {
         null

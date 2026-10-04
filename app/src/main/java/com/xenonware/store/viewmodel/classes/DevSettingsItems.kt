@@ -1,5 +1,7 @@
 package com.xenonware.store.viewmodel.classes
 
+import android.app.Activity
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,7 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -48,7 +52,7 @@ import com.xenon.mylibrary.values.NoCornerRadius
 import com.xenonware.store.R
 import com.xenonware.store.data.InstallMethod
 import com.xenonware.store.ui.res.DialogGitHubApps
-
+import com.xenonware.store.ui.res.SettingsGitHubTile
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 
 @Composable
@@ -67,7 +71,11 @@ fun DevSettingsItems(
     val isDeveloperModeEnabled by viewModel.devModeToggleState.collectAsState()
     val isAddButtonEnabled by viewModel.addButtonState.collectAsState()
     val editingApp by viewModel.editingApp.collectAsState()
+    val isGitHubLoggedIn by viewModel.isGitHubLoggedIn.collectAsState()
+    val githubUsername by viewModel.githubUsername.collectAsState()
+    val githubAvatarUrl by viewModel.githubAvatarUrl.collectAsState()
 
+    val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val language = configuration.locales[0].language
     LocalHapticFeedback.current
@@ -76,11 +84,12 @@ fun DevSettingsItems(
 
     SwitchDefaults.colors()
 
-    val isShizukuAvailable  = true// by viewModel.isShizukuAvailable.collectAsState()
+    val isShizukuAvailable = true
     var showInstallMethodDialog by remember { mutableStateOf(false) }
     val currentInstallMethod by viewModel.installMethodState.collectAsState()
     var showGithubAppDialog by remember { mutableStateOf(false) }
     var showAddEditGithubAppDialog by remember { mutableStateOf(false) }
+    var showSignOutGitHubDialog by remember { mutableStateOf(false) }
 
     val standaloneShape = if (useGroupStyling) RoundedCornerShape(actualOuterGroupRadius)
     else RoundedCornerShape(NoCornerRadius)
@@ -131,8 +140,7 @@ fun DevSettingsItems(
                 shape = tileShapeOverride ?: standaloneShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
-
-                )
+            )
 
             Spacer(
                 modifier = Modifier.height(
@@ -149,8 +157,48 @@ fun DevSettingsItems(
                 shape = tileShapeOverride ?: standaloneShape,
                 backgroundColor = tileBackgroundColor,
                 contentColor = tileContentColor,
+            )
 
+            if (isAddButtonEnabled) {
+                Spacer(
+                    modifier = Modifier.height(
+                        LargestSpacing
+                    )
                 )
+                SettingsGitHubTile(
+                    title = if (isGitHubLoggedIn) githubUsername.ifEmpty { "Connected to GitHub" } else "Sign in with GitHub",
+                    subtitle = if (isGitHubLoggedIn) "Connected to GitHub" else "Connect GitHub account",
+                    profilePictureUrl = githubAvatarUrl.ifEmpty { null },
+                    placeholderIcon = painterResource(R.drawable.default_icon),
+                    isSignedIn = isGitHubLoggedIn,
+                    onClick = {
+                        if (isGitHubLoggedIn) {
+                            showSignOutGitHubDialog = true
+                        } else {
+                            val activity = context as? Activity
+                            if (activity != null) {
+                                viewModel.loginWithGitHub(activity,
+                                    onSuccess = {},
+                                    onError = { err ->
+                                        Toast.makeText(
+                                            context,
+                                            err,
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                )
+                            } else {
+                                Toast.makeText(context, "Activity context required for GitHub sign in", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    shape = tileShapeOverride ?: standaloneShape,
+                    backgroundColor = Color.Transparent,
+                    contentColor = tileContentColor,
+                    subtitleColor = tileSubtitleColor,
+                    iconContentDescription = "GitHub Profile"
+                )
+            }
 
 
             if (showInstallMethodDialog) {
@@ -254,7 +302,7 @@ fun DevSettingsItems(
                 var owner by remember(editingApp) { mutableStateOf(editingApp?.owner ?: "") }
                 var repo by remember(editingApp) { mutableStateOf(editingApp?.repo ?: "") }
                 var packageName by remember(editingApp) { mutableStateOf(editingApp?.packageName ?: "") }
-                var pat by remember { mutableStateOf("") }
+                val searchResults by viewModel.githubRepoSearchResults.collectAsState()
 
                 LaunchedEffect(editingApp) {
                     owner = editingApp?.owner ?: ""
@@ -277,9 +325,29 @@ fun DevSettingsItems(
                     onRepoChange = { repo = it },
                     packageName = packageName,
                     onPackageNameChange = { packageName = it },
-                    gitHubPAT = pat,
-                    onGitHubPATChange = { pat = it }
+                    searchResults = searchResults,
+                    onSearchQueryChange = { query ->
+                        viewModel.searchGitHubRepos(query)
+                    }
                 )
+            }
+
+            if (showSignOutGitHubDialog) {
+                XenonDialog(
+                    onDismissRequest = { showSignOutGitHubDialog = false },
+                    title = "Sign Out of GitHub",
+                    confirmButtonText = "Sign Out",
+                    onConfirmButtonClick = {
+                        viewModel.logoutGitHub()
+                        showSignOutGitHubDialog = false
+                    },
+                    properties = DialogProperties(usePlatformDefaultWidth = true)
+                ) {
+                    Text(
+                        text = "Are you sure you want to sign out of GitHub? Your GitHub OAuth session will be removed.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
     }

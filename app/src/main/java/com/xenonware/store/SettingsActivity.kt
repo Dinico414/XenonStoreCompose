@@ -137,7 +137,6 @@ class SettingsActivity : ComponentActivity() {
         lifecycleScope.launch {
             val user = googleAuthUiClient.getSignedInUser()
             val isSignedIn = user != null
-            sharedPreferenceManager.isUserLoggedIn = isSignedIn
             signInViewModel.updateSignInState(isSignedIn)
         }
     }

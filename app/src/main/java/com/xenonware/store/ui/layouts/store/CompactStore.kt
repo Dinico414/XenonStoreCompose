@@ -125,7 +125,6 @@ fun CompactStore(
         var ownerInput by rememberSaveable { mutableStateOf("") }
         var repoInput by rememberSaveable { mutableStateOf("") }
         var packageNameInput by rememberSaveable { mutableStateOf("") }
-        var gitHubPATInput by rememberSaveable { mutableStateOf("") }
 
         // ============================================================================
         // 8. Authentication & Google Sign-in
@@ -160,6 +159,14 @@ fun CompactStore(
             LayoutType.EXPANDED -> true
         }
 
+        val searchResults by devSettingsViewModel.githubRepoSearchResults.collectAsState()
+
+        LaunchedEffect(Unit) {
+            devSettingsViewModel.customAppsUpdated.collect {
+                viewModel.onCustomAppsUpdated()
+            }
+        }
+
         LaunchedEffect(Unit) {
             viewModel.error.collectLatest { errorMsg ->
                 if (errorMsg != null) {
@@ -187,18 +194,23 @@ fun CompactStore(
             DialogGitHubApps(
                 onDismissRequest = { showGitHubDialog = false },
                 onConfirm = {
-                    viewModel.addGitHubRepoConfig(
-                        owner = ownerInput,
-                        repo = repoInput,
-                        packageName = packageNameInput,
-                        gitHubPAT = gitHubPATInput.ifEmpty { null },
-                        isUpdate = false
-                    )
+                    val finalPkg = packageNameInput.ifBlank {
+                        val cleanOwner = ownerInput.lowercase().replace("-", "_").replace(".", "_")
+                        val cleanRepo = repoInput.lowercase().replace("-", "_").replace(".", "_")
+                        "com.$cleanOwner.$cleanRepo"
+                    }
+                    if (ownerInput.isNotBlank() && repoInput.isNotBlank()) {
+                        viewModel.addGitHubRepoConfig(
+                            owner = ownerInput,
+                            repo = repoInput,
+                            packageName = finalPkg,
+                            isUpdate = false
+                        )
+                    }
                     showGitHubDialog = false
                     ownerInput = ""
                     repoInput = ""
                     packageNameInput = ""
-                    gitHubPATInput = ""
                 },
                 owner = ownerInput,
                 onOwnerChange = { ownerInput = it },
@@ -206,8 +218,11 @@ fun CompactStore(
                 onRepoChange = { repoInput = it },
                 packageName = packageNameInput,
                 onPackageNameChange = { packageNameInput = it },
-                gitHubPAT = gitHubPATInput,
-                onGitHubPATChange = { gitHubPATInput = it })
+                searchResults = searchResults,
+                onSearchQueryChange = { query ->
+                    devSettingsViewModel.searchGitHubRepos(query)
+                }
+            )
         }
 
 

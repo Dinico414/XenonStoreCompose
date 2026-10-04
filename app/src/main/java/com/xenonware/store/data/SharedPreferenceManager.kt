@@ -21,6 +21,15 @@ class SharedPreferenceManager(context: Context) {
 
     private val prefsName = "StorePrefs"
     private val isUserLoggedInKey = "is_user_logged_in"
+    private val googleUserIdKey = "google_user_id"
+    private val googleUsernameKey = "google_username"
+    private val googleEmailKey = "google_email"
+    private val googlePhotoUrlKey = "google_photo_url"
+
+    private val isGitHubLoggedInKey = "is_github_logged_in"
+    private val githubTokenKey = "github_token"
+    private val githubUsernameKey = "github_username"
+    private val githubAvatarUrlKey = "github_avatar_url"
     private val themeKey = "app_theme"
     private val blackedOutModeKey = "blacked_out_mode_enabled"
     private val coverThemeEnabledKey = "cover_theme_enabled"
@@ -42,6 +51,48 @@ class SharedPreferenceManager(context: Context) {
     var isUserLoggedIn: Boolean
         get() = sharedPreferences.getBoolean(isUserLoggedInKey, false)
         set(value) = sharedPreferences.edit { putBoolean(isUserLoggedInKey, value) }
+
+    var googleUserId: String
+        get() = sharedPreferences.getString(googleUserIdKey, "") ?: ""
+        set(value) = sharedPreferences.edit { putString(googleUserIdKey, value) }
+
+    var googleUsername: String
+        get() = sharedPreferences.getString(googleUsernameKey, "") ?: ""
+        set(value) = sharedPreferences.edit { putString(googleUsernameKey, value) }
+
+    var googleEmail: String
+        get() = sharedPreferences.getString(googleEmailKey, "") ?: ""
+        set(value) = sharedPreferences.edit { putString(googleEmailKey, value) }
+
+    var googlePhotoUrl: String
+        get() = sharedPreferences.getString(googlePhotoUrlKey, "") ?: ""
+        set(value) = sharedPreferences.edit { putString(googlePhotoUrlKey, value) }
+
+    fun clearGoogleUser() {
+        sharedPreferences.edit {
+            putBoolean(isUserLoggedInKey, false)
+            remove(googleUserIdKey)
+            remove(googleUsernameKey)
+            remove(googleEmailKey)
+            remove(googlePhotoUrlKey)
+        }
+    }
+
+    var isGitHubLoggedIn: Boolean
+        get() = sharedPreferences.getBoolean(isGitHubLoggedInKey, false)
+        set(value) = sharedPreferences.edit { putBoolean(isGitHubLoggedInKey, value) }
+
+    var githubToken: String
+        get() = sharedPreferences.getString(githubTokenKey, "") ?: ""
+        set(value) = sharedPreferences.edit { putString(githubTokenKey, value) }
+
+    var githubUsername: String
+        get() = sharedPreferences.getString(githubUsernameKey, "") ?: ""
+        set(value) = sharedPreferences.edit { putString(githubUsernameKey, value) }
+
+    var githubAvatarUrl: String
+        get() = sharedPreferences.getString(githubAvatarUrlKey, "") ?: ""
+        set(value) = sharedPreferences.edit { putString(githubAvatarUrlKey, value) }
 
     var theme: Int
         get() = sharedPreferences.getInt(themeKey, ThemeSetting.SYSTEM.ordinal)

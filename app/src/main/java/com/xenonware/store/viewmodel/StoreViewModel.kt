@@ -14,6 +14,7 @@ import com.xenonware.store.data.InstallMethod
 import com.xenonware.store.data.SharedPreferenceManager
 import com.xenonware.store.util.Util.Companion.getCurrentLanguage
 import com.xenonware.store.viewmodel.classes.AppEntryState
+import com.xenonware.store.viewmodel.classes.GitHubRelease
 import com.xenonware.store.viewmodel.classes.StoreItem
 import com.xenonware.store.viewmodel.classes.StoreResponse
 import kotlinx.coroutines.Dispatchers
@@ -99,6 +100,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _customStoreItems.value = sharedPreferenceManager.loadCustomStoreItems()
             refreshItemsState(isCustom = true)
+            fetchReleaseInfoForCustomApps()
         }
     }
 
@@ -148,14 +150,39 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
                 // Selection Logic for Cloud Apps:
                 if (!newItem.isCustom) {
-                    if (!usePre) {
+                    val candidateVersion: String
+                    val candidateUrl: String
+
+                    if (usePre) {
+                        // When pre-releases are enabled, take whichever is newer: the stable release or the pre-release!
+                        val stableVer = newItem.stableVersion ?: ""
+                        val preVer = newItem.preVersion ?: newItem.newVersion
+
+                        if (stableVer.isNotEmpty() && preVer.isNotEmpty()) {
+                            if (com.xenonware.store.util.Util.isNewerVersion(preVer, stableVer)) {
+                                // Stable version is newer than pre-release!
+                                candidateVersion = stableVer
+                                candidateUrl = newItem.stableDownloadUrl ?: newItem.downloadUrl
+                            } else {
+                                // Pre-release is newer or equal
+                                candidateVersion = preVer
+                                candidateUrl = newItem.preDownloadUrl ?: newItem.downloadUrl
+                            }
+                        } else if (stableVer.isNotEmpty()) {
+                            candidateVersion = stableVer
+                            candidateUrl = newItem.stableDownloadUrl ?: newItem.downloadUrl
+                        } else {
+                            candidateVersion = preVer
+                            candidateUrl = newItem.preDownloadUrl ?: newItem.downloadUrl
+                        }
+                    } else {
                         // If stable only, force the version to the stable one.
-                        // If no stable version exists, we set it to empty so it doesn't trigger an update.
-                        newItem.newVersion = newItem.stableVersion ?: ""
-                        newItem.downloadUrl = newItem.stableDownloadUrl ?: ""
+                        candidateVersion = newItem.stableVersion ?: ""
+                        candidateUrl = newItem.stableDownloadUrl ?: ""
                     }
-                    // If usePre is true, newItem.newVersion already contains the 
-                    // absolute latest version from the originalCloudItems.
+
+                    newItem.newVersion = candidateVersion
+                    newItem.downloadUrl = candidateUrl
                 }
 
                 if (newItem.installedVersion.isNotEmpty()) {
@@ -187,20 +214,55 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             _currentActionInfo.value = "Downloading ${item.getName(getCurrentLanguage(context.resources))}..."
             val installDir = File(context.filesDir, "apks")
             if (!installDir.exists()) installDir.mkdirs()
-            
-            val dest = File(installDir, "${item.packageName}.apk")
-            
+
+            val tempApk = File(installDir, "download_${System.currentTimeMillis()}.apk")
+
             updateItemInternalState(item.packageName, AppEntryState.DOWNLOADING)
-            
-            downloadFile(item.downloadUrl, dest, 
+
+            downloadFile(item.downloadUrl, tempApk,
                 onProgress = { current, total ->
                     updateItemProgress(item.packageName, current, total)
                 },
                 onSuccess = {
                     viewModelScope.launch {
-                        _currentActionInfo.value = "Installing..."
+                        _currentActionInfo.value = "Inspecting & Installing..."
                         updateItemInternalState(item.packageName, AppEntryState.INSTALLING)
-                        performInstallation(dest, item.packageName, context)
+
+                        // 1. Inspect the downloaded APK to get its actual real package name
+                        val extractedPkg = try {
+                            val pkgInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                context.packageManager.getPackageArchiveInfo(tempApk.absolutePath, android.content.pm.PackageManager.PackageInfoFlags.of(0L))
+                            } else {
+                                @Suppress("DEPRECATION")
+                                context.packageManager.getPackageArchiveInfo(tempApk.absolutePath, 0)
+                            }
+                            pkgInfo?.packageName
+                        } catch (_: Exception) { null }
+
+                        val actualPkg = extractedPkg?.takeIf { it.isNotBlank() } ?: item.packageName
+
+                        // 2. If it's a custom app and the real package differs from our placeholder, update our custom store items!
+                        if (item.isCustom && actualPkg != item.packageName) {
+                            val currentApps = sharedPreferenceManager.loadCustomStoreItems().toMutableList()
+                            val idx = currentApps.indexOfFirst {
+                                it.packageName == item.packageName || (it.owner.equals(item.owner, ignoreCase = true) && it.repo.equals(item.repo, ignoreCase = true))
+                            }
+                            val updatedItem = item.copy(packageName = actualPkg)
+                            if (idx != -1) {
+                                currentApps[idx] = updatedItem
+                            } else {
+                                currentApps.add(updatedItem)
+                            }
+                            sharedPreferenceManager.saveCustomStoreItems(currentApps)
+                            _customStoreItems.value = currentApps
+                        }
+
+                        // Rename temp APK to destination
+                        val dest = File(installDir, "$actualPkg.apk")
+                        if (dest.exists()) dest.delete()
+                        tempApk.renameTo(dest)
+
+                        performInstallation(dest, actualPkg, context)
                     }
                 },
                 onFailure = {
@@ -539,23 +601,135 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun parseReleasesResponseBody(body: String): List<GitHubRelease> {
+        return try {
+            jsonSerializer.decodeFromString<List<GitHubRelease>>(body)
+        } catch (_: Exception) {
+            try {
+                val single = jsonSerializer.decodeFromString<GitHubRelease>(body)
+                listOf(single)
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    private fun fetchReleaseInfoForCustomApps() {
+        val currentCustom = _customStoreItems.value
+        if (currentCustom.isEmpty()) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            var changed = false
+            val updatedList = currentCustom.map { item ->
+                if (item.isCustom && item.githubUrl.isNotBlank()) {
+                    val owner = item.owner
+                    val repo = item.repo
+                    if (owner.isNotBlank() && repo.isNotBlank()) {
+                        val fetchedItem = fetchGitHubReleaseSync(item, owner, repo)
+                        if (fetchedItem != null) {
+                            changed = true
+                            return@map fetchedItem
+                        }
+                    }
+                }
+                item
+            }
+            if (changed) {
+                withContext(Dispatchers.Main) {
+                    _customStoreItems.value = updatedList
+                    refreshItemsState(isCustom = true)
+                }
+            }
+        }
+    }
+
+    private fun fetchGitHubReleaseSync(item: StoreItem, owner: String, repo: String): StoreItem? {
+        val url = "https://api.github.com/repos/$owner/$repo/releases"
+        val reqBuilder = Request.Builder()
+            .url(url)
+            .addHeader("Accept", "vnd.github+json")
+
+        val token = sharedPreferenceManager.githubToken
+        if (token.isNotBlank()) {
+            reqBuilder.addHeader("Authorization", "Bearer $token")
+        }
+
+        return try {
+            val response = client.newCall(reqBuilder.build()).execute()
+            if (!response.isSuccessful) return null
+            val body = response.body.string()
+            val releases = parseReleasesResponseBody(body)
+            if (releases.isEmpty()) return null
+
+            val usePre = sharedPreferenceManager.checkForPreReleases
+
+            val stableRelease = releases.firstOrNull { !it.prerelease && !it.draft && it.assets.any { a -> a.name.endsWith(".apk", ignoreCase = true) } }
+            val preRelease = releases.firstOrNull { it.prerelease && !it.draft && it.assets.any { a -> a.name.endsWith(".apk", ignoreCase = true) } }
+            val latestAnyRelease = releases.firstOrNull { !it.draft && it.assets.any { a -> a.name.endsWith(".apk", ignoreCase = true) } }
+
+            val stableVer = stableRelease?.tagName?.ifBlank { stableRelease.name ?: "" }?.removePrefix("v")?.removePrefix("V") ?: ""
+            val preVer = preRelease?.tagName?.ifBlank { preRelease.name ?: "" }?.removePrefix("v")?.removePrefix("V") ?: ""
+
+            val selectedRelease = if (usePre) {
+                // If pre-releases are enabled, select whichever is genuinely newer between stable and pre-release!
+                if (stableRelease != null && preRelease != null) {
+                    if (com.xenonware.store.util.Util.isNewerVersion(preVer, stableVer)) {
+                        stableRelease
+                    } else {
+                        preRelease
+                    }
+                } else {
+                    preRelease ?: stableRelease ?: latestAnyRelease
+                }
+            } else {
+                stableRelease ?: latestAnyRelease
+            } ?: return null
+
+            val apkAsset = selectedRelease.assets.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) } ?: return null
+            val cleanVersion = selectedRelease.tagName.ifBlank { selectedRelease.name ?: "" }
+                .removePrefix("v").removePrefix("V")
+
+            val icon = if (item.iconPath.isBlank()) "https://github.com/$owner.png" else item.iconPath
+
+            item.copy(
+                newVersion = cleanVersion,
+                downloadUrl = apkAsset.browserDownloadUrl,
+                stableVersion = stableVer.ifBlank { null },
+                stableDownloadUrl = stableRelease?.assets?.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) }?.browserDownloadUrl,
+                preVersion = preVer.ifBlank { null },
+                preDownloadUrl = preRelease?.assets?.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) }?.browserDownloadUrl,
+                isPrerelease = selectedRelease.prerelease,
+                iconPath = icon
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching GitHub release for $owner/$repo", e)
+            null
+        }
+    }
+
     fun addGitHubRepoConfig(
         owner: String,
         repo: String,
         packageName: String,
-        gitHubPAT: String?,
         isUpdate: Boolean,
     ) {
         viewModelScope.launch {
+            val resolvedPkg = if (packageName.startsWith("com.${owner.lowercase().replace("-", "_")}") || packageName.isBlank()) {
+                val real = com.xenonware.store.util.GitHubPackageResolver.resolvePackageName(owner, repo, sharedPreferenceManager.githubToken)
+                real.ifBlank { packageName }
+            } else {
+                packageName
+            }
+
             val currentApps = sharedPreferenceManager.loadCustomStoreItems().toMutableList()
             val newApp = StoreItem(
                 nameMap = hashMapOf("en" to repo),
-                iconPath = "",
+                iconPath = "https://github.com/$owner.png",
                 githubUrl = "https://github.com/$owner/$repo",
-                packageName = packageName,
+                packageName = resolvedPkg,
                 isCustom = true
             )
-            val existingIndex = currentApps.indexOfFirst { it.packageName == packageName }
+            val existingIndex = currentApps.indexOfFirst { it.packageName == resolvedPkg || (it.owner.equals(owner, ignoreCase = true) && it.repo.equals(repo, ignoreCase = true)) }
             if (existingIndex != -1) {
                 currentApps[existingIndex] = newApp
             } else {

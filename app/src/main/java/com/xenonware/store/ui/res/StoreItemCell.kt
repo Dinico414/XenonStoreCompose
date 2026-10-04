@@ -51,8 +51,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -138,43 +141,16 @@ fun StoreItemCell(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    var iconResId = getDrawableIdFromPath(context, storeItem.iconPath)
+                    val isHttpIcon = storeItem.iconPath.startsWith("http://") || storeItem.iconPath.startsWith("https://")
+                    var iconResId = if (!isHttpIcon) getDrawableIdFromPath(context, storeItem.iconPath) else 0
                     var usePlaceholderBorder by remember { mutableStateOf(false) }
 
-                    if (iconResId == 0 && storeItem.githubUrl.isNotBlank()) {
+                    if (!isHttpIcon && iconResId == 0 && storeItem.githubUrl.isNotBlank()) {
                         val repoMipmapName = getRepoMipmapName(storeItem.githubUrl)
                         if (repoMipmapName.isNotBlank()) {
                             iconResId = context.resources.getIdentifier(
                                 repoMipmapName, "mipmap", context.packageName
                             )
-                            if (iconResId != 0) {
-                                Log.d(
-                                    "StoreItemCell",
-                                    "Using mipmap '$repoMipmapName' (ID: $iconResId) from GitHub URL for ${storeItem.packageName}"
-                                )
-                            } else {
-                                Log.w(
-                                    "StoreItemCell",
-                                    "Fallback Mipmap '$repoMipmapName' from GitHub URL not found for ${storeItem.packageName}. Trying placeholder."
-                                )
-
-                                iconResId = context.resources.getIdentifier(
-                                    "placeholder", "mipmap", context.packageName
-                                )
-                                if (iconResId != 0) {
-                                    usePlaceholderBorder =
-                                        true
-                                    Log.i(
-                                        "StoreItemCell",
-                                        "Using placeholder mipmap for ${storeItem.packageName}"
-                                    )
-                                } else {
-                                    Log.e(
-                                        "StoreItemCell",
-                                        "Placeholder mipmap also not found for ${storeItem.packageName}."
-                                    )
-                                }
-                            }
                         }
                     }
 
@@ -189,7 +165,16 @@ fun StoreItemCell(
                             ) else Modifier
                         )
 
-                    if (iconResId != 0) {
+                    if (isHttpIcon) {
+                        AsyncImage(
+                            model = storeItem.iconPath,
+                            contentDescription = storeItem.getName(language),
+                            modifier = iconModifier,
+                            contentScale = ContentScale.Crop,
+                            error = painterResource(id = R.drawable.default_icon),
+                            placeholder = painterResource(id = R.drawable.default_icon)
+                        )
+                    } else if (iconResId != 0) {
                         @Suppress("COMPOSE_APPLIER_CALL_MISMATCH") AndroidView(factory = { ctx ->
                             ImageView(ctx).apply {
                                 scaleType = ImageView.ScaleType.CENTER_CROP
@@ -232,10 +217,6 @@ fun StoreItemCell(
                                         it.setImageBitmap(bitmap)
                                         it.visibility = View.VISIBLE
                                     } else {
-                                        Log.w(
-                                            "StoreItemCell",
-                                            "ImageView dimensions for ${storeItem.packageName} are invalid ($iconSizePx x $iconSizePx), falling back to direct drawable."
-                                        )
                                         it.setImageDrawable(originalDrawable)
                                         it.visibility = View.VISIBLE
                                     }
@@ -252,11 +233,22 @@ fun StoreItemCell(
                                 it.visibility = View.GONE
                             }
                         })
+                    } else if (storeItem.githubUrl.isNotBlank()) {
+                        val owner = getRepoOwner(storeItem.githubUrl)
+                        AsyncImage(
+                            model = "https://github.com/$owner.png",
+                            contentDescription = storeItem.getName(language),
+                            modifier = iconModifier,
+                            contentScale = ContentScale.Crop,
+                            error = painterResource(id = R.drawable.default_icon),
+                            placeholder = painterResource(id = R.drawable.default_icon)
+                        )
                     } else {
-                        Spacer(modifier = Modifier.size(48.dp))
-                        Log.w(
-                            "StoreItemCell",
-                            "No valid icon resource found for ${storeItem.packageName}. Displaying Spacer."
+                        AsyncImage(
+                            model = R.drawable.default_icon,
+                            contentDescription = storeItem.getName(language),
+                            modifier = iconModifier,
+                            contentScale = ContentScale.Crop
                         )
                     }
 
@@ -281,10 +273,16 @@ fun StoreItemCell(
                         storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.isOutdated())
 
                     IconButton(
-                        onClick = { isExpanded = !isExpanded }, colors = if (isUpdateAvailable) {
+                        onClick = { isExpanded = !isExpanded },
+                        colors = if (isUpdateAvailable) {
                             IconButtonDefaults.iconButtonColors(
                                 containerColor = MaterialTheme.colorScheme.tertiary,
                                 contentColor = MaterialTheme.colorScheme.onTertiary
+                            )
+                        } else if (storeItem.isCustom) {
+                            IconButtonDefaults.iconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         } else {
                             IconButtonDefaults.iconButtonColors()
@@ -612,7 +610,8 @@ private fun StoreItemCellPreviewInstalled() {
             nameMap = hashMapOf("en" to "My Favorite Installed App"),
             packageName = "com.sample.app.installed",
             githubUrl = "User/My-Favorite-App.Repo",
-            iconPath = "@drawable/xenon_icon"
+            iconPath = "@drawable/xenon_icon",
+            isCustom = true
         ).apply {
             state = AppEntryState.INSTALLED
             installedVersion = "1.0.0"
