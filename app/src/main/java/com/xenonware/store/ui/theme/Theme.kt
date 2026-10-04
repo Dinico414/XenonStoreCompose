@@ -3,7 +3,6 @@ package com.xenonware.store.ui.theme
 import android.app.Activity
 import android.os.Build
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme.Companion.expressive
 import androidx.compose.material3.darkColorScheme
@@ -142,7 +141,6 @@ fun ColorScheme.toCoverMode(): ColorScheme {
 
 
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun XenonTheme(
     darkTheme: Boolean,

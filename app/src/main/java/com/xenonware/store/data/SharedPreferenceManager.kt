@@ -86,10 +86,6 @@ class SharedPreferenceManager(context: Context) {
         get() = sharedPreferences.getBoolean(developerModeKey, false)
         set(value) = sharedPreferences.edit { putBoolean(developerModeKey, value) }
 
-    var showDummyProfileEnabled: Boolean
-        get() = sharedPreferences.getBoolean(showDummyProfileKey, false)
-        set(value) = sharedPreferences.edit { putBoolean(showDummyProfileKey, value) }
-
     var addButtonEnabled: Boolean
         get() = sharedPreferences.getBoolean(addButtonStateKey, false)
         set(value) = sharedPreferences.edit { putBoolean(addButtonStateKey, value) }

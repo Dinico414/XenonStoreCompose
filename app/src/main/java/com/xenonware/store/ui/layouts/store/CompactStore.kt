@@ -36,8 +36,6 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -71,7 +69,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.android.gms.auth.api.identity.Identity
 import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.res.FloatingToolbarContent
 import com.xenon.mylibrary.res.GoogleProfilBorder
@@ -81,9 +78,9 @@ import com.xenon.mylibrary.res.XenonSnackbar
 import com.xenon.mylibrary.theme.DeviceConfigProvider
 import com.xenon.mylibrary.theme.LocalDeviceConfig
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
-import com.xenon.mylibrary.values.ExtraLargeSpacing
-import com.xenon.mylibrary.values.LargePadding
 import com.xenon.mylibrary.values.LargestPadding
+import com.xenon.mylibrary.values.LargestSpacing
+import com.xenon.mylibrary.values.MediumLargePadding
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenon.mylibrary.values.SmallPadding
@@ -98,17 +95,11 @@ import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.LayoutType
 import com.xenonware.store.viewmodel.StoreViewModel
 import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.flow.collectLatest
 
 
 @SuppressLint("ConfigurationScreenWidthHeight")
-@OptIn(
-    ExperimentalMaterial3Api::class,
-    ExperimentalHazeMaterialsApi::class,
-    ExperimentalMaterial3ExpressiveApi::class
-)
 @Composable
 fun CompactStore(
     viewModel: StoreViewModel,
@@ -141,8 +132,7 @@ fun CompactStore(
         // ============================================================================
         val googleAuthUiClient = remember {
             GoogleAuthUiClient(
-                context = context.applicationContext,
-                oneTapClient = Identity.getSignInClient(context.applicationContext)
+                context = context.applicationContext
             )
         }
         val signInViewModel: SignInViewModel = viewModel()
@@ -201,7 +191,7 @@ fun CompactStore(
                         owner = ownerInput,
                         repo = repoInput,
                         packageName = packageNameInput,
-                        gitHubPAT = if (gitHubPATInput.isEmpty()) null else gitHubPATInput,
+                        gitHubPAT = gitHubPATInput.ifEmpty { null },
                         isUpdate = false
                     )
                     showGitHubDialog = false
@@ -244,11 +234,11 @@ fun CompactStore(
                 val targetBottomPadding =
                     remember(imeHeight, bottomPaddingNavigationBar, imePaddingValues) {
                         val calculatedPadding = if (imeHeight > bottomPaddingNavigationBar) {
-                            imeHeight + LargePadding
+                            imeHeight + MediumLargePadding
                         } else {
                             max(
                                 bottomPaddingNavigationBar, imePaddingValues.calculateTopPadding()
-                            ) + LargePadding
+                            ) + MediumLargePadding
                         }
                         max(calculatedPadding, 0.dp)
                     }
@@ -429,7 +419,7 @@ fun CompactStore(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = ExtraLargeSpacing)
+                            .padding(horizontal = LargestSpacing)
                     ) {
                         if (storeItems.isEmpty()) {
                             Box(

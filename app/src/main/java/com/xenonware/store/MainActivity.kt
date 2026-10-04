@@ -1,3 +1,5 @@
+@file:Suppress("PrivatePropertyName")
+
 package com.xenonware.store
 
 import android.Manifest
@@ -15,7 +17,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
@@ -27,7 +28,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.google.android.gms.auth.api.identity.Identity
 import com.xenonware.store.data.SharedPreferenceManager
 import com.xenonware.store.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.store.presentation.sign_in.SignInEvent
@@ -53,8 +53,7 @@ class MainActivity : ComponentActivity() {
 
     private val googleAuthUiClient by lazy {
         GoogleAuthUiClient(
-            context = applicationContext,
-            oneTapClient = Identity.getSignInClient(applicationContext)
+            context = applicationContext
         )
     }
 
@@ -62,24 +61,29 @@ class MainActivity : ComponentActivity() {
     private var lastAppliedCoverThemeEnabled: Boolean = false
     private var lastAppliedBlackedOutMode: Boolean = false
 
-    private val SETTINGS_REQUEST_CODE = 1001
+    private val settingsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            viewModel.fetchAndRefreshAppList()
+        }
+    }
 
     // Listener für die Shizuku-Berechtigung
     private val requestPermissionResultListener = Shizuku.OnRequestPermissionResultListener { _, grantResult ->
-        if (grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        if (grantResult == PackageManager.PERMISSION_GRANTED) {
             viewModel.showToast("Shizuku permission granted!")
         } else {
             viewModel.showToast("Shizuku permission denied.")
         }
     }
 
-    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         sharedPreferenceManager = SharedPreferenceManager(applicationContext)
-        viewModel = ViewModelProvider(this).get(StoreViewModel::class.java)
-        devSettingsViewModel = ViewModelProvider(this).get(DevSettingsViewModel::class.java)
+        viewModel = ViewModelProvider(this)[StoreViewModel::class.java]
+        devSettingsViewModel = ViewModelProvider(this)[DevSettingsViewModel::class.java]
         Shizuku.addRequestPermissionResultListener(requestPermissionResultListener)
 
         lifecycleScope.launch {
@@ -138,7 +142,7 @@ class MainActivity : ComponentActivity() {
                     appSize = currentContainerSize,
                     onOpenSettings = {
                         val intent = Intent(currentContext, SettingsActivity::class.java)
-                        currentContext.startActivity(intent)
+                        settingsLauncher.launch(intent)
                     }
                 )
             }
@@ -163,7 +167,7 @@ class MainActivity : ComponentActivity() {
                 viewModel.onSignedIn()
             }
         }
-        viewModel.fetchAndRefreshAppList(useCache = false)
+        viewModel.fetchAndRefreshAppList()
         viewModel.verifyAndRefreshPendingInstallations()
 
         val currentThemePref = sharedPreferenceManager.theme
@@ -186,12 +190,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == SETTINGS_REQUEST_CODE && resultCode == RESULT_OK) {
-            viewModel.fetchAndRefreshAppList(useCache = false)
-        }
-    }
+
 
     override fun attachBaseContext(newBase: Context) {
         var context = newBase

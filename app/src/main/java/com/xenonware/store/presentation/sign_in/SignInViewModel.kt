@@ -40,7 +40,6 @@ class SignInViewModel(
 
     override fun onCleared() {
         sharedPreferenceManager.sharedPreferences.unregisterOnSharedPreferenceChangeListener(preferenceListener)
-        super.onCleared()
     }
 
     fun updateSignInState(isSignedIn: Boolean) {

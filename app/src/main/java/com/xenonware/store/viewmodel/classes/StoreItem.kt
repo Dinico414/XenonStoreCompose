@@ -1,6 +1,5 @@
 package com.xenonware.store.viewmodel.classes
 
-import android.content.Context
 import com.xenonware.store.util.Util
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -55,16 +54,7 @@ data class StoreItem(
     }
 
     fun isOutdated(): Boolean {
-        if (installedVersion.isEmpty() || newVersion.isEmpty()) return false
-        return Util.Companion.isNewerVersion(installedVersion, newVersion)
+        return !(installedVersion.isEmpty() || newVersion.isEmpty()) && Util.isNewerVersion(installedVersion, newVersion)
     }
 
-    fun getDrawableId(context: Context): Int {
-        return try {
-            // Handles full resource strings like "@mipmap/calculator"
-            context.resources.getIdentifier(iconPath, null, null)
-        } catch (e: Exception) {
-            0
-        }
-    }
 }

@@ -6,15 +6,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xenonware.store.data.InstallMethod
 import com.xenonware.store.data.SharedPreferenceManager
-import com.xenonware.store.util.ShizukuManager
 import com.xenonware.store.viewmodel.classes.StoreItem
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class DevSettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -22,10 +19,6 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _devModeToggleState = MutableStateFlow(sharedPreferenceManager.developerModeEnabled)
     val devModeToggleState: StateFlow<Boolean> = _devModeToggleState
-
-    private val _showDummyProfileState =
-        MutableStateFlow(sharedPreferenceManager.showDummyProfileEnabled)
-    val showDummyProfileState: StateFlow<Boolean> = _showDummyProfileState
 
     private val _addButtonState =
         MutableStateFlow(sharedPreferenceManager.addButtonEnabled)
@@ -43,12 +36,6 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _customAppsUpdated = MutableSharedFlow<Unit>(replay = 1)
     val customAppsUpdated = _customAppsUpdated.asSharedFlow()
-
-    val isShizukuAvailable: StateFlow<Boolean> = ShizukuManager.isAvailable.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        false
-    )
 
     init {
         loadGithubApps()

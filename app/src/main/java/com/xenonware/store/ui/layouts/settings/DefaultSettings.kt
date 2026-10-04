@@ -2,8 +2,6 @@ package com.xenonware.store.ui.layouts.settings
 
 import android.annotation.SuppressLint
 import android.os.Build
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -16,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -45,7 +42,6 @@ import com.xenon.mylibrary.values.MediumPadding
 import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.store.BuildConfig
 import com.xenonware.store.R
-import com.xenonware.store.data.SharedPreferenceManager
 import com.xenonware.store.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.store.presentation.sign_in.SignInState
 import com.xenonware.store.viewmodel.LayoutType
@@ -56,7 +52,6 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
 @SuppressLint("ConfigurationScreenWidthHeight")
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DefaultSettings(
     onNavigateBack: () -> Unit,
@@ -76,7 +71,6 @@ fun DefaultSettings(
         val context = LocalContext.current
 
         val currentThemeTitle by viewModel.currentThemeTitle.collectAsState()
-        val blackedOutEnabled by viewModel.blackedOutModeEnabled.collectAsState()
         val showThemeDialog by viewModel.showThemeDialog.collectAsState()
         val themeOptions = remember { ThemeSetting.entries.toTypedArray() }
         val dialogSelectedThemeIndex by viewModel.dialogPreviewThemeIndex.collectAsState()
@@ -113,24 +107,6 @@ fun DefaultSettings(
         val containerSize = LocalWindowInfo.current.containerSize
         val applyCoverTheme = remember(containerSize, coverThemeEnabled) {
             viewModel.applyCoverTheme(containerSize)
-        }
-
-        val appThemeSetting = remember {
-            SharedPreferenceManager(
-                context
-            )
-        }.theme
-        val themeOptionsFromVm = viewModel.themeOptions
-        val isSystemCurrentlyDark = isSystemInDarkTheme()
-
-        when {
-            blackedOutEnabled -> true
-            appThemeSetting < 0 || appThemeSetting >= themeOptionsFromVm.size -> isSystemCurrentlyDark
-            else -> when (themeOptionsFromVm[appThemeSetting].nightModeFlag) {
-                AppCompatDelegate.MODE_NIGHT_YES -> true
-                AppCompatDelegate.MODE_NIGHT_NO -> false
-                else -> isSystemCurrentlyDark
-            }
         }
 
         val configuration = LocalConfiguration.current

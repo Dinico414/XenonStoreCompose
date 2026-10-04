@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -17,7 +16,6 @@ import com.xenonware.store.viewmodel.classes.StoreResponse
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.internal.platform.PlatformRegistry.applicationContext
 
 class UpdateCheckWorker(
     context: Context,
@@ -40,7 +38,7 @@ class UpdateCheckWorker(
             
             if (!response.isSuccessful) return Result.retry()
             
-            val body = response.body?.string() ?: return Result.failure()
+            val body = response.body.string()
             val storeResponse = jsonSerializer.decodeFromString<StoreResponse>(body)
             
             val usePre = sharedPrefs.checkForPreReleases
@@ -65,7 +63,7 @@ class UpdateCheckWorker(
             }
 
             return Result.success()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             return Result.retry()
         }
     }
@@ -81,16 +79,14 @@ class UpdateCheckWorker(
     private fun showNotification(apps: List<String>) {
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "App Updates",
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Notifications for available app updates"
-            }
-            notificationManager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "App Updates",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Notifications for available app updates"
         }
+        notificationManager.createNotificationChannel(channel)
 
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

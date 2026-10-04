@@ -35,7 +35,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonDefaults.outlinedButtonBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -64,8 +63,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
+import com.xenon.mylibrary.values.ExtraLargerCornerRadius
 import com.xenon.mylibrary.values.LargestPadding
-import com.xenon.mylibrary.values.MediumCornerRadius
 import com.xenon.mylibrary.values.MediumPadding
 import com.xenonware.store.R
 import com.xenonware.store.util.Util
@@ -98,7 +97,6 @@ private fun getDrawableIdFromPath(context: android.content.Context, iconPath: St
 }
 
 @SuppressLint("DiscouragedApi", "LocalContextResourcesRead")
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StoreItemCell(
     storeItem: StoreItem,
@@ -125,7 +123,7 @@ fun StoreItemCell(
     ) {
         Card(
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(MediumCornerRadius),
+            shape = RoundedCornerShape(ExtraLargerCornerRadius),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceBright
             )
@@ -196,7 +194,7 @@ fun StoreItemCell(
                             ImageView(ctx).apply {
                                 scaleType = ImageView.ScaleType.CENTER_CROP
                             }
-                        }, modifier = iconModifier, update = {
+                        }, modifier = iconModifier, update = { it ->
                             try {
                                 val originalDrawable = ResourcesCompat.getDrawable(
                                     context.resources, iconResId, null

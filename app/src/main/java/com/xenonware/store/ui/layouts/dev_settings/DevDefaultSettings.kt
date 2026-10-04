@@ -19,7 +19,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xenon.mylibrary.ActivityScreen
 import com.xenon.mylibrary.theme.DeviceConfigProvider
 import com.xenon.mylibrary.theme.LocalDeviceConfig
@@ -28,7 +27,6 @@ import com.xenon.mylibrary.values.NoSpacing
 import com.xenonware.store.R
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 import com.xenonware.store.viewmodel.LayoutType
-import com.xenonware.store.viewmodel.SettingsViewModel
 import com.xenonware.store.viewmodel.classes.DevSettingsItems
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -39,7 +37,6 @@ fun DevDefaultSettings(
     onNavigateBack: () -> Unit,
     viewModel: DevSettingsViewModel,
     appSize: IntSize,
-    settingsViewModel: SettingsViewModel = viewModel(),
     layoutType: LayoutType,
     isLandscape: Boolean,
 ) {

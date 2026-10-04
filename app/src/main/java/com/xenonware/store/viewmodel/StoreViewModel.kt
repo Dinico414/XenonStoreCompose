@@ -4,10 +4,10 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xenonware.store.data.InstallMethod
@@ -53,7 +53,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _searchQuery = MutableStateFlow("")
     private val _toastMessage = MutableStateFlow<String?>(null)
-    val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
 
     private val client: OkHttpClient = OkHttpClient.Builder().build()
     private val sharedPreferenceManager = SharedPreferenceManager(application)
@@ -103,13 +102,13 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun fetchAndRefreshAppList(useCache: Boolean = true) {
+    fun fetchAndRefreshAppList() {
         viewModelScope.launch {
             _currentActionInfo.value = "Fetching app list..."
             downloadToString(APPS_JSON_URL) { result ->
                 if (result != null) {
                     try {
-                        // The Cloud Function has already prepared this apps.json in GCS
+                        // The Cloud Function has already prepared these apps.json in GCS
                         val response = jsonSerializer.decodeFromString<StoreResponse>(result)
                         val items = response.appList
 
@@ -204,7 +203,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                         performInstallation(dest, item.packageName, context)
                     }
                 },
-                onFailure = { err ->
+                onFailure = {
                     _error.value = "Download failed."
                     refreshItemsState(item.isCustom)
                 }
@@ -215,7 +214,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun performInstallation(apk: File, pkg: String, context: Context) {
         val method = sharedPreferenceManager.installMethod
         when (method) {
-            InstallMethod.SHIZUKU -> executeShizukuInstall(apk, pkg, context)
+            InstallMethod.SHIZUKU -> executeShizukuInstall(apk, pkg)
             InstallMethod.ROOT -> {
                 // To improve root reliability, we copy to /data/local/tmp first
                 val tmpApk = File("/data/local/tmp/${pkg}.apk")
@@ -248,7 +247,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         } catch (_: Exception) { false }
     }
 
-    private fun executeShizukuInstall(apk: File, pkg: String, context: Context) {
+    private fun executeShizukuInstall(apk: File, pkg: String) {
         if (!Shizuku.pingBinder()) {
             _error.value = "Shizuku not running."
             return
@@ -370,7 +369,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private fun downloadToString(url: String, callback: (String?) -> Unit) {
         client.newCall(Request.Builder().url(url).build()).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) = callback(null)
-            override fun onResponse(call: Call, response: Response) = callback(response.body?.string())
+            override fun onResponse(call: Call, response: Response) = callback(response.body.string())
         })
     }
 
@@ -380,7 +379,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) { viewModelScope.launch { onFailure("Code ${response.code}") }; return }
                 try {
-                    val body = response.body ?: throw IOException("Empty body")
+                    val body = response.body
                     dest.outputStream().use { out ->
                         body.byteStream().use { inp ->
                             val buf = ByteArray(8192)
@@ -427,7 +426,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onSignedIn() {
-        fetchAndRefreshAppList(useCache = false)
+        fetchAndRefreshAppList()
     }
 
     fun verifyAndRefreshPendingInstallations() {
@@ -451,7 +450,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 InstallMethod.DEFAULT -> {
                     val intent = Intent(Intent.ACTION_DELETE).apply {
-                        data = Uri.parse("package:${item.packageName}")
+                        data = "package:${item.packageName}".toUri()
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     context.startActivity(intent)
@@ -545,7 +544,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         repo: String,
         packageName: String,
         gitHubPAT: String?,
-        isUpdate: Boolean
+        isUpdate: Boolean,
     ) {
         viewModelScope.launch {
             val currentApps = sharedPreferenceManager.loadCustomStoreItems().toMutableList()
@@ -569,11 +568,9 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setSearchQuery(q: String) { _searchQuery.value = q; filterItems() }
     fun showToast(m: String) { _toastMessage.value = m }
-    fun clearToast() { _toastMessage.value = null }
     fun clearError() { _error.value = null }
 
     override fun onCleared() {
-        super.onCleared()
         if (isPackageReceiverRegistered) {
             try { getApplication<Application>().unregisterReceiver(packageInstallReceiver) } catch (_: Exception) {}
         }

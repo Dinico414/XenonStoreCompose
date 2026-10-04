@@ -31,7 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -41,26 +41,21 @@ import com.xenon.mylibrary.res.SettingsSwitchMenuTile
 import com.xenon.mylibrary.res.SettingsSwitchTile
 import com.xenon.mylibrary.res.SettingsTile
 import com.xenon.mylibrary.res.XenonDialog
-import com.xenon.mylibrary.values.ExtraLargeSpacing
+import com.xenon.mylibrary.values.ExtraLargerCornerRadius
 import com.xenon.mylibrary.values.LargerPadding
-import com.xenon.mylibrary.values.MediumCornerRadius
+import com.xenon.mylibrary.values.LargestSpacing
 import com.xenon.mylibrary.values.NoCornerRadius
-import com.xenon.mylibrary.values.SmallSpacing
-import com.xenon.mylibrary.values.SmallestCornerRadius
 import com.xenonware.store.R
 import com.xenonware.store.data.InstallMethod
 import com.xenonware.store.ui.res.DialogGitHubApps
-import com.xenonware.store.util.Util.Companion.getCurrentLanguage
+
 import com.xenonware.store.viewmodel.DevSettingsViewModel
 
 @Composable
 fun DevSettingsItems(
     viewModel: DevSettingsViewModel,
     modifier: Modifier = Modifier,
-    innerGroupRadius: Dp = SmallestCornerRadius,
-    outerGroupRadius: Dp = MediumCornerRadius,
-    innerGroupSpacing: Dp = SmallSpacing,
-    outerGroupSpacing: Dp = ExtraLargeSpacing,
+    outerGroupRadius: Dp = ExtraLargerCornerRadius,
     tileBackgroundColor: Color = MaterialTheme.colorScheme.surfaceBright,
     tileContentColor: Color = MaterialTheme.colorScheme.onSurface,
     tileSubtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -73,43 +68,19 @@ fun DevSettingsItems(
     val isAddButtonEnabled by viewModel.addButtonState.collectAsState()
     val editingApp by viewModel.editingApp.collectAsState()
 
-    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val language = configuration.locales[0].language
     LocalHapticFeedback.current
 
-    val actualInnerGroupRadius = if (useGroupStyling) innerGroupRadius else 0.dp
     val actualOuterGroupRadius = if (useGroupStyling) outerGroupRadius else 0.dp
-    if (useGroupStyling) innerGroupSpacing else 0.dp
-    outerGroupSpacing // outerGroupSpacing is used directly
 
     SwitchDefaults.colors()
 
-    val isShizukuAvailable  = true/*by viewModel.isShizukuAvailable.collectAsState()*/
+    val isShizukuAvailable  = true// by viewModel.isShizukuAvailable.collectAsState()
     var showInstallMethodDialog by remember { mutableStateOf(false) }
     val currentInstallMethod by viewModel.installMethodState.collectAsState()
     var showGithubAppDialog by remember { mutableStateOf(false) }
     var showAddEditGithubAppDialog by remember { mutableStateOf(false) }
-
-
-    val topShape = if (useGroupStyling) RoundedCornerShape(
-        bottomStart = actualInnerGroupRadius,
-        bottomEnd = actualInnerGroupRadius,
-        topStart = actualOuterGroupRadius,
-        topEnd = actualOuterGroupRadius
-    ) else RoundedCornerShape(NoCornerRadius)
-
-    val middleShape = if (useGroupStyling) RoundedCornerShape(
-        topStart = actualInnerGroupRadius,
-        topEnd = actualInnerGroupRadius,
-        bottomStart = actualInnerGroupRadius,
-        bottomEnd = actualInnerGroupRadius
-    ) else RoundedCornerShape(NoCornerRadius)
-
-    val bottomShape = if (useGroupStyling) RoundedCornerShape(
-        topStart = actualInnerGroupRadius,
-        topEnd = actualInnerGroupRadius,
-        bottomStart = actualOuterGroupRadius,
-        bottomEnd = actualOuterGroupRadius
-    ) else RoundedCornerShape(NoCornerRadius)
 
     val standaloneShape = if (useGroupStyling) RoundedCornerShape(actualOuterGroupRadius)
     else RoundedCornerShape(NoCornerRadius)
@@ -149,7 +120,7 @@ fun DevSettingsItems(
 
             Spacer(
                 modifier = Modifier.height(
-                    ExtraLargeSpacing
+                    LargestSpacing
                 )
             )
 
@@ -165,7 +136,7 @@ fun DevSettingsItems(
 
             Spacer(
                 modifier = Modifier.height(
-                    ExtraLargeSpacing
+                    LargestSpacing
                 )
             )
 
@@ -191,7 +162,7 @@ fun DevSettingsItems(
                     Column {
                         InstallMethod.entries.forEach { method ->
                             val isEnabled =
-                                if (method == InstallMethod.SHIZUKU) isShizukuAvailable else true
+                                method != InstallMethod.SHIZUKU || isShizukuAvailable
                             Row(modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable(enabled = isEnabled) {
@@ -262,7 +233,7 @@ fun DevSettingsItems(
                                         )
                                     }
                                     Text(
-                                        text = app.getName(getCurrentLanguage(context.resources)),
+                                        text = app.getName(language),
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(horizontal = 8.dp)

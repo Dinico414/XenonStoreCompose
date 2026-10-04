@@ -2,7 +2,6 @@ package com.xenonware.store.util
 
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import rikka.shizuku.Shizuku
 
 object ShizukuManager {
@@ -10,7 +9,6 @@ object ShizukuManager {
     private const val TAG = "ShizukuManager"
 
     private val _isAvailable = MutableStateFlow(false)
-    val isAvailable = _isAvailable.asStateFlow()
 
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
         Log.i(TAG, "Shizuku binder received, service is available.")
@@ -35,7 +33,7 @@ object ShizukuManager {
         try {
             Shizuku.removeBinderReceivedListener(binderReceivedListener)
             Shizuku.removeBinderDeadListener(binderDeadListener)
-        } catch (e: IllegalStateException) {
+        } catch (_: IllegalStateException) {
             Log.w(TAG, "Failed to unregister listeners, Shizuku service is not running.")
         }
     }

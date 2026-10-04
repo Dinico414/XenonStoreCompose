@@ -1,18 +1,17 @@
 package com.xenonware.store.ui.theme
 
+import android.app.Activity
 import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.core.view.WindowCompat
 import com.xenonware.store.viewmodel.LayoutType
 
 @Composable
@@ -56,27 +55,22 @@ fun ScreenEnvironment(
 
         XenonTheme(
             darkTheme = useDarkTheme,
-            useBlackedOutDarkTheme = if (useDarkTheme) blackedOutModeEnabled else false,
+            useBlackedOutDarkTheme = useDarkTheme && blackedOutModeEnabled,
             dynamicColor = useDynamicColor
         ) {
-            val systemUiController = rememberSystemUiController()
             val view = LocalView.current
-
-            val systemBarColor =
-                if (layoutType == LayoutType.COVER) Color.Black else MaterialTheme.colorScheme.surfaceDim
             val darkIconsForSystemBars =
-                if (layoutType == LayoutType.COVER) false else !appIsDarkTheme
+                layoutType != LayoutType.COVER && !appIsDarkTheme
 
             if (!view.isInEditMode) {
                 SideEffect {
-                    systemUiController.setStatusBarColor(
-                        color = systemBarColor, darkIcons = darkIconsForSystemBars
-                    )
-                    systemUiController.setNavigationBarColor(
-                        color = Color.Transparent,
-                        darkIcons = darkIconsForSystemBars,
-                        navigationBarContrastEnforced = false
-                    )
+                    val window = (view.context as? Activity)?.window ?: return@SideEffect
+                    val insetsController = WindowCompat.getInsetsController(window, view)
+
+                    window.isNavigationBarContrastEnforced = false
+
+                    insetsController.isAppearanceLightStatusBars = darkIconsForSystemBars
+                    insetsController.isAppearanceLightNavigationBars = darkIconsForSystemBars
                 }
             }
             content(layoutType, isLandscape)

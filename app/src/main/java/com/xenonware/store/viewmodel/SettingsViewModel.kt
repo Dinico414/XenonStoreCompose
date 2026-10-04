@@ -32,6 +32,7 @@ import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class ThemeSetting(val title: String, val nightModeFlag: Int) {
     LIGHT("Light", AppCompatDelegate.MODE_NIGHT_NO),
@@ -266,7 +267,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             setAppLocale(selectedTag)
             sharedPreferenceManager.languageTag = selectedTag
             viewModelScope.launch {
-                delay(500)
+                delay(500.milliseconds)
                 restartApplication(getApplication())
             }
         }
@@ -377,7 +378,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             }
             updateCurrentLanguage()
             _showResetSettingsDialog.value = false
-            delay(1000)
+            delay(1000.milliseconds)
             restartApplication(context)
         }
     }
@@ -411,7 +412,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
         if (infoTileTapCount == 1) {
             singleTapJob = viewModelScope.launch {
-                delay(tapTimeoutMillis)
+                delay(tapTimeoutMillis.milliseconds)
                 _showVersionDialog.value = true
                 infoTileTapCount = 0
             }
@@ -446,7 +447,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 currentToast?.show()
 
                 resetTapsJob = viewModelScope.launch {
-                    delay(multiTapCooldownMillis)
+                    delay(multiTapCooldownMillis.milliseconds)
                     infoTileTapCount = 0
                 }
             }
@@ -484,11 +485,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         } catch (_: Exception) {
             "HH:mm"
         }
-    }
-
-    private fun refreshSettingsStates() {
-        _developerModeEnabled.value = sharedPreferenceManager.developerModeEnabled
-        _checkForPreReleases.value = sharedPreferenceManager.checkForPreReleases
     }
 
 

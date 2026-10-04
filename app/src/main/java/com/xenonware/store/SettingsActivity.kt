@@ -7,11 +7,8 @@ import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -25,7 +22,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.google.android.gms.auth.api.identity.Identity
 import com.xenonware.store.data.SharedPreferenceManager
 import com.xenonware.store.presentation.sign_in.GoogleAuthUiClient
 import com.xenonware.store.presentation.sign_in.SignInViewModel
@@ -49,8 +45,7 @@ class SettingsActivity : ComponentActivity() {
 
     private val googleAuthUiClient by lazy {
         GoogleAuthUiClient(
-            context = applicationContext,
-            oneTapClient = Identity.getSignInClient(applicationContext)
+            context = applicationContext
         )
     }
 
@@ -91,40 +86,16 @@ class SettingsActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val state by signInViewModel.state.collectAsStateWithLifecycle()
 
-                val oneTapLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.StartIntentSenderForResult(),
-                    onResult = { result ->
-                        if (result.resultCode == RESULT_OK) {
-                            lifecycleScope.launch {
-                                val signInResult = googleAuthUiClient.signInWithIntent(
-                                    intent = result.data ?: return@launch
-                                )
-                                signInViewModel.onSignInResult(signInResult)
-                            }
-                        }
-                    }
-                )
-
-                val traditionalSignInLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.StartActivityForResult(),
-                    onResult = { result ->
-                        if (result.resultCode == RESULT_OK) {
-                            lifecycleScope.launch {
-                                val signInResult = googleAuthUiClient.signInWithTraditionalIntent(
-                                    intent = result.data ?: return@launch
-                                )
-                                signInViewModel.onSignInResult(signInResult)
-                            }
-                        }
-                    }
-                )
                 NavHost(
                     navController = navController,
                     startDestination = SettingsDestinations.MAIN_SETTINGS_ROUTE
                 ) {
                     composable(SettingsDestinations.MAIN_SETTINGS_ROUTE) {
                         SettingsLayout(
-                            onNavigateBack = { finish() },
+                            onNavigateBack = {
+                                setResult(RESULT_OK)
+                                finish()
+                            },
                             viewModel = settingsViewModel,
                             isLandscape = isLandscape,
                             layoutType = layoutType,
@@ -136,12 +107,8 @@ class SettingsActivity : ComponentActivity() {
                             googleAuthUiClient = googleAuthUiClient,
                             onSignInClick = {
                                 lifecycleScope.launch {
-                                    val signInResult = googleAuthUiClient.signIn()
-                                    if (signInResult != null) {
-                                        oneTapLauncher.launch(IntentSenderRequest.Builder(signInResult.pendingIntent.intentSender).build())
-                                    } else {
-                                        traditionalSignInLauncher.launch(googleAuthUiClient.getTraditionalSignInIntent())
-                                    }
+                                    val signInResult = googleAuthUiClient.signIn(this@SettingsActivity)
+                                    signInViewModel.onSignInResult(signInResult)
                                 }
                             },
                             onSignOutClick = {
