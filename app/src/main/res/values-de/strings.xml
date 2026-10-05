@@ -24,7 +24,7 @@
     <string name="xenon_ui_version">Xenon UI-Version</string>
     <string name="xenon_commons_version">Xenon Commons-Version</string>
     <string name="buy_me_a_coffee">Kauf mir einen Kaffee</string>
-    <string name="buy_me_a_coffee_description">Unterstütze den Entwickler von Xenon Launcher</string>
+    <string name="buy_me_a_coffee_description">Unterstütze den Entwickler von %1$s</string>
 
     <!-- Developer Settings -->
     <string name="developer_options_title">Entwickleroptionen</string>

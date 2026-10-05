@@ -2,7 +2,6 @@
 
 package com.xenonware.store.ui.res
 
-import android.annotation.SuppressLint
 import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.util.Log
@@ -55,7 +54,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
+import coil.compose.AsyncImage
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.values.ExtraLargerCornerRadius
 import com.xenon.mylibrary.values.LargestPadding
@@ -88,7 +87,6 @@ private fun getRepoMipmapName(githubUrl: String): String {
     return githubUrl.substringAfterLast('/').replace("-", "_").replace(".", "").lowercase()
 }
 
-@SuppressLint("DiscouragedApi")
 private fun getDrawableIdFromPath(context: android.content.Context, iconPath: String?): Int {
     if (iconPath.isNullOrBlank()) return 0
     val iconRegex = "^@([^/]+)/([^/]+)".toRegex()
@@ -99,7 +97,6 @@ private fun getDrawableIdFromPath(context: android.content.Context, iconPath: St
     return context.resources.getIdentifier(iconName, iconDirectory, context.packageName)
 }
 
-@SuppressLint("DiscouragedApi", "LocalContextResourcesRead")
 @Composable
 fun StoreItemCell(
     storeItem: StoreItem,

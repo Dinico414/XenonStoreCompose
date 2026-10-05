@@ -258,7 +258,7 @@ fun SettingsItems(
         Spacer(Modifier.height(outerGroupSpacing))
         SettingsTile(
             title = stringResource(string.buy_me_a_coffee),
-            subtitle = stringResource(string.buy_me_a_coffee_description),
+            subtitle = stringResource(string.buy_me_a_coffee_description, stringResource(string.app_name)),
             onClick = {
                 val intent =
                     Intent(Intent.ACTION_VIEW, "https://www.buymeacoffee.com/xenonware".toUri())
