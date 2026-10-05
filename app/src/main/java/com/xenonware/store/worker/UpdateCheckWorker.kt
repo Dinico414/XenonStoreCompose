@@ -33,7 +33,11 @@ class UpdateCheckWorker(
 
     override suspend fun doWork(): Result {
         try {
-            val request = Request.Builder().url(APPS_JSON_URL).build()
+            val request = Request.Builder()
+                .url(APPS_JSON_URL)
+                .cacheControl(okhttp3.CacheControl.FORCE_NETWORK)
+                .header("Cache-Control", "no-cache")
+                .build()
             val response = client.newCall(request).execute()
             
             if (!response.isSuccessful) return Result.retry()
@@ -44,16 +48,27 @@ class UpdateCheckWorker(
             val usePre = sharedPrefs.checkForPreReleases
             val updatesAvailable = mutableListOf<String>()
 
-            for (item in storeResponse.appList) {
+            val customApps = sharedPrefs.loadCustomStoreItems()
+            val allApps = (storeResponse.appList + customApps).distinctBy { it.packageName }
+
+            for (item in allApps) {
                 val installedVersion = getInstalledVersion(item.packageName) ?: continue
                 
-                val cloudVersion = if (usePre) {
-                    item.newVersion
+                val targetVersion = if (usePre) {
+                    val stableVer = item.stableVersion ?: ""
+                    val preVer = item.preVersion ?: item.newVersion
+                    if (stableVer.isNotEmpty() && preVer.isNotEmpty()) {
+                        if (Util.isNewerVersion(preVer, stableVer)) stableVer else preVer
+                    } else if (preVer.isNotEmpty()) {
+                        preVer
+                    } else {
+                        stableVer
+                    }
                 } else {
-                    item.stableVersion ?: ""
+                    item.stableVersion ?: if (!item.isPrerelease) item.newVersion else ""
                 }
 
-                if (cloudVersion.isNotEmpty() && Util.isNewerVersion(installedVersion, cloudVersion)) {
+                if (targetVersion.isNotEmpty() && Util.isNewerVersion(installedVersion, targetVersion)) {
                     updatesAvailable.add(item.getName(Util.getCurrentLanguage(applicationContext.resources)))
                 }
             }

@@ -1,16 +1,49 @@
 package com.xenonware.store
 
-import org.junit.Assert.assertEquals
+import com.xenonware.store.util.Util
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Example local unit test, which will execute on the development machine (host).
- *
- * See [testing documentation](http://d.android.com/tools/testing).
- */
 class ExampleUnitTest {
     @Test
-    fun addition_isCorrect() {
-        assertEquals(4, 2 + 2)
+    fun testPrereleaseComparison() {
+        // Essentials case: 18.5-beta.1 vs 18.5-beta.2
+        assertTrue(Util.isNewerVersion("18.5-beta.1", "18.5-beta.2"))
+        assertFalse(Util.isNewerVersion("18.5-beta.2", "18.5-beta.1"))
+        assertFalse(Util.isNewerVersion("18.5-beta.1", "18.5-beta.1"))
+
+        // Beta to stable
+        assertTrue(Util.isNewerVersion("18.5-beta.1", "18.5"))
+        assertFalse(Util.isNewerVersion("18.5", "18.5-beta.1"))
+
+        // Older base to newer beta
+        assertTrue(Util.isNewerVersion("18.4", "18.5-beta.1"))
+        assertFalse(Util.isNewerVersion("18.5-beta.1", "18.4"))
+
+        // Numeric token comparisons
+        assertTrue(Util.isNewerVersion("18.5-beta.9", "18.5-beta.10"))
+        assertFalse(Util.isNewerVersion("18.5-beta.10", "18.5-beta.9"))
+
+        // Pre-release stages
+        assertTrue(Util.isNewerVersion("18.5-alpha.1", "18.5-beta.1"))
+        assertTrue(Util.isNewerVersion("18.5-beta.1", "18.5-rc.1"))
+        assertTrue(Util.isNewerVersion("18.5-rc.1", "18.5"))
+
+        // Without dot in suffix
+        assertTrue(Util.isNewerVersion("18.5-beta1", "18.5-beta2"))
+
+        // Standard semver
+        assertTrue(Util.isNewerVersion("1.0.0", "1.0.1"))
+        assertTrue(Util.isNewerVersion("1.0.0", "2.0.0"))
+        assertFalse(Util.isNewerVersion("2.0.0", "1.0.0"))
+
+        // 'v' prefix
+        assertTrue(Util.isNewerVersion("v18.5-beta.1", "18.5-beta.2"))
+        assertTrue(Util.isNewerVersion("18.5-beta.1", "v18.5-beta.2"))
+
+        // Empty checks
+        assertTrue(Util.isNewerVersion("", "18.5-beta.1"))
+        assertFalse(Util.isNewerVersion("18.5-beta.1", ""))
     }
 }

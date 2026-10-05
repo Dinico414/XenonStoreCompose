@@ -4,6 +4,7 @@ package com.xenonware.store.ui.res
 
 import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
+import android.graphics.drawable.Drawable
 import android.util.Log
 import android.view.View
 import android.widget.ImageView
@@ -98,6 +99,70 @@ private fun getDrawableIdFromPath(context: android.content.Context, iconPath: St
 }
 
 @Composable
+private fun DrawableIconView(
+    drawable: Drawable,
+    modifier: Modifier
+) {
+    val context = LocalContext.current
+    @Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
+    AndroidView(
+        factory = { ctx ->
+            ImageView(ctx).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+            }
+        },
+        modifier = modifier,
+        update = { imageView ->
+            try {
+                if (drawable is AdaptiveIconDrawable) {
+                    val iconSizePx = 48.dp.toPx(context).toInt()
+                    if (iconSizePx > 0) {
+                        val bitmap = createBitmap(iconSizePx, iconSizePx)
+                        val canvas = Canvas(bitmap)
+
+                        val scaleFactor = 1.5f
+                        val scaledWidth = iconSizePx * scaleFactor
+                        val scaledHeight = iconSizePx * scaleFactor
+
+                        val offsetWidth = (scaledWidth - iconSizePx) / 2f
+                        val offsetHeight = (scaledHeight - iconSizePx) / 2f
+
+                        val scaledLeft = (-offsetWidth).toInt()
+                        val scaledTop = (-offsetHeight).toInt()
+                        val scaledRight = (iconSizePx + offsetWidth).toInt()
+                        val scaledBottom = (iconSizePx + offsetHeight).toInt()
+
+                        drawable.background?.let {
+                            it.setBounds(
+                                scaledLeft, scaledTop, scaledRight, scaledBottom
+                            )
+                            it.draw(canvas)
+                        }
+                        drawable.foreground?.let {
+                            it.setBounds(
+                                scaledLeft, scaledTop, scaledRight, scaledBottom
+                            )
+                            it.draw(canvas)
+                        }
+                        imageView.setImageBitmap(bitmap)
+                        imageView.visibility = View.VISIBLE
+                    } else {
+                        imageView.setImageDrawable(drawable)
+                        imageView.visibility = View.VISIBLE
+                    }
+                } else {
+                    imageView.setImageDrawable(drawable)
+                    imageView.visibility = View.VISIBLE
+                }
+            } catch (e: Exception) {
+                Log.e("StoreItemCell", "Error rendering drawable", e)
+                imageView.visibility = View.GONE
+            }
+        }
+    )
+}
+
+@Composable
 fun StoreItemCell(
     storeItem: StoreItem,
     onInstall: (StoreItem) -> Unit,
@@ -108,14 +173,29 @@ fun StoreItemCell(
     val language = Util.getCurrentLanguage(context.resources)
 
     val installButtonText = when (storeItem.state) {
-        AppEntryState.NOT_INSTALLED -> stringResource(R.string.install)
-        AppEntryState.INSTALLED_AND_OUTDATED -> stringResource(R.string.update)
+        AppEntryState.NOT_INSTALLED -> {
+            if (storeItem.isDownloaded) stringResource(R.string.install)
+            else stringResource(R.string.download)
+        }
+        AppEntryState.INSTALLED_AND_OUTDATED -> {
+            if (storeItem.isDownloaded) stringResource(R.string.install)
+            else stringResource(R.string.update)
+        }
         AppEntryState.INSTALLING -> {
             if (storeItem.installedVersion.isNotEmpty()) stringResource(R.string.update)
             else stringResource(R.string.install)
         }
-
         else -> stringResource(R.string.install)
+    }
+
+    val installedAppIcon: Drawable? = remember(storeItem.packageName, storeItem.installedVersion) {
+        if (storeItem.installedVersion.isNotEmpty()) {
+            try {
+                context.packageManager.getApplicationIcon(storeItem.packageName)
+            } catch (_: Exception) {
+                null
+            }
+        } else null
     }
 
     Row(
@@ -162,7 +242,12 @@ fun StoreItemCell(
                             ) else Modifier
                         )
 
-                    if (isHttpIcon) {
+                    if (installedAppIcon != null) {
+                        DrawableIconView(
+                            drawable = installedAppIcon,
+                            modifier = iconModifier
+                        )
+                    } else if (isHttpIcon) {
                         AsyncImage(
                             model = storeItem.iconPath,
                             contentDescription = storeItem.getName(language),
@@ -172,64 +257,26 @@ fun StoreItemCell(
                             placeholder = painterResource(id = R.drawable.default_icon)
                         )
                     } else if (iconResId != 0) {
-                        @Suppress("COMPOSE_APPLIER_CALL_MISMATCH") AndroidView(factory = { ctx ->
-                            ImageView(ctx).apply {
-                                scaleType = ImageView.ScaleType.CENTER_CROP
-                            }
-                        }, modifier = iconModifier, update = { it ->
+                        val resDrawable = remember(iconResId) {
                             try {
-                                val originalDrawable = ResourcesCompat.getDrawable(
-                                    context.resources, iconResId, null
-                                )
-                                if (originalDrawable is AdaptiveIconDrawable) {
-                                    val iconSizePx = 48.dp.toPx(context).toInt()
-                                    if (iconSizePx > 0) {
-                                        val bitmap = createBitmap(iconSizePx, iconSizePx)
-                                        val canvas = Canvas(bitmap)
-
-                                        val scaleFactor = 1.5f
-                                        val scaledWidth = iconSizePx * scaleFactor
-                                        val scaledHeight = iconSizePx * scaleFactor
-
-                                        val offsetWidth = (scaledWidth - iconSizePx) / 2f
-                                        val offsetHeight = (scaledHeight - iconSizePx) / 2f
-
-                                        val scaledLeft = (-offsetWidth).toInt()
-                                        val scaledTop = (-offsetHeight).toInt()
-                                        val scaledRight = (iconSizePx + offsetWidth).toInt()
-                                        val scaledBottom = (iconSizePx + offsetHeight).toInt()
-
-                                        originalDrawable.background?.let {
-                                            it.setBounds(
-                                                scaledLeft, scaledTop, scaledRight, scaledBottom
-                                            )
-                                            it.draw(canvas)
-                                        }
-                                        originalDrawable.foreground?.let {
-                                            it.setBounds(
-                                                scaledLeft, scaledTop, scaledRight, scaledBottom
-                                            )
-                                            it.draw(canvas)
-                                        }
-                                        it.setImageBitmap(bitmap)
-                                        it.visibility = View.VISIBLE
-                                    } else {
-                                        it.setImageDrawable(originalDrawable)
-                                        it.visibility = View.VISIBLE
-                                    }
-                                } else {
-                                    it.setImageDrawable(originalDrawable)
-                                    it.visibility = View.VISIBLE
-                                }
-                            } catch (e: Exception) {
-                                Log.e(
-                                    "StoreItemCell",
-                                    "Error loading drawable ID: $iconResId for ${storeItem.packageName}",
-                                    e
-                                )
-                                it.visibility = View.GONE
+                                ResourcesCompat.getDrawable(context.resources, iconResId, null)
+                            } catch (_: Exception) {
+                                null
                             }
-                        })
+                        }
+                        if (resDrawable != null) {
+                            DrawableIconView(
+                                drawable = resDrawable,
+                                modifier = iconModifier
+                            )
+                        } else {
+                            AsyncImage(
+                                model = R.drawable.default_icon,
+                                contentDescription = storeItem.getName(language),
+                                modifier = iconModifier,
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     } else if (storeItem.githubUrl.isNotBlank()) {
                         val owner = getRepoOwner(storeItem.githubUrl)
                         AsyncImage(
@@ -282,7 +329,10 @@ fun StoreItemCell(
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         } else {
-                            IconButtonDefaults.iconButtonColors()
+                            IconButtonDefaults.iconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceBright,
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     ) {
                         Icon(

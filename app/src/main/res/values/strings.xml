@@ -118,6 +118,7 @@
     <string name="unsaved_changes">Unsaved changes!</string>
     <string name="proceed">Proceed</string>
     <string name="warning_datalost">Warning! If you proceed now, all unsaved changes get lost!</string>
+    <string name="download">Download</string>
     <string name="install">Install</string>
     <string name="update">Update</string>
     <string name="uninstall">Uninstall</string>

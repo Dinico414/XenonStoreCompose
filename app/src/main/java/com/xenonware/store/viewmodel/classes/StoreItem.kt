@@ -35,6 +35,7 @@ data class StoreItem(
     @SerialName("downloadUrl") var downloadUrl: String = "",
     @Transient var bytesDownloaded: Long = 0L,
     @Transient var fileSize: Long = 0L,
+    @Transient var isDownloaded: Boolean = false,
 
     @SerialName("preVersion") var preVersion: String? = null,
     @SerialName("preDownloadUrl") var preDownloadUrl: String? = null,

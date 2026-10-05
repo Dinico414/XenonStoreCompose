@@ -17,7 +17,11 @@ import com.xenonware.store.viewmodel.classes.AppEntryState
 import com.xenonware.store.viewmodel.classes.GitHubRelease
 import com.xenonware.store.viewmodel.classes.StoreItem
 import com.xenonware.store.viewmodel.classes.StoreResponse
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +36,7 @@ import okhttp3.Response
 import rikka.shizuku.Shizuku
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 
 class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -64,6 +69,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private var originalCloudItems: List<StoreItem> = emptyList()
     private val lastUpdateMap = mutableMapOf<String, Long>()
 
+    private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val activeDownloads = ConcurrentHashMap<String, Boolean>()
+    private val activeInstallations = ConcurrentHashMap<String, Boolean>()
+
     private companion object {
         const val TAG = "XenonStoreVM"
         const val XENON_STORE_PACKAGE = "com.xenonware.store"
@@ -72,6 +81,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     init {
+        cleanupOldApks(application.applicationContext)
         loadCustomStoreItems()
         fetchAndRefreshAppList()
         checkForXenonStoreUpdate()
@@ -88,7 +98,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         try {
             val context = getApplication<Application>().applicationContext
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.registerReceiver(packageInstallReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                context.registerReceiver(packageInstallReceiver, filter, Context.RECEIVER_EXPORTED)
             } else {
                 context.registerReceiver(packageInstallReceiver, filter)
             }
@@ -105,6 +115,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun fetchAndRefreshAppList() {
+        fetchReleaseInfoForCustomApps()
         viewModelScope.launch {
             _currentActionInfo.value = "Fetching app list..."
             downloadToString(APPS_JSON_URL) { result ->
@@ -133,6 +144,8 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun refreshItemsState(isCustom: Boolean) {
         val usePre = sharedPreferenceManager.checkForPreReleases
+        val context = getApplication<Application>().applicationContext
+        cleanupOldApks(context)
         viewModelScope.launch {
             // Use originalCloudItems as the source for cloud apps to ensure 
             // we always have the absolute latest version available to restore
@@ -148,44 +161,52 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 val newItem = item.copy()
                 newItem.installedVersion = getInstalledVersion(newItem.packageName) ?: ""
 
-                // Selection Logic for Cloud Apps:
-                if (!newItem.isCustom) {
-                    val candidateVersion: String
-                    val candidateUrl: String
+                // Selection Logic for both Cloud and Custom Apps:
+                val candidateVersion: String
+                val candidateUrl: String
 
-                    if (usePre) {
-                        // When pre-releases are enabled, take whichever is newer: the stable release or the pre-release!
-                        val stableVer = newItem.stableVersion ?: ""
-                        val preVer = newItem.preVersion ?: newItem.newVersion
+                if (usePre) {
+                    // When pre-releases are enabled, take whichever is newer: the stable release or the pre-release!
+                    val stableVer = newItem.stableVersion ?: ""
+                    val preVer = newItem.preVersion ?: newItem.newVersion
 
-                        if (stableVer.isNotEmpty() && preVer.isNotEmpty()) {
-                            if (com.xenonware.store.util.Util.isNewerVersion(preVer, stableVer)) {
-                                // Stable version is newer than pre-release!
-                                candidateVersion = stableVer
-                                candidateUrl = newItem.stableDownloadUrl ?: newItem.downloadUrl
-                            } else {
-                                // Pre-release is newer or equal
-                                candidateVersion = preVer
-                                candidateUrl = newItem.preDownloadUrl ?: newItem.downloadUrl
-                            }
-                        } else if (stableVer.isNotEmpty()) {
+                    if (stableVer.isNotEmpty() && preVer.isNotEmpty()) {
+                        if (com.xenonware.store.util.Util.isNewerVersion(preVer, stableVer)) {
+                            // Stable version is newer than pre-release!
                             candidateVersion = stableVer
                             candidateUrl = newItem.stableDownloadUrl ?: newItem.downloadUrl
                         } else {
+                            // Pre-release is newer or equal
                             candidateVersion = preVer
                             candidateUrl = newItem.preDownloadUrl ?: newItem.downloadUrl
                         }
+                    } else if (stableVer.isNotEmpty()) {
+                        candidateVersion = stableVer
+                        candidateUrl = newItem.stableDownloadUrl ?: newItem.downloadUrl
                     } else {
-                        // If stable only, force the version to the stable one.
-                        candidateVersion = newItem.stableVersion ?: ""
-                        candidateUrl = newItem.stableDownloadUrl ?: ""
+                        candidateVersion = preVer
+                        candidateUrl = newItem.preDownloadUrl ?: newItem.downloadUrl
                     }
+                } else {
+                    // If stable only, force the version to the stable one.
+                    candidateVersion = newItem.stableVersion ?: if (!newItem.isPrerelease) newItem.newVersion else ""
+                    candidateUrl = newItem.stableDownloadUrl ?: if (!newItem.isPrerelease) newItem.downloadUrl else ""
+                }
 
+                if (candidateVersion.isNotEmpty()) {
                     newItem.newVersion = candidateVersion
                     newItem.downloadUrl = candidateUrl
                 }
 
-                if (newItem.installedVersion.isNotEmpty()) {
+                // Check if APK is downloaded locally
+                val downloadedApk = getDownloadedApkFile(context, newItem)
+                newItem.isDownloaded = downloadedApk != null
+
+                if (activeDownloads[newItem.packageName] == true) {
+                    newItem.state = AppEntryState.DOWNLOADING
+                } else if (activeInstallations[newItem.packageName] == true) {
+                    newItem.state = AppEntryState.INSTALLING
+                } else if (newItem.installedVersion.isNotEmpty()) {
                     newItem.state = if (newItem.isOutdated()) AppEntryState.INSTALLED_AND_OUTDATED else AppEntryState.INSTALLED
                 } else {
                     newItem.state = AppEntryState.NOT_INSTALLED
@@ -203,6 +224,84 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun cleanupOldApks(context: Context) {
+        try {
+            val installDir = File(context.filesDir, "apks")
+            if (!installDir.exists() || !installDir.isDirectory) return
+
+            val now = System.currentTimeMillis()
+            val maxAgeMillis = 24 * 60 * 60 * 1000L // 24 hours
+
+            installDir.listFiles()?.forEach { file ->
+                if (file.isFile && (file.extension.equals("apk", ignoreCase = true) || file.name.startsWith("download_"))) {
+                    val age = now - file.lastModified()
+                    if (age >= maxAgeMillis) {
+                        try {
+                            file.delete()
+                            Log.d(TAG, "Deleted old downloaded APK: ${file.name}")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed to delete old APK: ${file.name}", e)
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun getDownloadedApkFile(context: Context, item: StoreItem): File? {
+        val installDir = File(context.filesDir, "apks")
+        if (!installDir.exists()) return null
+
+        val cleanPkg = item.packageName
+        val cleanVer = item.newVersion.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+
+        // 1. Check versioned file
+        if (cleanVer.isNotEmpty()) {
+            val versionedFile = File(installDir, "${cleanPkg}_${cleanVer}.apk")
+            if (versionedFile.exists() && versionedFile.length() > 0) {
+                val pkgInfo = getArchiveInfo(context, versionedFile)
+                if (pkgInfo != null) return versionedFile
+                else versionedFile.delete()
+            }
+        }
+
+        // 2. Check unversioned file
+        val unversionedFile = File(installDir, "$cleanPkg.apk")
+        if (unversionedFile.exists() && unversionedFile.length() > 0) {
+            val pkgInfo = getArchiveInfo(context, unversionedFile)
+            if (pkgInfo != null) {
+                if (item.isOutdated()) {
+                    val archiveVer = pkgInfo.versionName?.removePrefix("v")?.removePrefix("V") ?: ""
+                    if (archiveVer == item.newVersion.removePrefix("v").removePrefix("V")) {
+                        return unversionedFile
+                    }
+                } else if (item.installedVersion.isEmpty()) {
+                    return unversionedFile
+                }
+            } else {
+                unversionedFile.delete()
+            }
+        }
+
+        return null
+    }
+
+    private fun getArchiveInfo(context: Context, file: File): android.content.pm.PackageInfo? {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageArchiveInfo(
+                    file.absolutePath,
+                    android.content.pm.PackageManager.PackageInfoFlags.of(0L)
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun getInstalledVersion(pkg: String): String? {
         return try {
             getApplication<Application>().packageManager.getPackageInfo(pkg, 0).versionName
@@ -210,38 +309,48 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun installApp(item: StoreItem, context: Context) {
-        viewModelScope.launch {
-            _currentActionInfo.value = "Downloading ${item.getName(getCurrentLanguage(context.resources))}..."
+        val existingApk = getDownloadedApkFile(context, item)
+        if (existingApk != null) {
+            viewModelScope.launch {
+                _currentActionInfo.value = "Installing ${item.getName(getCurrentLanguage(context.resources))}..."
+                updateItemInternalState(item.packageName, AppEntryState.INSTALLING)
+                activeInstallations[item.packageName] = true
+
+                val extractedPkg = getArchiveInfo(context, existingApk)?.packageName ?: item.packageName
+                performInstallation(existingApk, extractedPkg, context)
+
+                activeInstallations.remove(item.packageName)
+                _currentActionInfo.value = null
+            }
+            return
+        }
+
+        // Not downloaded yet -> Download in background-capable scope
+        downloadScope.launch {
+            withContext(Dispatchers.Main) {
+                _currentActionInfo.value = "Downloading ${item.getName(getCurrentLanguage(context.resources))}..."
+                activeDownloads[item.packageName] = true
+                updateItemInternalState(item.packageName, AppEntryState.DOWNLOADING)
+            }
+
             val installDir = File(context.filesDir, "apks")
             if (!installDir.exists()) installDir.mkdirs()
+            cleanupOldApks(context)
 
             val tempApk = File(installDir, "download_${System.currentTimeMillis()}.apk")
-
-            updateItemInternalState(item.packageName, AppEntryState.DOWNLOADING)
 
             downloadFile(item.downloadUrl, tempApk,
                 onProgress = { current, total ->
                     updateItemProgress(item.packageName, current, total)
                 },
                 onSuccess = {
-                    viewModelScope.launch {
-                        _currentActionInfo.value = "Inspecting & Installing..."
-                        updateItemInternalState(item.packageName, AppEntryState.INSTALLING)
+                    downloadScope.launch {
+                        activeDownloads.remove(item.packageName)
+                        val pkgInfo = getArchiveInfo(context, tempApk)
+                        val actualPkg = pkgInfo?.packageName?.takeIf { it.isNotBlank() } ?: item.packageName
+                        val cleanVer = (pkgInfo?.versionName ?: item.newVersion).replace(Regex("[^a-zA-Z0-9._-]"), "_")
 
-                        // 1. Inspect the downloaded APK to get its actual real package name
-                        val extractedPkg = try {
-                            val pkgInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                context.packageManager.getPackageArchiveInfo(tempApk.absolutePath, android.content.pm.PackageManager.PackageInfoFlags.of(0L))
-                            } else {
-                                @Suppress("DEPRECATION")
-                                context.packageManager.getPackageArchiveInfo(tempApk.absolutePath, 0)
-                            }
-                            pkgInfo?.packageName
-                        } catch (_: Exception) { null }
-
-                        val actualPkg = extractedPkg?.takeIf { it.isNotBlank() } ?: item.packageName
-
-                        // 2. If it's a custom app and the real package differs from our placeholder, update our custom store items!
+                        // Update custom app package name if it differed
                         if (item.isCustom && actualPkg != item.packageName) {
                             val currentApps = sharedPreferenceManager.loadCustomStoreItems().toMutableList()
                             val idx = currentApps.indexOfFirst {
@@ -254,20 +363,46 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                                 currentApps.add(updatedItem)
                             }
                             sharedPreferenceManager.saveCustomStoreItems(currentApps)
-                            _customStoreItems.value = currentApps
+                            withContext(Dispatchers.Main) {
+                                _customStoreItems.value = currentApps
+                            }
                         }
 
-                        // Rename temp APK to destination
-                        val dest = File(installDir, "$actualPkg.apk")
+                        // Save versioned APK
+                        val dest = File(installDir, "${actualPkg}_${cleanVer}.apk")
                         if (dest.exists()) dest.delete()
                         tempApk.renameTo(dest)
 
-                        performInstallation(dest, actualPkg, context)
+                        val method = sharedPreferenceManager.installMethod
+                        if (method == InstallMethod.SHIZUKU || method == InstallMethod.ROOT) {
+                            withContext(Dispatchers.Main) {
+                                _currentActionInfo.value = "Installing $actualPkg..."
+                                activeInstallations[actualPkg] = true
+                                updateItemInternalState(actualPkg, AppEntryState.INSTALLING)
+                            }
+                            performInstallation(dest, actualPkg, context)
+                            activeInstallations.remove(actualPkg)
+                            withContext(Dispatchers.Main) {
+                                _currentActionInfo.value = null
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                _currentActionInfo.value = null
+                                refreshItemsState(item.isCustom)
+                            }
+                        }
                     }
                 },
                 onFailure = {
-                    _error.value = "Download failed."
-                    refreshItemsState(item.isCustom)
+                    downloadScope.launch {
+                        activeDownloads.remove(item.packageName)
+                        if (tempApk.exists()) tempApk.delete()
+                        withContext(Dispatchers.Main) {
+                            _error.value = "Download failed."
+                            _currentActionInfo.value = null
+                            refreshItemsState(item.isCustom)
+                        }
+                    }
                 }
             )
         }
@@ -429,7 +564,12 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun downloadToString(url: String, callback: (String?) -> Unit) {
-        client.newCall(Request.Builder().url(url).build()).enqueue(object : Callback {
+        val request = Request.Builder()
+            .url(url)
+            .cacheControl(okhttp3.CacheControl.FORCE_NETWORK)
+            .header("Cache-Control", "no-cache")
+            .build()
+        client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) = callback(null)
             override fun onResponse(call: Call, response: Response) = callback(response.body.string())
         })
@@ -619,22 +759,24 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         if (currentCustom.isEmpty()) return
 
         viewModelScope.launch(Dispatchers.IO) {
-            var changed = false
-            val updatedList = currentCustom.map { item ->
-                if (item.isCustom && item.githubUrl.isNotBlank()) {
-                    val owner = item.owner
-                    val repo = item.repo
-                    if (owner.isNotBlank() && repo.isNotBlank()) {
-                        val fetchedItem = fetchGitHubReleaseSync(item, owner, repo)
-                        if (fetchedItem != null) {
-                            changed = true
-                            return@map fetchedItem
+            val deferredList = currentCustom.map { item ->
+                async {
+                    if (item.isCustom && item.githubUrl.isNotBlank()) {
+                        val owner = item.owner
+                        val repo = item.repo
+                        if (owner.isNotBlank() && repo.isNotBlank()) {
+                            val fetchedItem = fetchGitHubReleaseSync(item, owner, repo)
+                            if (fetchedItem != null) {
+                                return@async fetchedItem
+                            }
                         }
                     }
+                    item
                 }
-                item
             }
-            if (changed) {
+            val updatedList = deferredList.awaitAll()
+            if (updatedList != currentCustom) {
+                sharedPreferenceManager.saveCustomStoreItems(updatedList)
                 withContext(Dispatchers.Main) {
                     _customStoreItems.value = updatedList
                     refreshItemsState(isCustom = true)

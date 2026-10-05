@@ -118,6 +118,7 @@
     <string name="unsaved_changes">Ungespeicherte Änderungen!</string>
     <string name="proceed">Fortfahren</string>
     <string name="warning_datalost">Achtung! Wenn du jetzt fortfährst, gehen alle ungespeicherten Änderungen verloren!</string>
+    <string name="download">Herunterladen</string>
     <string name="install">Installieren</string>
     <string name="update">Aktualisieren</string>
     <string name="uninstall">Deinstallieren</string>
