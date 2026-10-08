@@ -30,6 +30,7 @@ class UpdateCheckWorker(
 
     companion object {
         const val CHANNEL_ID = "update_notifications"
+        const val NOTIFICATION_ID = 1001
         const val APPS_JSON_URL = "https://storage.googleapis.com/xenon-store-bucket/apps.json"
     }
 
@@ -229,6 +230,6 @@ class UpdateCheckWorker(
             .setAutoCancel(true)
             .build()
 
-        notificationManager.notify(1001, notification)
+        notificationManager.notify(NOTIFICATION_ID, notification)
     }
 }

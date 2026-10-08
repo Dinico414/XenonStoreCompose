@@ -41,6 +41,8 @@ import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
 import java.util.Locale
 
+import android.app.NotificationManager
+
 class MainActivity : ComponentActivity() {
 
     private lateinit var viewModel: StoreViewModel
@@ -80,6 +82,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        clearNotificationsOnAppOpen()
         WindowCompat.setDecorFitsSystemWindows(window, false)
         sharedPreferenceManager = SharedPreferenceManager(applicationContext)
         viewModel = ViewModelProvider(this)[StoreViewModel::class.java]
@@ -156,6 +159,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        clearNotificationsOnAppOpen()
         lifecycleScope.launch {
             val user = googleAuthUiClient.getSignedInUser()
             val isSignedIn = user != null
@@ -212,6 +216,12 @@ class MainActivity : ComponentActivity() {
         } else {
             AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
+    }
+
+    private fun clearNotificationsOnAppOpen() {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(com.xenonware.store.worker.UpdateCheckWorker.NOTIFICATION_ID)
+        notificationManager.cancel(com.xenonware.store.service.DownloadService.COMPLETE_NOTIFICATION_ID)
     }
 }
 

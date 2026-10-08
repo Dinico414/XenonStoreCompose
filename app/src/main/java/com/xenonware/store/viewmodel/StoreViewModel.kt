@@ -86,6 +86,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         fetchAndRefreshAppList()
         checkForXenonStoreUpdate()
         registerPackageReceiver()
+        observeDownloadService()
     }
 
     private fun registerPackageReceiver() {
@@ -308,6 +309,103 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         } catch (_: Exception) { null }
     }
 
+    private fun observeDownloadService() {
+        viewModelScope.launch {
+            com.xenonware.store.service.DownloadService.downloadProgressFlow.collect { progressMap ->
+                progressMap.values.forEach { progress ->
+                    when (progress.status) {
+                        com.xenonware.store.service.DownloadStatus.DOWNLOADING -> {
+                            activeDownloads[progress.packageName] = true
+                            updateItemInternalState(progress.packageName, AppEntryState.DOWNLOADING)
+                            updateItemProgress(progress.packageName, progress.bytesDownloaded, progress.totalBytes)
+                            if (progress.packageName == XENON_STORE_PACKAGE && progress.totalBytes > 0) {
+                                _xenonStoreDownloadProgress.value = progress.bytesDownloaded.toFloat() / progress.totalBytes
+                            }
+                        }
+                        com.xenonware.store.service.DownloadStatus.SUCCESS -> {
+                            if (activeDownloads[progress.packageName] == true) {
+                                activeDownloads.remove(progress.packageName)
+                                val downloadedFile = progress.downloadedFile
+                                if (downloadedFile != null) {
+                                    handleDownloadedApkSuccess(
+                                        pkgName = progress.packageName,
+                                        tempApk = downloadedFile,
+                                        isCustom = progress.isCustom
+                                    )
+                                }
+                            }
+                        }
+                        com.xenonware.store.service.DownloadStatus.FAILED -> {
+                            if (activeDownloads[progress.packageName] == true) {
+                                activeDownloads.remove(progress.packageName)
+                                _error.value = "Download failed: ${progress.errorMessage ?: "Unknown error"}"
+                                _currentActionInfo.value = null
+                                refreshItemsState(progress.isCustom)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleDownloadedApkSuccess(
+        pkgName: String,
+        tempApk: File,
+        isCustom: Boolean
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>().applicationContext
+            val installDir = File(context.filesDir, "apks")
+            val pkgInfo = getArchiveInfo(context, tempApk)
+            val actualPkg = pkgInfo?.packageName?.takeIf { it.isNotBlank() } ?: pkgName
+            val cleanVer = (pkgInfo?.versionName ?: "").replace(Regex("[^a-zA-Z0-9._-]"), "_")
+
+            if (isCustom && actualPkg != pkgName) {
+                val currentApps = sharedPreferenceManager.loadCustomStoreItems().toMutableList()
+                val idx = currentApps.indexOfFirst { it.packageName == pkgName }
+                if (idx != -1) {
+                    currentApps[idx] = currentApps[idx].copy(packageName = actualPkg)
+                    sharedPreferenceManager.saveCustomStoreItems(currentApps)
+                    withContext(Dispatchers.Main) {
+                        _customStoreItems.value = currentApps
+                    }
+                }
+            }
+
+            val dest = File(installDir, "${actualPkg}_${cleanVer}.apk")
+            if (dest.exists()) dest.delete()
+            tempApk.renameTo(dest)
+
+            if (actualPkg == XENON_STORE_PACKAGE) {
+                withContext(Dispatchers.Main) {
+                    _xenonStoreDownloadProgress.value = 1f
+                }
+                performInstallation(dest, XENON_STORE_PACKAGE, context)
+                return@launch
+            }
+
+            val method = sharedPreferenceManager.installMethod
+            if (method == InstallMethod.SHIZUKU || method == InstallMethod.ROOT) {
+                withContext(Dispatchers.Main) {
+                    _currentActionInfo.value = "Installing $actualPkg..."
+                    activeInstallations[actualPkg] = true
+                    updateItemInternalState(actualPkg, AppEntryState.INSTALLING)
+                }
+                performInstallation(dest, actualPkg, context)
+                activeInstallations.remove(actualPkg)
+                withContext(Dispatchers.Main) {
+                    _currentActionInfo.value = null
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    _currentActionInfo.value = null
+                    refreshItemsState(isCustom)
+                }
+            }
+        }
+    }
+
     fun installApp(item: StoreItem, context: Context) {
         val existingApk = getDownloadedApkFile(context, item)
         if (existingApk != null) {
@@ -325,87 +423,22 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        // Not downloaded yet -> Download in background-capable scope
-        downloadScope.launch {
-            withContext(Dispatchers.Main) {
-                _currentActionInfo.value = "Downloading ${item.getName(getCurrentLanguage(context.resources))}..."
-                activeDownloads[item.packageName] = true
-                updateItemInternalState(item.packageName, AppEntryState.DOWNLOADING)
-            }
+        _currentActionInfo.value = "Downloading ${item.getName(getCurrentLanguage(context.resources))}..."
+        activeDownloads[item.packageName] = true
+        updateItemInternalState(item.packageName, AppEntryState.DOWNLOADING)
 
-            val installDir = File(context.filesDir, "apks")
-            if (!installDir.exists()) installDir.mkdirs()
-            cleanupOldApks(context)
+        val installDir = File(context.filesDir, "apks")
+        if (!installDir.exists()) installDir.mkdirs()
+        cleanupOldApks(context)
 
-            val tempApk = File(installDir, "download_${System.currentTimeMillis()}.apk")
+        val tempApk = File(installDir, "download_${System.currentTimeMillis()}.apk")
 
-            downloadFile(item.downloadUrl, tempApk,
-                onProgress = { current, total ->
-                    updateItemProgress(item.packageName, current, total)
-                },
-                onSuccess = {
-                    downloadScope.launch {
-                        activeDownloads.remove(item.packageName)
-                        val pkgInfo = getArchiveInfo(context, tempApk)
-                        val actualPkg = pkgInfo?.packageName?.takeIf { it.isNotBlank() } ?: item.packageName
-                        val cleanVer = (pkgInfo?.versionName ?: item.newVersion).replace(Regex("[^a-zA-Z0-9._-]"), "_")
-
-                        // Update custom app package name if it differed
-                        if (item.isCustom && actualPkg != item.packageName) {
-                            val currentApps = sharedPreferenceManager.loadCustomStoreItems().toMutableList()
-                            val idx = currentApps.indexOfFirst {
-                                it.packageName == item.packageName || (it.owner.equals(item.owner, ignoreCase = true) && it.repo.equals(item.repo, ignoreCase = true))
-                            }
-                            val updatedItem = item.copy(packageName = actualPkg)
-                            if (idx != -1) {
-                                currentApps[idx] = updatedItem
-                            } else {
-                                currentApps.add(updatedItem)
-                            }
-                            sharedPreferenceManager.saveCustomStoreItems(currentApps)
-                            withContext(Dispatchers.Main) {
-                                _customStoreItems.value = currentApps
-                            }
-                        }
-
-                        // Save versioned APK
-                        val dest = File(installDir, "${actualPkg}_${cleanVer}.apk")
-                        if (dest.exists()) dest.delete()
-                        tempApk.renameTo(dest)
-
-                        val method = sharedPreferenceManager.installMethod
-                        if (method == InstallMethod.SHIZUKU || method == InstallMethod.ROOT) {
-                            withContext(Dispatchers.Main) {
-                                _currentActionInfo.value = "Installing $actualPkg..."
-                                activeInstallations[actualPkg] = true
-                                updateItemInternalState(actualPkg, AppEntryState.INSTALLING)
-                            }
-                            performInstallation(dest, actualPkg, context)
-                            activeInstallations.remove(actualPkg)
-                            withContext(Dispatchers.Main) {
-                                _currentActionInfo.value = null
-                            }
-                        } else {
-                            withContext(Dispatchers.Main) {
-                                _currentActionInfo.value = null
-                                refreshItemsState(item.isCustom)
-                            }
-                        }
-                    }
-                },
-                onFailure = {
-                    downloadScope.launch {
-                        activeDownloads.remove(item.packageName)
-                        if (tempApk.exists()) tempApk.delete()
-                        withContext(Dispatchers.Main) {
-                            _error.value = "Download failed."
-                            _currentActionInfo.value = null
-                            refreshItemsState(item.isCustom)
-                        }
-                    }
-                }
-            )
-        }
+        com.xenonware.store.service.DownloadService.startDownload(
+            context = context,
+            item = item,
+            downloadUrl = item.downloadUrl,
+            destFile = tempApk
+        )
     }
 
     private suspend fun performInstallation(apk: File, pkg: String, context: Context) {
@@ -723,20 +756,20 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             val installDir = File(context.filesDir, "apks")
             if (!installDir.exists()) installDir.mkdirs()
             val dest = File(installDir, "xenon_store_update.apk")
-            downloadFile(info.downloadUrl, dest,
-                onProgress = { current, total ->
-                    _xenonStoreDownloadProgress.value = current.toFloat() / total
-                },
-                onSuccess = {
-                    viewModelScope.launch {
-                        _xenonStoreDownloadProgress.value = 1f
-                        performInstallation(dest, XENON_STORE_PACKAGE, context)
-                    }
-                },
-                onFailure = { err ->
-                    _error.value = "Update download failed: $err"
-                    _xenonStoreDownloadProgress.value = 0f
-                }
+
+            val xenonItem = StoreItem(
+                name = "Xenon Store",
+                packageName = XENON_STORE_PACKAGE,
+                githubUrl = "",
+                iconPath = ""
+            )
+
+            activeDownloads[XENON_STORE_PACKAGE] = true
+            com.xenonware.store.service.DownloadService.startDownload(
+                context = context,
+                item = xenonItem,
+                downloadUrl = info.downloadUrl,
+                destFile = dest
             )
         }
     }
