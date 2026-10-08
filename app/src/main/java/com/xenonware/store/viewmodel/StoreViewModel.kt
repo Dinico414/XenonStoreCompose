@@ -230,7 +230,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             if (!installDir.exists() || !installDir.isDirectory) return
 
             val now = System.currentTimeMillis()
-            val maxAgeMillis = 24 * 60 * 60 * 1000L // 24 hours
+            val maxAgeMillis = 12 * 60 * 60 * 1000L // 12 hours
 
             installDir.listFiles()?.forEach { file ->
                 if (file.isFile && (file.extension.equals("apk", ignoreCase = true) || file.name.startsWith("download_"))) {
