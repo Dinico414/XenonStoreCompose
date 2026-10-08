@@ -88,9 +88,8 @@ class UpdateCheckWorker(
                     val preVer = item.preVersion ?: item.newVersion
                     if (stableVer.isNotEmpty() && preVer.isNotEmpty()) {
                         if (Util.isNewerVersion(preVer, stableVer)) stableVer else preVer
-                    } else if (preVer.isNotEmpty()) {
-                        preVer
-                    } else {
+                    } else
+                        preVer.ifEmpty {
                         stableVer.ifEmpty { item.newVersion }
                     }
                 } else {
@@ -170,7 +169,7 @@ class UpdateCheckWorker(
             val cleanVersion = selectedRelease.tagName.ifBlank { selectedRelease.name ?: "" }
                 .removePrefix("v").removePrefix("V")
 
-            val icon = if (item.iconPath.isBlank()) "https://github.com/$owner.png" else item.iconPath
+            val icon = item.iconPath.ifBlank { "https://github.com/$owner.png" }
 
             item.copy(
                 newVersion = cleanVersion,

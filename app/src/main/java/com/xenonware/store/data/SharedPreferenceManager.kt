@@ -42,6 +42,7 @@ class SharedPreferenceManager(context: Context) {
     private val checkForPreReleasesKey = "check_for_pre_releases"
     private val installMethodKey = "install_method"
     private val customStoreItemsKey = "custom_store_items"
+    private val cachedCloudStoreItemsKey = "cached_cloud_store_items"
 
     internal val sharedPreferences: SharedPreferences =
         context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
@@ -169,6 +170,24 @@ class SharedPreferenceManager(context: Context) {
 
     fun loadCustomStoreItems(): List<StoreItem> {
         val jsonString = sharedPreferences.getString(customStoreItemsKey, null)
+        return if (!jsonString.isNullOrEmpty()) {
+            try {
+                json.decodeFromString<List<StoreItem>>(jsonString)
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+    }
+
+    fun saveCachedCloudStoreItems(items: List<StoreItem>) {
+        val jsonString = json.encodeToString(items)
+        sharedPreferences.edit { putString(cachedCloudStoreItemsKey, jsonString) }
+    }
+
+    fun loadCachedCloudStoreItems(): List<StoreItem> {
+        val jsonString = sharedPreferences.getString(cachedCloudStoreItemsKey, null)
         return if (!jsonString.isNullOrEmpty()) {
             try {
                 json.decodeFromString<List<StoreItem>>(jsonString)

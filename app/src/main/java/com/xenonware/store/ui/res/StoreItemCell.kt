@@ -165,6 +165,7 @@ private fun DrawableIconView(
 @Composable
 fun StoreItemCell(
     storeItem: StoreItem,
+    isOnline: Boolean = true,
     onInstall: (StoreItem) -> Unit,
     onUninstall: (StoreItem) -> Unit,
     onOpen: (StoreItem) -> Unit,
@@ -410,6 +411,8 @@ fun StoreItemCell(
                 val openAndUninstallRowVisible =
                     storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.installedVersion.isNotEmpty() && (storeItem.state == AppEntryState.DOWNLOADING || storeItem.state == AppEntryState.INSTALLING))
 
+                val canPerformMainAction = storeItem.isDownloaded || isOnline
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -426,7 +429,7 @@ fun StoreItemCell(
                             modifier = Modifier
                                 .weight(if (openAndUninstallRowVisible) 0.5f else 1f)
                                 .height(40.dp),
-                            enabled = storeItem.state == AppEntryState.NOT_INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED,
+                            enabled = canPerformMainAction && (storeItem.state == AppEntryState.NOT_INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED),
                             contentPadding = if (storeItem.state == AppEntryState.DOWNLOADING) PaddingValues(
                                 0.dp
                             ) else ButtonDefaults.ContentPadding

@@ -7,7 +7,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import android.text.format.Formatter
 import androidx.core.app.NotificationCompat
@@ -136,10 +135,7 @@ class DownloadService : Service() {
                     return@launch
                 }
 
-                val body = response.body ?: run {
-                    onDownloadFailed(pkg, appName, "Empty body", destFile)
-                    return@launch
-                }
+                val body = response.body
 
                 val total = body.contentLength()
                 destFile.outputStream().use { out ->
@@ -277,19 +273,15 @@ class DownloadService : Service() {
 
         val notification = builder.build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                FOREGROUND_NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-            )
-        } else {
-            startForeground(FOREGROUND_NOTIFICATION_ID, notification)
-        }
+        startForeground(
+            FOREGROUND_NOTIFICATION_ID,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
     }
 
     private fun showCompletedNotification(appName: String, text: String) {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -313,12 +305,7 @@ class DownloadService : Service() {
 
     private fun checkStopService() {
         if (activeTasks.isEmpty()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } else {
-                @Suppress("DEPRECATION")
-                stopForeground(true)
-            }
+            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         } else {
             updateForegroundNotification()
@@ -326,7 +313,7 @@ class DownloadService : Service() {
     }
 
     private fun createNotificationChannel() {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_ID,
             "App Downloads",

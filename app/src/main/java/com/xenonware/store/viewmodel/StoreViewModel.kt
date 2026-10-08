@@ -32,6 +32,10 @@ import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import okhttp3.Response
 import rikka.shizuku.Shizuku
 import java.io.File
@@ -44,6 +48,9 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private val _customStoreItems = MutableStateFlow<List<StoreItem>>(emptyList())
     private val _storeItems = MutableStateFlow<List<StoreItem>>(emptyList())
     val storeItems: StateFlow<List<StoreItem>> = _storeItems.asStateFlow()
+
+    private val _isOnline = MutableStateFlow<Boolean>(true)
+    val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -83,10 +90,12 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     init {
         cleanupOldApks(application.applicationContext)
         loadCustomStoreItems()
+        loadCachedCloudStoreItems()
         fetchAndRefreshAppList()
         checkForXenonStoreUpdate()
         registerPackageReceiver()
         observeDownloadService()
+        monitorNetworkConnectivity()
     }
 
     private fun registerPackageReceiver() {
@@ -115,6 +124,55 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun loadCachedCloudStoreItems() {
+        viewModelScope.launch {
+            val cached = sharedPreferenceManager.loadCachedCloudStoreItems()
+            if (cached.isNotEmpty()) {
+                originalCloudItems = cached
+                _cloudStoreItems.value = cached.filter { cloud ->
+                    _customStoreItems.value.none { it.packageName == cloud.packageName }
+                }
+                refreshItemsState(isCustom = false)
+            }
+        }
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    private fun monitorNetworkConnectivity() {
+        val context = getApplication<Application>()
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        _isOnline.value = isNetworkAvailable()
+
+        if (connectivityManager != null) {
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            try {
+                connectivityManager.registerNetworkCallback(request, object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        viewModelScope.launch(Dispatchers.Main) {
+                            _isOnline.value = true
+                        }
+                    }
+
+                    override fun onLost(network: Network) {
+                        viewModelScope.launch(Dispatchers.Main) {
+                            _isOnline.value = isNetworkAvailable()
+                        }
+                    }
+                })
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to register network callback", e)
+            }
+        }
+    }
+
     fun fetchAndRefreshAppList() {
         fetchReleaseInfoForCustomApps()
         viewModelScope.launch {
@@ -127,16 +185,30 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                         val items = response.appList
 
                         originalCloudItems = items
+                        sharedPreferenceManager.saveCachedCloudStoreItems(items)
                         _cloudStoreItems.value = items.filter { cloud ->
                             _customStoreItems.value.none { it.packageName == cloud.packageName }
                         }
                         refreshItemsState(isCustom = false)
                         _currentActionInfo.value = null
+                        _isOnline.value = true
                     } catch (e: Exception) {
                         _error.value = "Metadata error. Syncing with Cloud..."
                         Log.e(TAG, "Parse error", e)
                     }
                 } else {
+                    _isOnline.value = isNetworkAvailable()
+                    if (originalCloudItems.isEmpty()) {
+                        val cached = sharedPreferenceManager.loadCachedCloudStoreItems()
+                        if (cached.isNotEmpty()) {
+                            originalCloudItems = cached
+                            _cloudStoreItems.value = cached.filter { cloud ->
+                                _customStoreItems.value.none { it.packageName == cloud.packageName }
+                            }
+                            refreshItemsState(isCustom = false)
+                        }
+                    }
+                    _currentActionInfo.value = null
                     _error.value = "Cannot reach Xenon Cloud Storage."
                 }
             }

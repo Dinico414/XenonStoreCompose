@@ -113,6 +113,7 @@ fun CompactStore(
         val deviceConfig = LocalDeviceConfig.current
         val context = LocalContext.current
         val storeItems by viewModel.storeItems.collectAsState()
+        val isOnline by viewModel.isOnline.collectAsState()
         val devSettingsViewModel: DevSettingsViewModel = viewModel()
 
         val hazeState = rememberHazeState()
@@ -433,13 +434,19 @@ fun CompactStore(
                                         itemsIndexed(
                                             storeItems,
                                             key = { _, item -> item.packageName }) { _, storeItem ->
-                                            StoreItemCell(storeItem = storeItem, onInstall = { item ->
-                                                viewModel.installApp(item, context)
-                                            }, onUninstall = { item ->
-                                                viewModel.uninstallApp(item, context)
-                                            }, onOpen = { item ->
-                                                viewModel.openApp(item, context)
-                                            })
+                                            StoreItemCell(
+                                                storeItem = storeItem,
+                                                isOnline = isOnline,
+                                                onInstall = { item ->
+                                                    viewModel.installApp(item, context)
+                                                },
+                                                onUninstall = { item ->
+                                                    viewModel.uninstallApp(item, context)
+                                                },
+                                                onOpen = { item ->
+                                                    viewModel.openApp(item, context)
+                                                }
+                                            )
                                         }
                                     }
                                 }
