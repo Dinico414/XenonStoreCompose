@@ -138,5 +138,10 @@
     <string name="version_without_prefix">%s</string>
     <string name="manage_github_apps_title">Added GitHub repositories</string>
     <string name="no_github_apps_added">No GitHub Repositories added yet</string>
+    <string name="dev_delete_downloaded_files">Delete all downloaded files</string>
+    <string name="dev_delete_downloaded_files_desc">Delete all locally downloaded APK files from cache</string>
+    <string name="dev_delete_downloaded_files_confirm">Are you sure you want to delete all locally downloaded APK files?</string>
+    <string name="dev_delete_downloaded_files_success">Deleted %1$d downloaded files</string>
+    <string name="dev_delete_downloaded_files_empty">No downloaded files found</string>
 
 </resources>

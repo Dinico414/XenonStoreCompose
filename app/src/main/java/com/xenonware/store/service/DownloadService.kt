@@ -64,12 +64,30 @@ class DownloadService : Service() {
         private val _downloadProgressFlow = MutableStateFlow<Map<String, DownloadProgress>>(emptyMap())
         val downloadProgressFlow: StateFlow<Map<String, DownloadProgress>> = _downloadProgressFlow.asStateFlow()
 
+        private val activeTasks = ConcurrentHashMap<String, DownloadProgress>()
+
+        fun isDownloading(packageName: String): Boolean {
+            return activeTasks.containsKey(packageName) ||
+                   _downloadProgressFlow.value[packageName]?.status == DownloadStatus.DOWNLOADING
+        }
+
+        fun getProgress(packageName: String): DownloadProgress? {
+            return activeTasks[packageName] ?: _downloadProgressFlow.value[packageName]
+        }
+
+        fun hasActiveDownloads(): Boolean {
+            return activeTasks.isNotEmpty() || _downloadProgressFlow.value.values.any { it.status == DownloadStatus.DOWNLOADING }
+        }
+
         fun startDownload(
             context: Context,
             item: StoreItem,
             downloadUrl: String,
             destFile: File
         ) {
+            if (isDownloading(item.packageName)) {
+                return
+            }
             val language = context.resources.configuration.locales.get(0).language
             val intent = Intent(context, DownloadService::class.java).apply {
                 action = ACTION_START_DOWNLOAD
@@ -83,8 +101,6 @@ class DownloadService : Service() {
         }
     }
 
-    private val activeTasks = ConcurrentHashMap<String, DownloadProgress>()
-
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -95,6 +111,9 @@ class DownloadService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_START_DOWNLOAD) {
             val pkg = intent.getStringExtra(EXTRA_PACKAGE_NAME) ?: return START_NOT_STICKY
+            if (isDownloading(pkg)) {
+                return START_STICKY
+            }
             val appName = intent.getStringExtra(EXTRA_APP_NAME) ?: pkg
             val url = intent.getStringExtra(EXTRA_DOWNLOAD_URL) ?: return START_NOT_STICKY
             val destPath = intent.getStringExtra(EXTRA_DEST_PATH) ?: return START_NOT_STICKY
@@ -113,6 +132,9 @@ class DownloadService : Service() {
         destFile: File,
         isCustom: Boolean
     ) {
+        if (activeTasks.containsKey(pkg)) {
+            return
+        }
         val initialProgress = DownloadProgress(
             packageName = pkg,
             appName = appName,

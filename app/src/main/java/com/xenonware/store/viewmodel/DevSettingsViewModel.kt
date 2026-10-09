@@ -2,6 +2,7 @@ package com.xenonware.store.viewmodel
 
 import android.app.Activity
 import android.app.Application
+import android.content.Context
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -22,6 +23,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
 
 class DevSettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val sharedPreferenceManager = SharedPreferenceManager(application)
@@ -263,6 +265,26 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
                 _customAppsUpdated.tryEmit(Unit)
             }
         }
+    }
+
+    fun deleteAllDownloadedFiles(context: Context): Int {
+        var count = 0
+        try {
+            val installDir = File(context.filesDir, "apks")
+            if (installDir.exists() && installDir.isDirectory) {
+                installDir.listFiles()?.forEach { file ->
+                    if (file.isFile && (file.extension.equals("apk", ignoreCase = true) || file.name.startsWith("download_"))) {
+                        if (file.delete()) {
+                            count++
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+        viewModelScope.launch {
+            _customAppsUpdated.emit(Unit)
+        }
+        return count
     }
 
     fun setDeveloperModeEnabled(enabled: Boolean) {

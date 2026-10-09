@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CircularProgressIndicator
@@ -145,6 +146,8 @@ fun CompactStore(
 
         val xenonStoreUpdateInfo by viewModel.xenonStoreUpdateInfo.collectAsState()
         val xenonStoreDownloadProgress by viewModel.xenonStoreDownloadProgress.collectAsState()
+        val isXenonStoreDownloading by viewModel.isXenonStoreDownloading.collectAsState()
+        val isXenonStoreDownloaded by viewModel.isXenonStoreDownloaded.collectAsState()
 
         val lazyListState = rememberLazyListState()
 
@@ -294,7 +297,7 @@ fun CompactStore(
                                                     .clip(RoundedCornerShape(100f))
                                                     .background(colorScheme.primary)
                                                     .clickable(
-                                                        enabled = !isSearchActive && showActionIconsExceptSearch,
+                                                        enabled = !isSearchActive && showActionIconsExceptSearch && !isXenonStoreDownloading,
                                                         onClick = {
                                                             viewModel.downloadAndInstallXenonStoreUpdate(
                                                                 context
@@ -302,12 +305,12 @@ fun CompactStore(
                                                         }),
                                             ) {
                                                 Icon(
-                                                    imageVector = Icons.Rounded.Download,
-                                                    contentDescription = stringResource(R.string.update),
+                                                    imageVector = if (isXenonStoreDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
+                                                    contentDescription = if (isXenonStoreDownloaded) stringResource(R.string.install) else stringResource(R.string.update),
                                                     tint = colorScheme.onPrimary,
                                                     modifier = Modifier.size(24.dp)
                                                 )
-                                                if (xenonStoreDownloadProgress > 0f && xenonStoreDownloadProgress < 1f) {
+                                                if (isXenonStoreDownloading && xenonStoreDownloadProgress in 0f..1f) {
                                                     CircularProgressIndicator(
                                                         progress = { xenonStoreDownloadProgress },
                                                         modifier = Modifier.size(36.dp),

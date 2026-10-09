@@ -138,5 +138,10 @@
     <string name="version_without_prefix">%s</string>
     <string name="manage_github_apps_title">Hinzugefügte GitHub-Repositories</string>
     <string name="no_github_apps_added">Noch keine GitHub-Repositories hinzugefügt</string>
+    <string name="dev_delete_downloaded_files">Alle heruntergeladenen Dateien löschen</string>
+    <string name="dev_delete_downloaded_files_desc">Alle lokal zwischengespeicherten APK-Dateien löschen</string>
+    <string name="dev_delete_downloaded_files_confirm">Möchtest du wirklich alle heruntergeladenen APK-Dateien löschen?</string>
+    <string name="dev_delete_downloaded_files_success">%1$d heruntergeladene Dateien gelöscht</string>
+    <string name="dev_delete_downloaded_files_empty">Keine heruntergeladenen Dateien gefunden</string>
 
 </resources>

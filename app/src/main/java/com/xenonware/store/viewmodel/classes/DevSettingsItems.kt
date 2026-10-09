@@ -200,6 +200,50 @@ fun DevSettingsItems(
                 )
             }
 
+            var showDeleteFilesDialog by remember { mutableStateOf(false) }
+
+            Spacer(
+                modifier = Modifier.height(
+                    LargestSpacing
+                )
+            )
+
+            SettingsTile(
+                title = stringResource(R.string.dev_delete_downloaded_files),
+                subtitle = stringResource(R.string.dev_delete_downloaded_files_desc),
+                onClick = {
+                    showDeleteFilesDialog = true
+                },
+                shape = tileShapeOverride ?: standaloneShape,
+                backgroundColor = tileBackgroundColor,
+                contentColor = tileContentColor,
+                subtitleColor = tileSubtitleColor,
+            )
+
+            if (showDeleteFilesDialog) {
+                XenonDialog(
+                    onDismissRequest = { showDeleteFilesDialog = false },
+                    title = stringResource(R.string.dev_delete_downloaded_files),
+                    confirmButtonText = stringResource(R.string.delete),
+                    onConfirmButtonClick = {
+                        val deletedCount = viewModel.deleteAllDownloadedFiles(context)
+                        val msg = if (deletedCount > 0) {
+                            context.resources.getString(R.string.dev_delete_downloaded_files_success, deletedCount)
+                        } else {
+                            context.resources.getString(R.string.dev_delete_downloaded_files_empty)
+                        }
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                        showDeleteFilesDialog = false
+                    },
+                    properties = DialogProperties(usePlatformDefaultWidth = true)
+                ) {
+                    Text(
+                        text = stringResource(R.string.dev_delete_downloaded_files_confirm),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+
 
             if (showInstallMethodDialog) {
                 XenonDialog(

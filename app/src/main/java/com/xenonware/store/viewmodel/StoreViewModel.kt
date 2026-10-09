@@ -64,6 +64,12 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private val _xenonStoreDownloadProgress = MutableStateFlow(0f)
     val xenonStoreDownloadProgress: StateFlow<Float> = _xenonStoreDownloadProgress.asStateFlow()
 
+    private val _isXenonStoreDownloading = MutableStateFlow(false)
+    val isXenonStoreDownloading: StateFlow<Boolean> = _isXenonStoreDownloading.asStateFlow()
+
+    private val _isXenonStoreDownloaded = MutableStateFlow(false)
+    val isXenonStoreDownloaded: StateFlow<Boolean> = _isXenonStoreDownloaded.asStateFlow()
+
     private val _searchQuery = MutableStateFlow("")
     private val _toastMessage = MutableStateFlow<String?>(null)
 
@@ -274,9 +280,20 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 // Check if APK is downloaded locally
                 val downloadedApk = getDownloadedApkFile(context, newItem)
                 newItem.isDownloaded = downloadedApk != null
+                if (downloadedApk != null) {
+                    newItem.bytesDownloaded = downloadedApk.length()
+                    newItem.fileSize = downloadedApk.length()
+                }
 
-                if (activeDownloads[newItem.packageName] == true) {
+                val isDownloading = com.xenonware.store.service.DownloadService.isDownloading(newItem.packageName) || activeDownloads[newItem.packageName] == true
+                if (isDownloading) {
                     newItem.state = AppEntryState.DOWNLOADING
+                    activeDownloads[newItem.packageName] = true
+                    val dlProgress = com.xenonware.store.service.DownloadService.getProgress(newItem.packageName)
+                    if (dlProgress != null && dlProgress.status == com.xenonware.store.service.DownloadStatus.DOWNLOADING) {
+                        newItem.bytesDownloaded = dlProgress.bytesDownloaded
+                        newItem.fileSize = dlProgress.totalBytes
+                    }
                 } else if (activeInstallations[newItem.packageName] == true) {
                     newItem.state = AppEntryState.INSTALLING
                 } else if (newItem.installedVersion.isNotEmpty()) {
@@ -323,18 +340,19 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun getDownloadedApkFile(context: Context, item: StoreItem): File? {
         val installDir = File(context.filesDir, "apks")
-        if (!installDir.exists()) return null
+        if (!installDir.exists() || !installDir.isDirectory) return null
 
         val cleanPkg = item.packageName
+        if (cleanPkg.isBlank()) return null
+
         val cleanVer = item.newVersion.replace(Regex("[^a-zA-Z0-9._-]"), "_")
 
-        // 1. Check versioned file
+        // 1. Check exact versioned file matching item.newVersion
         if (cleanVer.isNotEmpty()) {
             val versionedFile = File(installDir, "${cleanPkg}_${cleanVer}.apk")
             if (versionedFile.exists() && versionedFile.length() > 0) {
                 val pkgInfo = getArchiveInfo(context, versionedFile)
                 if (pkgInfo != null) return versionedFile
-                else versionedFile.delete()
             }
         }
 
@@ -345,14 +363,54 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             if (pkgInfo != null) {
                 if (item.isOutdated()) {
                     val archiveVer = pkgInfo.versionName?.removePrefix("v")?.removePrefix("V") ?: ""
-                    if (archiveVer == item.newVersion.removePrefix("v").removePrefix("V")) {
+                    val targetVer = item.newVersion.removePrefix("v").removePrefix("V")
+                    if (archiveVer.isNotEmpty() && (archiveVer == targetVer || com.xenonware.store.util.Util.isNewerVersion(archiveVer, item.installedVersion))) {
                         return unversionedFile
                     }
                 } else if (item.installedVersion.isEmpty()) {
                     return unversionedFile
                 }
-            } else {
-                unversionedFile.delete()
+            }
+        }
+
+        // 3. Scan all APK files in installDir for this package (handles version name differences between tag and manifest)
+        val files = installDir.listFiles() ?: return null
+        val sortedFiles = files.filter { it.isFile && it.extension.equals("apk", ignoreCase = true) && it.length() > 0 }
+            .sortedByDescending { it.lastModified() }
+
+        for (file in sortedFiles) {
+            if (file.name.startsWith("${cleanPkg}_") || file.name == "${cleanPkg}.apk") {
+                val pkgInfo = getArchiveInfo(context, file)
+                if (pkgInfo != null) {
+                    val archivePkg = pkgInfo.packageName ?: ""
+                    if (archivePkg == cleanPkg || cleanPkg.startsWith("com.")) {
+                        if (item.installedVersion.isEmpty()) {
+                            return file
+                        } else if (item.isOutdated()) {
+                            val archiveVer = pkgInfo.versionName?.removePrefix("v")?.removePrefix("V") ?: ""
+                            val targetVer = item.newVersion.removePrefix("v").removePrefix("V")
+                            if (archiveVer == targetVer || com.xenonware.store.util.Util.isNewerVersion(archiveVer, item.installedVersion)) {
+                                return file
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Fallback: inspect any valid APK in installDir whose archive package matches cleanPkg
+        for (file in sortedFiles) {
+            val pkgInfo = getArchiveInfo(context, file)
+            if (pkgInfo != null && pkgInfo.packageName == cleanPkg) {
+                if (item.installedVersion.isEmpty()) {
+                    return file
+                } else if (item.isOutdated()) {
+                    val archiveVer = pkgInfo.versionName?.removePrefix("v")?.removePrefix("V") ?: ""
+                    val targetVer = item.newVersion.removePrefix("v").removePrefix("V")
+                    if (archiveVer == targetVer || com.xenonware.store.util.Util.isNewerVersion(archiveVer, item.installedVersion)) {
+                        return file
+                    }
+                }
             }
         }
 
@@ -390,30 +448,40 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                             activeDownloads[progress.packageName] = true
                             updateItemInternalState(progress.packageName, AppEntryState.DOWNLOADING)
                             updateItemProgress(progress.packageName, progress.bytesDownloaded, progress.totalBytes)
-                            if (progress.packageName == XENON_STORE_PACKAGE && progress.totalBytes > 0) {
-                                _xenonStoreDownloadProgress.value = progress.bytesDownloaded.toFloat() / progress.totalBytes
-                            }
-                        }
-                        com.xenonware.store.service.DownloadStatus.SUCCESS -> {
-                            if (activeDownloads[progress.packageName] == true) {
-                                activeDownloads.remove(progress.packageName)
-                                val downloadedFile = progress.downloadedFile
-                                if (downloadedFile != null) {
-                                    handleDownloadedApkSuccess(
-                                        pkgName = progress.packageName,
-                                        tempApk = downloadedFile,
-                                        isCustom = progress.isCustom
-                                    )
+                            if (progress.packageName == XENON_STORE_PACKAGE) {
+                                _isXenonStoreDownloading.value = true
+                                _isXenonStoreDownloaded.value = false
+                                if (progress.totalBytes > 0) {
+                                    _xenonStoreDownloadProgress.value = (progress.bytesDownloaded.toFloat() / progress.totalBytes).coerceIn(0f, 1f)
                                 }
                             }
                         }
-                        com.xenonware.store.service.DownloadStatus.FAILED -> {
-                            if (activeDownloads[progress.packageName] == true) {
-                                activeDownloads.remove(progress.packageName)
-                                _error.value = "Download failed: ${progress.errorMessage ?: "Unknown error"}"
-                                _currentActionInfo.value = null
-                                refreshItemsState(progress.isCustom)
+                        com.xenonware.store.service.DownloadStatus.SUCCESS -> {
+                            activeDownloads.remove(progress.packageName)
+                            if (progress.packageName == XENON_STORE_PACKAGE) {
+                                _isXenonStoreDownloading.value = false
+                                _isXenonStoreDownloaded.value = true
+                                _xenonStoreDownloadProgress.value = 1f
                             }
+                            val downloadedFile = progress.downloadedFile
+                            if (downloadedFile != null && downloadedFile.exists()) {
+                                handleDownloadedApkSuccess(
+                                    pkgName = progress.packageName,
+                                    tempApk = downloadedFile,
+                                    isCustom = progress.isCustom
+                                )
+                            }
+                        }
+                        com.xenonware.store.service.DownloadStatus.FAILED -> {
+                            activeDownloads.remove(progress.packageName)
+                            _error.value = "Download failed: ${progress.errorMessage ?: "Unknown error"}"
+                            _currentActionInfo.value = null
+                            if (progress.packageName == XENON_STORE_PACKAGE) {
+                                _isXenonStoreDownloading.value = false
+                                _isXenonStoreDownloaded.value = false
+                                _xenonStoreDownloadProgress.value = 0f
+                            }
+                            refreshItemsState(progress.isCustom)
                         }
                     }
                 }
@@ -431,17 +499,23 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             val installDir = File(context.filesDir, "apks")
             val pkgInfo = getArchiveInfo(context, tempApk)
             val actualPkg = pkgInfo?.packageName?.takeIf { it.isNotBlank() } ?: pkgName
-            val cleanVer = (pkgInfo?.versionName ?: "").replace(Regex("[^a-zA-Z0-9._-]"), "_")
+
+            val storeItem = (_customStoreItems.value + _cloudStoreItems.value).firstOrNull {
+                it.packageName == pkgName || it.packageName == actualPkg
+            }
+            val itemVersion = storeItem?.newVersion?.replace(Regex("[^a-zA-Z0-9._-]"), "_")?.ifBlank { null }
+            val manifestVersion = (pkgInfo?.versionName ?: "").replace(Regex("[^a-zA-Z0-9._-]"), "_").ifBlank { null }
+            val cleanVer = itemVersion ?: manifestVersion ?: "latest"
 
             if (isCustom && actualPkg != pkgName) {
-                val currentApps = sharedPreferenceManager.loadCustomStoreItems().toMutableList()
-                val idx = currentApps.indexOfFirst { it.packageName == pkgName }
-                if (idx != -1) {
-                    currentApps[idx] = currentApps[idx].copy(packageName = actualPkg)
-                    sharedPreferenceManager.saveCustomStoreItems(currentApps)
-                    withContext(Dispatchers.Main) {
-                        _customStoreItems.value = currentApps
-                    }
+                val currentApps = _customStoreItems.value.map { item ->
+                    if (item.packageName == pkgName) {
+                        item.copy(packageName = actualPkg)
+                    } else item
+                }
+                sharedPreferenceManager.saveCustomStoreItems(currentApps)
+                withContext(Dispatchers.Main) {
+                    _customStoreItems.value = currentApps
                 }
             }
 
@@ -451,7 +525,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
             if (actualPkg == XENON_STORE_PACKAGE) {
                 withContext(Dispatchers.Main) {
+                    _isXenonStoreDownloading.value = false
+                    _isXenonStoreDownloaded.value = true
                     _xenonStoreDownloadProgress.value = 1f
+                    _currentActionInfo.value = null
                 }
                 performInstallation(dest, XENON_STORE_PACKAGE, context)
                 return@launch
@@ -473,12 +550,22 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 withContext(Dispatchers.Main) {
                     _currentActionInfo.value = null
                     refreshItemsState(isCustom)
+                    refreshItemsState(!isCustom)
                 }
             }
         }
     }
 
     fun installApp(item: StoreItem, context: Context) {
+        if (com.xenonware.store.service.DownloadService.isDownloading(item.packageName) || activeDownloads[item.packageName] == true) {
+            Log.d(TAG, "Download for ${item.packageName} is already running. Ignoring.")
+            return
+        }
+        if (activeInstallations[item.packageName] == true) {
+            Log.d(TAG, "Installation for ${item.packageName} is already running. Ignoring.")
+            return
+        }
+
         val existingApk = getDownloadedApkFile(context, item)
         if (existingApk != null) {
             viewModelScope.launch {
@@ -706,6 +793,59 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         })
     }
 
+    fun getXenonStoreDownloadedApk(context: Context): File? {
+        val installDir = File(context.filesDir, "apks")
+        if (!installDir.exists()) return null
+
+        val info = _xenonStoreUpdateInfo.value ?: return null
+        val cleanVer = info.version.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+
+        // 1. Check versioned file
+        if (cleanVer.isNotEmpty()) {
+            val versionedFile = File(installDir, "${XENON_STORE_PACKAGE}_${cleanVer}.apk")
+            if (versionedFile.exists() && versionedFile.length() > 0) {
+                val pkgInfo = getArchiveInfo(context, versionedFile)
+                if (pkgInfo != null && pkgInfo.packageName == XENON_STORE_PACKAGE) {
+                    return versionedFile
+                } else {
+                    versionedFile.delete()
+                }
+            }
+        }
+
+        // 2. Check default update file
+        val defaultUpdateFile = File(installDir, "xenon_store_update.apk")
+        if (defaultUpdateFile.exists() && defaultUpdateFile.length() > 0) {
+            val pkgInfo = getArchiveInfo(context, defaultUpdateFile)
+            if (pkgInfo != null && pkgInfo.packageName == XENON_STORE_PACKAGE) {
+                val archiveVer = pkgInfo.versionName?.removePrefix("v")?.removePrefix("V") ?: ""
+                val targetVer = info.version.removePrefix("v").removePrefix("V")
+                if (archiveVer == targetVer) {
+                    return defaultUpdateFile
+                }
+            } else {
+                defaultUpdateFile.delete()
+            }
+        }
+
+        // 3. Check unversioned file
+        val unversionedFile = File(installDir, "$XENON_STORE_PACKAGE.apk")
+        if (unversionedFile.exists() && unversionedFile.length() > 0) {
+            val pkgInfo = getArchiveInfo(context, unversionedFile)
+            if (pkgInfo != null && pkgInfo.packageName == XENON_STORE_PACKAGE) {
+                val archiveVer = pkgInfo.versionName?.removePrefix("v")?.removePrefix("V") ?: ""
+                val targetVer = info.version.removePrefix("v").removePrefix("V")
+                if (archiveVer == targetVer) {
+                    return unversionedFile
+                }
+            } else {
+                unversionedFile.delete()
+            }
+        }
+
+        return null
+    }
+
     private fun checkForXenonStoreUpdate() {
         viewModelScope.launch {
             // Use the processed cloud items which already respect the pre-release setting
@@ -715,8 +855,27 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     version = xenonStoreItem.newVersion,
                     downloadUrl = xenonStoreItem.downloadUrl
                 )
+                val context = getApplication<Application>().applicationContext
+                val isDownloading = com.xenonware.store.service.DownloadService.isDownloading(XENON_STORE_PACKAGE) || activeDownloads[XENON_STORE_PACKAGE] == true
+                _isXenonStoreDownloading.value = isDownloading
+
+                if (isDownloading) {
+                    _isXenonStoreDownloaded.value = false
+                    val prog = com.xenonware.store.service.DownloadService.getProgress(XENON_STORE_PACKAGE)
+                    if (prog != null && prog.totalBytes > 0) {
+                        _xenonStoreDownloadProgress.value = (prog.bytesDownloaded.toFloat() / prog.totalBytes).coerceIn(0f, 1f)
+                    }
+                } else {
+                    val downloadedApk = getXenonStoreDownloadedApk(context)
+                    val isDownloaded = downloadedApk != null
+                    _isXenonStoreDownloaded.value = isDownloaded
+                    _xenonStoreDownloadProgress.value = if (isDownloaded) 1f else 0f
+                }
             } else {
                 _xenonStoreUpdateInfo.value = null
+                _isXenonStoreDownloading.value = false
+                _isXenonStoreDownloaded.value = false
+                _xenonStoreDownloadProgress.value = 0f
             }
         }
     }
@@ -823,8 +982,28 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     fun downloadAndInstallXenonStoreUpdate(context: Context) {
         val info = _xenonStoreUpdateInfo.value ?: return
+
+        if (_isXenonStoreDownloading.value || com.xenonware.store.service.DownloadService.isDownloading(XENON_STORE_PACKAGE) || activeDownloads[XENON_STORE_PACKAGE] == true) {
+            Log.d(TAG, "XenonStore update is already downloading. Ignoring.")
+            return
+        }
+
+        val existingApk = getXenonStoreDownloadedApk(context)
+        if (existingApk != null) {
+            viewModelScope.launch {
+                _currentActionInfo.value = "Installing Xenon Store update..."
+                performInstallation(existingApk, XENON_STORE_PACKAGE, context)
+                _currentActionInfo.value = null
+            }
+            return
+        }
+
         viewModelScope.launch {
             _currentActionInfo.value = "Updating Xenon Store..."
+            _isXenonStoreDownloading.value = true
+            _isXenonStoreDownloaded.value = false
+            _xenonStoreDownloadProgress.value = 0f
+
             val installDir = File(context.filesDir, "apks")
             if (!installDir.exists()) installDir.mkdirs()
             val dest = File(installDir, "xenon_store_update.apk")
@@ -832,6 +1011,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             val xenonItem = StoreItem(
                 name = "Xenon Store",
                 packageName = XENON_STORE_PACKAGE,
+                newVersion = info.version,
                 githubUrl = "",
                 iconPath = ""
             )
