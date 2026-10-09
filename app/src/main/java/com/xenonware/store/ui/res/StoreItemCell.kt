@@ -278,7 +278,7 @@ fun StoreItemCell(
                                 contentScale = ContentScale.Crop
                             )
                         }
-                    } else if (storeItem.githubUrl.isNotBlank()) {
+                    } else if (storeItem.isCustom && storeItem.githubUrl.isNotBlank()) {
                         val owner = getRepoOwner(storeItem.githubUrl)
                         AsyncImage(
                             model = "https://github.com/$owner.png",
@@ -348,7 +348,7 @@ fun StoreItemCell(
                         Spacer(modifier = Modifier.height(8.dp))
                         val isUpdateAvailable =
                             storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.state == AppEntryState.DOWNLOADING && storeItem.isOutdated()) || (storeItem.state == AppEntryState.INSTALLING && storeItem.isOutdated())
-                        if (storeItem.githubUrl.isNotBlank()) {
+                        if (storeItem.isCustom && storeItem.githubUrl.isNotBlank()) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = getRepoOwner(storeItem.githubUrl),

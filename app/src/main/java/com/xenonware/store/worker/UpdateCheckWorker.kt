@@ -53,7 +53,7 @@ class UpdateCheckWorker(
 
             val customApps = sharedPrefs.loadCustomStoreItems()
             val updatedCustomApps = customApps.map { item ->
-                if (item.githubUrl.isNotBlank()) {
+                if (item.isCustom && item.githubUrl.isNotBlank()) {
                     val owner = item.owner
                     val repo = item.repo
                     if (owner.isNotBlank() && repo.isNotBlank()) {
@@ -70,15 +70,10 @@ class UpdateCheckWorker(
                 sharedPrefs.saveCustomStoreItems(updatedCustomApps)
             }
 
+            // Default cloud apps already contain complete release metadata from apps.json.
+            // Never fetch GitHub releases for default apps; only custom apps rely on GitHub API.
             val allApps = (storeResponse.appList + updatedCustomApps)
                 .distinctBy { it.packageName }
-                .map { item ->
-                    if (item.githubUrl.isNotBlank() && item.owner.isNotBlank() && item.repo.isNotBlank()) {
-                        fetchGitHubReleaseSync(item, item.owner, item.repo) ?: item
-                    } else {
-                        item
-                    }
-                }
 
             for (item in allApps) {
                 val installedVersion = getInstalledVersion(item.packageName) ?: continue

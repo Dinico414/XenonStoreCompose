@@ -122,11 +122,13 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         } catch (_: Exception) {}
     }
 
-    private fun loadCustomStoreItems() {
+    private fun loadCustomStoreItems(fetchReleases: Boolean = false) {
         viewModelScope.launch {
             _customStoreItems.value = sharedPreferenceManager.loadCustomStoreItems()
             refreshItemsState(isCustom = true)
-            fetchReleaseInfoForCustomApps()
+            if (fetchReleases && sharedPreferenceManager.addButtonEnabled) {
+                fetchReleaseInfoForCustomApps()
+            }
         }
     }
 
@@ -180,7 +182,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun fetchAndRefreshAppList() {
-        fetchReleaseInfoForCustomApps()
         viewModelScope.launch {
             _currentActionInfo.value = "Fetching app list..."
             downloadToString(APPS_JSON_URL) { result ->
@@ -229,10 +230,12 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             // Use originalCloudItems as the source for cloud apps to ensure 
             // we always have the absolute latest version available to restore
             val sourceList = if (isCustom) {
-                _customStoreItems.value
+                if (sharedPreferenceManager.addButtonEnabled) _customStoreItems.value else emptyList()
             } else {
                 originalCloudItems.filter { cloud ->
-                    _customStoreItems.value.none { it.packageName == cloud.packageName }
+                    if (sharedPreferenceManager.addButtonEnabled) {
+                        _customStoreItems.value.none { it.packageName == cloud.packageName }
+                    } else true
                 }
             }
 
@@ -701,8 +704,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private fun filterItems() {
         val query = _searchQuery.value.lowercase()
         val usePre = sharedPreferenceManager.checkForPreReleases
+        val isCustomEnabled = sharedPreferenceManager.addButtonEnabled
         
-        val all = (_customStoreItems.value + _cloudStoreItems.value).distinctBy { it.packageName }
+        val customItems = if (isCustomEnabled) _customStoreItems.value else emptyList()
+        val all = (customItems + _cloudStoreItems.value).distinctBy { it.packageName }
             .filter { item ->
                 // Hide Xenon Store itself from the main app list
                 if (item.packageName == XENON_STORE_PACKAGE) return@filter false
@@ -888,7 +893,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     fun onCustomAppsUpdated() {
-        loadCustomStoreItems()
+        loadCustomStoreItems(fetchReleases = true)
     }
 
     fun onSignedIn() {
@@ -1040,6 +1045,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun fetchReleaseInfoForCustomApps() {
+        if (!sharedPreferenceManager.addButtonEnabled) return
         val currentCustom = _customStoreItems.value
         if (currentCustom.isEmpty()) return
 
@@ -1129,7 +1135,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 iconPath = icon
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching GitHub release for $owner/$repo", e)
+            Log.w(TAG, "Could not fetch GitHub release for $owner/$repo: ${e.message}")
             null
         }
     }
