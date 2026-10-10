@@ -103,7 +103,7 @@ fun SettingsItems(
     else RoundedCornerShape(NoCornerRadius)
 
     SettingsGoogleTile(
-        title = if (state.isSignInSuccessful) userData?.username ?: "Signed in" else stringResource(string.sign_in_with_google),
+        title = if (state.isSignInSuccessful) userData?.username ?: stringResource(string.log_in) else stringResource(string.sign_in_with_google),
         subtitle = if (state.isSignInSuccessful) userData?.email else null,
         profilePictureUrl = userData?.profilePictureUrl,
         noAccIcon = painterResource(R.drawable.ic_default_icon),

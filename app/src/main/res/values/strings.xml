@@ -17,8 +17,8 @@
     <string name="reset_all_settings_description">Restore all settings to default</string>
     <string name="blacked_out">Blacked out</string>
     <string name="blacked_out_description">Make Dark mode even darker.</string>
-    <string name="sign_out">Sign Out</string>
-    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="sign_out">Log out</string>
+    <string name="sign_in_with_google">Log in with Google</string>
     <string name="version">Version</string>
     <string name="app_version">App Version</string>
     <string name="xenon_ui_version">Xenon UI Version</string>
@@ -46,7 +46,7 @@
     <string name="cover_dialog_description">Enable to apply a more compact, edgeless layout when using the cover screen.</string>
     <string name="clear_data_dialog_description">Are you sure you want to clear all data?</string>
     <string name="reset_settings_dialog_description">Are you sure you want to reset all settings?</string>
-    <string name="sign_out_description">Are you sure you want to sign out?</string>
+    <string name="sign_out_description">Are you sure you want to log out?</string>
 
     <!-- Dialog Buttons / Common Actions -->
     <string name="ok">Okay</string>
@@ -143,5 +143,25 @@
     <string name="dev_delete_downloaded_files_confirm">Are you sure you want to delete all locally downloaded APK files?</string>
     <string name="dev_delete_downloaded_files_success">Deleted %1$d downloaded files</string>
     <string name="dev_delete_downloaded_files_empty">No downloaded files found</string>
+    <string name="github_login_required">Unavailable</string>
+    <string name="unavailable">Unavailable</string>
+    <string name="sign_in">Log in</string>
+    <string name="log_in">Log in</string>
+    <string name="log_out">Log out</string>
+    <string name="github_log_in">Log in to GitHub</string>
+    <string name="github_connected">Connected to GitHub</string>
+    <string name="github_connect_account">Connect GitHub account</string>
+    <string name="github_log_out_title">Log out of GitHub</string>
+    <string name="github_log_out_confirm">Are you sure you want to log out of GitHub? Your GitHub OAuth session will be removed.</string>
+    <string name="github_profile">GitHub Profile</string>
+    <string name="github_logged_out">Logged out of GitHub</string>
+    <string name="github_authenticated_as">Authenticated as %1$s</string>
+    <string name="github_activity_context_required">Activity context required for GitHub log in</string>
+    <string name="search_github_repos_hint">Search GitHub Repositories or Paste URL</string>
+    <string name="search_github_url_or_search">URL or search (e.g. komi-store/komi-store)</string>
+    <string name="repository_details">Repository Details</string>
+    <string name="github_owner_hint">GitHub Owner / Username *</string>
+    <string name="github_repo_hint">Repository *</string>
+    <string name="github_package_name_hint">Package Name (Optional - auto-detected)</string>
 
 </resources>

@@ -16,13 +16,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.runtime.rememberCoroutineScope
 import com.xenon.mylibrary.res.XenonDialog
 import com.xenon.mylibrary.res.XenonTextField
 import com.xenonware.store.R
@@ -31,6 +31,7 @@ import com.xenonware.store.viewmodel.classes.GitHubRepoItem
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 fun parseGitHubUrl(input: String): Pair<String, String>? {
     val clean = input.trim()
@@ -70,7 +71,7 @@ fun DialogGitHubApps (
         if (targetOwner.isBlank() || targetRepo.isBlank()) return
         resolveJob?.cancel()
         resolveJob = coroutineScope.launch {
-            delay(250) // debounce
+            delay(250.milliseconds) // debounce
             val resolved = GitHubPackageResolver.resolvePackageName(targetOwner, targetRepo)
             if (resolved.isNotBlank()) {
                 onPackageNameChange(resolved)
@@ -96,7 +97,7 @@ fun DialogGitHubApps (
         contentManagesScrolling = true,
     ) {
         Column {
-            Text(text = "Search GitHub Repositories or Paste URL", style = MaterialTheme.typography.titleSmall)
+            Text(text = stringResource(R.string.search_github_repos_hint), style = MaterialTheme.typography.titleSmall)
             Spacer(modifier = Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 XenonTextField(
@@ -106,7 +107,7 @@ fun DialogGitHubApps (
                         processInput(newValue)
                         onSearchQueryChange(newValue)
                     },
-                    placeholder = { Text("URL or search (e.g. komi-store/komi-store)") },
+                    placeholder = { Text(stringResource(R.string.search_github_url_or_search)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -141,7 +142,7 @@ fun DialogGitHubApps (
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            Text(text = "Repository Details", style = MaterialTheme.typography.titleSmall)
+            Text(text = stringResource(R.string.repository_details), style = MaterialTheme.typography.titleSmall)
             Spacer(modifier = Modifier.height(4.dp))
 
             XenonTextField(
@@ -153,7 +154,7 @@ fun DialogGitHubApps (
                         triggerPackageResolution(newValue, repo)
                     }
                 },
-                placeholder = { Text("GitHub Owner / Username *")},
+                placeholder = { Text(stringResource(R.string.github_owner_hint)) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 singleLine = true
@@ -169,7 +170,7 @@ fun DialogGitHubApps (
                         triggerPackageResolution(owner, newValue)
                     }
                 },
-                placeholder = { Text("Repository *")},
+                placeholder = { Text(stringResource(R.string.github_repo_hint)) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 singleLine = true
@@ -179,7 +180,7 @@ fun DialogGitHubApps (
             XenonTextField(
                 value = packageName,
                 onValueChange = onPackageNameChange,
-                placeholder = { Text("Package Name (Optional - auto-detected)")},
+                placeholder = { Text(stringResource(R.string.github_package_name_hint)) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 singleLine = true

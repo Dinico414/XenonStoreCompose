@@ -143,5 +143,25 @@
     <string name="dev_delete_downloaded_files_confirm">Möchtest du wirklich alle heruntergeladenen APK-Dateien löschen?</string>
     <string name="dev_delete_downloaded_files_success">%1$d heruntergeladene Dateien gelöscht</string>
     <string name="dev_delete_downloaded_files_empty">Keine heruntergeladenen Dateien gefunden</string>
+    <string name="github_login_required">Nicht verfügbar</string>
+    <string name="unavailable">Nicht verfügbar</string>
+    <string name="sign_in">Anmelden</string>
+    <string name="log_in">Anmelden</string>
+    <string name="log_out">Abmelden</string>
+    <string name="github_log_in">Bei GitHub anmelden</string>
+    <string name="github_connected">Mit GitHub verbunden</string>
+    <string name="github_connect_account">GitHub-Konto verbinden</string>
+    <string name="github_log_out_title">Von GitHub abmelden</string>
+    <string name="github_log_out_confirm">Möchtest du dich wirklich von GitHub abmelden? Deine GitHub-OAuth-Sitzung wird entfernt.</string>
+    <string name="github_profile">GitHub-Profil</string>
+    <string name="github_logged_out">Von GitHub abgemeldet</string>
+    <string name="github_authenticated_as">Angemeldet als %1$s</string>
+    <string name="github_activity_context_required">Aktivitätskontext für GitHub-Anmeldung erforderlich</string>
+    <string name="search_github_repos_hint">GitHub-Repositories suchen oder URL einfügen</string>
+    <string name="search_github_url_or_search">URL oder Suche (z. B. komi-store/komi-store)</string>
+    <string name="repository_details">Repository-Details</string>
+    <string name="github_owner_hint">GitHub-Owner / Benutzername *</string>
+    <string name="github_repo_hint">Repository *</string>
+    <string name="github_package_name_hint">Paketname (Optional - automatisch erkannt)</string>
 
 </resources>

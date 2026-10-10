@@ -560,6 +560,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun installApp(item: StoreItem, context: Context) {
+        if (item.isCustom && !sharedPreferenceManager.isGitHubLoggedIn) {
+            Log.d(TAG, "Cannot install custom GitHub app without GitHub login.")
+            return
+        }
         if (com.xenonware.store.service.DownloadService.isDownloading(item.packageName) || activeDownloads[item.packageName] == true) {
             Log.d(TAG, "Download for ${item.packageName} is already running. Ignoring.")
             return

@@ -90,6 +90,7 @@ fun DevSettingsItems(
     var showGithubAppDialog by remember { mutableStateOf(false) }
     var showAddEditGithubAppDialog by remember { mutableStateOf(false) }
     var showSignOutGitHubDialog by remember { mutableStateOf(false) }
+    val activityRequiredMsg = stringResource(R.string.github_activity_context_required)
 
     val standaloneShape = if (useGroupStyling) RoundedCornerShape(actualOuterGroupRadius)
     else RoundedCornerShape(NoCornerRadius)
@@ -166,8 +167,8 @@ fun DevSettingsItems(
                     )
                 )
                 SettingsGitHubTile(
-                    title = if (isGitHubLoggedIn) githubUsername.ifEmpty { "Connected to GitHub" } else "Sign in with GitHub",
-                    subtitle = if (isGitHubLoggedIn) "Connected to GitHub" else "Connect GitHub account",
+                    title = if (isGitHubLoggedIn) githubUsername.ifEmpty { stringResource(R.string.github_connected) } else stringResource(R.string.github_log_in),
+                    subtitle = if (isGitHubLoggedIn) stringResource(R.string.github_connected) else stringResource(R.string.github_connect_account),
                     profilePictureUrl = githubAvatarUrl.ifEmpty { null },
                     placeholderIcon = painterResource(R.drawable.default_icon),
                     isSignedIn = isGitHubLoggedIn,
@@ -188,7 +189,7 @@ fun DevSettingsItems(
                                     }
                                 )
                             } else {
-                                Toast.makeText(context, "Activity context required for GitHub sign in", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, activityRequiredMsg, Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
@@ -196,7 +197,7 @@ fun DevSettingsItems(
                     backgroundColor = Color.Transparent,
                     contentColor = tileContentColor,
                     subtitleColor = tileSubtitleColor,
-                    iconContentDescription = "GitHub Profile"
+                    iconContentDescription = stringResource(R.string.github_profile)
                 )
             }
 
@@ -379,8 +380,8 @@ fun DevSettingsItems(
             if (showSignOutGitHubDialog) {
                 XenonDialog(
                     onDismissRequest = { showSignOutGitHubDialog = false },
-                    title = "Sign Out of GitHub",
-                    confirmButtonText = "Sign Out",
+                    title = stringResource(R.string.github_log_out_title),
+                    confirmButtonText = stringResource(R.string.log_out),
                     onConfirmButtonClick = {
                         viewModel.logoutGitHub()
                         showSignOutGitHubDialog = false
@@ -388,7 +389,7 @@ fun DevSettingsItems(
                     properties = DialogProperties(usePlatformDefaultWidth = true)
                 ) {
                     Text(
-                        text = "Are you sure you want to sign out of GitHub? Your GitHub OAuth session will be removed.",
+                        text = stringResource(R.string.github_log_out_confirm),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
