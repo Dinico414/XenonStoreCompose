@@ -137,9 +137,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             val cached = sharedPreferenceManager.loadCachedCloudStoreItems()
             if (cached.isNotEmpty()) {
                 originalCloudItems = cached
-                _cloudStoreItems.value = cached.filter { cloud ->
-                    _customStoreItems.value.none { it.packageName == cloud.packageName }
-                }
+                _cloudStoreItems.value = cached
                 refreshItemsState(isCustom = false)
             }
         }
@@ -193,9 +191,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
                         originalCloudItems = items
                         sharedPreferenceManager.saveCachedCloudStoreItems(items)
-                        _cloudStoreItems.value = items.filter { cloud ->
-                            _customStoreItems.value.none { it.packageName == cloud.packageName }
-                        }
+                        _cloudStoreItems.value = items
                         refreshItemsState(isCustom = false)
                         _currentActionInfo.value = null
                         _isOnline.value = true
@@ -209,9 +205,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                         val cached = sharedPreferenceManager.loadCachedCloudStoreItems()
                         if (cached.isNotEmpty()) {
                             originalCloudItems = cached
-                            _cloudStoreItems.value = cached.filter { cloud ->
-                                _customStoreItems.value.none { it.packageName == cloud.packageName }
-                            }
+                            _cloudStoreItems.value = cached
                             refreshItemsState(isCustom = false)
                         }
                     }
@@ -232,11 +226,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             val sourceList = if (isCustom) {
                 if (sharedPreferenceManager.addButtonEnabled) _customStoreItems.value else emptyList()
             } else {
-                originalCloudItems.filter { cloud ->
-                    if (sharedPreferenceManager.addButtonEnabled) {
-                        _customStoreItems.value.none { it.packageName == cloud.packageName }
-                    } else true
-                }
+                originalCloudItems
             }
 
             val updated = sourceList.map { item ->
@@ -711,7 +701,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         val isCustomEnabled = sharedPreferenceManager.addButtonEnabled
         
         val customItems = if (isCustomEnabled) _customStoreItems.value else emptyList()
-        val all = (customItems + _cloudStoreItems.value).distinctBy { it.packageName }
+        val all = (_cloudStoreItems.value + customItems).distinctBy { it.packageName }
             .filter { item ->
                 // Hide Xenon Store itself from the main app list
                 if (item.packageName == XENON_STORE_PACKAGE) return@filter false
