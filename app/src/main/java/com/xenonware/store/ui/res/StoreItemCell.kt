@@ -6,7 +6,6 @@ import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.util.Log
 import android.view.View
 import android.widget.ImageView
@@ -69,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
+import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import com.xenon.mylibrary.theme.QuicksandTitleVariable
 import com.xenon.mylibrary.values.ExtraLargerCornerRadius
@@ -138,7 +138,7 @@ private fun getDrawableIdFromPath(context: android.content.Context, iconPath: St
 @Composable
 private fun DrawableIconView(
     drawable: Drawable,
-    modifier: Modifier
+    modifier: Modifier,
 ) {
     val context = LocalContext.current
     @Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
@@ -208,7 +208,7 @@ private fun DrawableIconView(
  * - Expandable version info comparison
  * - Action controls (Install / Update / Download Progress / Cancel Download / Open / Uninstall)
  *
- * During active downloading, a Cancel Download button matching the size of the uninstall button (52.dp width x 40.dp height)
+ * During active downloading, a Cancel Download button matching the size of the uninstallation button (52.dp width x 40.dp height)
  * is displayed next to the progress bar.
  *
  * @param storeItem The [StoreItem] data model.
@@ -478,7 +478,7 @@ fun StoreItemCell(
                                             "https://github.com/${storeItem.githubUrl}"
                                         }
                                         try {
-                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(repoUrl))
+                                            val intent = Intent(Intent.ACTION_VIEW, repoUrl.toUri())
                                             context.startActivity(intent)
                                         } catch (e: Exception) {
                                             Log.e("StoreItemCell", "Failed to open repository URL: $repoUrl", e)
