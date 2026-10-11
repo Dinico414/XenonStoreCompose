@@ -3,6 +3,7 @@
 package com.xenonware.store
 
 import android.Manifest
+import android.app.NotificationManager
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
@@ -40,8 +41,6 @@ import com.xenonware.store.viewmodel.StoreViewModel
 import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
 import java.util.Locale
-
-import android.app.NotificationManager
 
 class MainActivity : ComponentActivity() {
 
@@ -219,7 +218,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun clearNotificationsOnAppOpen() {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(com.xenonware.store.worker.UpdateCheckWorker.NOTIFICATION_ID)
         notificationManager.cancel(com.xenonware.store.service.DownloadService.COMPLETE_NOTIFICATION_ID)
     }

@@ -22,11 +22,10 @@ import com.xenonware.store.viewmodel.classes.AppEntryState
 import com.xenonware.store.viewmodel.classes.GitHubRelease
 import com.xenonware.store.viewmodel.classes.StoreItem
 import com.xenonware.store.viewmodel.classes.StoreResponse
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +41,7 @@ import rikka.shizuku.Shizuku
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.milliseconds
 
 class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -50,7 +50,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private val _storeItems = MutableStateFlow<List<StoreItem>>(emptyList())
     val storeItems: StateFlow<List<StoreItem>> = _storeItems.asStateFlow()
 
-    private val _isOnline = MutableStateFlow<Boolean>(true)
+    private val _isOnline = MutableStateFlow(true)
     val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
@@ -83,7 +83,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private var originalCloudItems: List<StoreItem> = emptyList()
     private val lastUpdateMap = mutableMapOf<String, Long>()
 
-    private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val activeDownloads = ConcurrentHashMap<String, Boolean>()
     private val activeInstallations = ConcurrentHashMap<String, Boolean>()
 
@@ -223,7 +222,14 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     fun fetchAndRefreshAppList() {
         viewModelScope.launch {
             _currentActionInfo.value = "Fetching app list..."
+            val slowConnectionJob = launch {
+                delay(3000L.milliseconds)
+                if (_currentActionInfo.value != null) {
+                    _error.value = "slow internet connection"
+                }
+            }
             downloadToString(APPS_JSON_URL) { result ->
+                slowConnectionJob.cancel()
                 if (result != null) {
                     try {
                         // The Cloud Function has already prepared these apps.json in GCS
@@ -251,7 +257,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                     _currentActionInfo.value = null
-                    _error.value = "Cannot reach Xenon Cloud Storage."
+                    _error.value = "You are offline"
                 }
             }
         }
@@ -423,7 +429,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             if (file.name.startsWith("${cleanPkg}_") || file.name == "${cleanPkg}.apk") {
                 val pkgInfo = getArchiveInfo(context, file)
                 if (pkgInfo != null) {
-                    val archivePkg = pkgInfo.packageName ?: ""
+                    val archivePkg = pkgInfo.packageName
                     if (archivePkg == cleanPkg || cleanPkg.startsWith("com.")) {
                         if (item.installedVersion.isEmpty()) {
                             return file
@@ -692,10 +698,11 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 val installCmd = "pm install -r ${tmpApk.absolutePath}"
                 val cleanupCmd = "rm ${tmpApk.absolutePath}"
                 
-                if (executeRootCommand("$copyCmd && $installCmd && $cleanupCmd")) {
+                val rootResult = executeRootCommand("$copyCmd && $installCmd && $cleanupCmd")
+                if (rootResult.success) {
                     handlePackageChanged(pkg)
                 } else {
-                    _error.value = "Root installation failed."
+                    _error.value = "Root installation failed: ${rootResult.error.trim().take(100)}"
                     refreshItemsState(false)
                 }
             }
@@ -710,11 +717,18 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private suspend fun executeRootCommand(cmd: String): Boolean = withContext(Dispatchers.IO) {
+    data class RootResult(val success: Boolean, val error: String)
+
+    private suspend fun executeRootCommand(cmd: String): RootResult = withContext(Dispatchers.IO) {
         try {
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-            process.waitFor() == 0
-        } catch (_: Exception) { false }
+            val outText = process.inputStream.bufferedReader().readText()
+            val errText = process.errorStream.bufferedReader().readText()
+            val exitCode = process.waitFor()
+            RootResult(exitCode == 0, errText.ifEmpty { outText }.ifEmpty { "Exit code $exitCode" })
+        } catch (e: Exception) {
+            RootResult(false, e.message ?: "Root execution error")
+        }
     }
 
     private fun executeShizukuInstall(apk: File, pkg: String) {
@@ -850,32 +864,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         })
     }
 
-    private fun downloadFile(url: String, dest: File, onProgress: (Long, Long) -> Unit, onSuccess: () -> Unit, onFailure: (String) -> Unit) {
-        client.newCall(Request.Builder().url(url).build()).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) { viewModelScope.launch { onFailure(e.message ?: "Net error") } }
-            override fun onResponse(call: Call, response: Response) {
-                if (!response.isSuccessful) { viewModelScope.launch { onFailure("Code ${response.code}") }; return }
-                try {
-                    val body = response.body
-                    dest.outputStream().use { out ->
-                        body.byteStream().use { inp ->
-                            val buf = ByteArray(8192)
-                            var bytes = inp.read(buf)
-                            var total = 0L
-                            while (bytes >= 0) {
-                                out.write(buf, 0, bytes)
-                                total += bytes
-                                onProgress(total, body.contentLength())
-                                bytes = inp.read(buf)
-                            }
-                        }
-                    }
-                    viewModelScope.launch { onSuccess() }
-                } catch (e: Exception) { viewModelScope.launch { onFailure(e.message ?: "Write error") } }
-            }
-        })
-    }
-
     fun getXenonStoreDownloadedApk(context: Context): File? {
         val installDir = File(context.filesDir, "apks")
         if (!installDir.exists()) return null
@@ -991,10 +979,11 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             when (method) {
                 InstallMethod.SHIZUKU -> executeShizukuUninstall(item.packageName)
                 InstallMethod.ROOT -> {
-                    if (executeRootCommand("pm uninstall ${item.packageName}")) {
+                    val rootResult = executeRootCommand("pm uninstall ${item.packageName}")
+                    if (rootResult.success) {
                         handlePackageChanged(item.packageName)
                     } else {
-                        _error.value = "Root uninstall failed."
+                        _error.value = "Root uninstall failed: ${rootResult.error.trim().take(100)}"
                     }
                 }
                 InstallMethod.DEFAULT -> {
@@ -1200,7 +1189,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             val cleanVersion = selectedRelease.tagName.ifBlank { selectedRelease.name ?: "" }
                 .removePrefix("v").removePrefix("V")
 
-            val icon = if (item.iconPath.isBlank()) "https://github.com/$owner.png" else item.iconPath
+            val icon = item.iconPath.ifBlank { "https://github.com/$owner.png" }
 
             item.copy(
                 newVersion = cleanVersion,
@@ -1222,7 +1211,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         owner: String,
         repo: String,
         packageName: String,
-        isUpdate: Boolean,
     ) {
         viewModelScope.launch {
             val resolvedPkg = if (packageName.startsWith("com.${owner.lowercase().replace("-", "_")}") || packageName.isBlank()) {

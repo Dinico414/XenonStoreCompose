@@ -499,13 +499,16 @@ fun StoreItemCell(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val canPerformMainAction = storeItem.isDownloaded || isOnline
+
                 val mainActionButtonVisible =
-                    storeItem.state == AppEntryState.NOT_INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || storeItem.state == AppEntryState.DOWNLOADING || storeItem.state == AppEntryState.INSTALLING
+                    storeItem.state == AppEntryState.NOT_INSTALLED ||
+                    (storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED && canPerformMainAction) ||
+                    storeItem.state == AppEntryState.DOWNLOADING ||
+                    storeItem.state == AppEntryState.INSTALLING
 
                 val openAndUninstallRowVisible =
                     storeItem.state != AppEntryState.DOWNLOADING && (storeItem.state == AppEntryState.INSTALLED || storeItem.state == AppEntryState.INSTALLED_AND_OUTDATED || (storeItem.installedVersion.isNotEmpty() && storeItem.state == AppEntryState.INSTALLING))
-
-                val canPerformMainAction = storeItem.isDownloaded || isOnline
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

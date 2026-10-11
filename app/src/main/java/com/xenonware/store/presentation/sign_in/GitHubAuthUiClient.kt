@@ -17,7 +17,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 class GitHubAuthUiClient(
-    private val context: Context
+    context: Context
 ) {
     private val auth = Firebase.auth
     private val sharedPreferenceManager = SharedPreferenceManager(context)
@@ -30,7 +30,7 @@ class GitHubAuthUiClient(
                 scopes = listOf("repo", "user")
             }
 
-            var token = ""
+            var token: String
             var displayName: String? = null
             var photoUrl: String? = null
 
@@ -50,7 +50,7 @@ class GitHubAuthUiClient(
                         if (credential != null) {
                             val linkResult = currentUser.linkWithCredential(credential).await()
                             displayName = linkResult.user?.displayName ?: displayName
-                            photoUrl = linkResult.user?.photoUrl?.toString() ?: photoUrl
+                            photoUrl = linkResult.user?.photoUrl?.toString()
                         }
                     } catch (_: Exception) {}
                 }

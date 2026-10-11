@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
@@ -132,7 +133,6 @@ fun CompactStore(
         val devSettingsViewModel: DevSettingsViewModel = viewModel()
         val isGitHubLoggedIn by devSettingsViewModel.isGitHubLoggedIn.collectAsState()
         val coroutineScope = rememberCoroutineScope()
-        val unavailableMsg = stringResource(R.string.unavailable)
         val logInActionLabel = stringResource(R.string.log_in)
 
         val hazeState = rememberHazeState()
@@ -194,9 +194,22 @@ fun CompactStore(
         LaunchedEffect(Unit) {
             viewModel.error.collectLatest { errorMsg ->
                 if (errorMsg != null) {
-                    snackbarHostState.showSnackbar(
-                        message = errorMsg, duration = SnackbarDuration.Long
+                    val isShizukuNotRunning = errorMsg == "Shizuku not running."
+                    val actionLabel = if (isShizukuNotRunning) "Open" else null
+                    val snackResult = snackbarHostState.showSnackbar(
+                        message = errorMsg,
+                        actionLabel = actionLabel,
+                        duration = SnackbarDuration.Long
                     )
+                    if (snackResult == SnackbarResult.ActionPerformed && isShizukuNotRunning) {
+                        val shizukuIntent = context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
+                        if (shizukuIntent != null) {
+                            shizukuIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(shizukuIntent)
+                        } else {
+                            Toast.makeText(context, "Shizuku app not installed", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                     viewModel.clearError()
                 }
             }
@@ -228,17 +241,42 @@ fun CompactStore(
                 Scaffold(
                     snackbarHost = {
                         SnackbarHost(hostState = snackbarHostState) { snackbarData ->
+                            val message = snackbarData.visuals.message
                             val hasAction = snackbarData.visuals.actionLabel != null
+                            val isShizukuNotRunning = message == "Shizuku not running."
+
+                            val isError = message.contains("failed", ignoreCase = true) ||
+                                          message.contains("error", ignoreCase = true) ||
+                                          message.contains("cannot open", ignoreCase = true)
+
+                            val backgroundColor = if (isError) {
+                                colorScheme.errorContainer
+                            } else {
+                                XenonSnackbarDefault.backgroundColor
+                            }
+
+                            val contentColor = if (isError) {
+                                colorScheme.onErrorContainer
+                            } else {
+                                XenonSnackbarDefault.contentColor
+                            }
+
                             XenonSnackbar(
                                 snackbarData = snackbarData,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                backgroundColor = backgroundColor,
+                                contentColor = contentColor,
+                                actionContainerColor = if (isError) colorScheme.error else XenonSnackbarDefault.actionContainerColor,
+                                actionContentColor = if (isError) colorScheme.onError else XenonSnackbarDefault.actionContentColor,
                                 contentIcon = if (hasAction) {
                                     {
                                         Icon(
-                                            painter = painterResource(id = R.drawable.ic_github),
-                                            contentDescription = "GitHub",
+                                            painter = painterResource(
+                                                id = if (isShizukuNotRunning) R.drawable.info else R.drawable.ic_github
+                                            ),
+                                            contentDescription = null,
                                             modifier = Modifier.size(24.dp),
-                                            tint = XenonSnackbarDefault.contentColor
+                                            tint = contentColor
                                         )
                                     }
                                 } else null
@@ -471,8 +509,9 @@ fun CompactStore(
                                                 onInstall = { item ->
                                                     if (item.isCustom && !isGitHubLoggedIn) {
                                                         coroutineScope.launch {
+                                                            val loginMsg = "Please log in to GitHub"
                                                             val snackResult = snackbarHostState.showSnackbar(
-                                                                message = unavailableMsg,
+                                                                message = loginMsg,
                                                                 actionLabel = logInActionLabel,
                                                                 duration = SnackbarDuration.Long
                                                             )
@@ -544,8 +583,7 @@ fun CompactStore(
                                 viewModel.addGitHubRepoConfig(
                                     owner = ownerInput,
                                     repo = repoInput,
-                                    packageName = finalPkg,
-                                    isUpdate = false
+                                    packageName = finalPkg
                                 )
                             }
                             showGitHubDialog = false

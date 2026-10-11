@@ -149,7 +149,7 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
                         val body = response.body.string()
                         val root = jsonSerializer.parseToJsonElement(body)
                         val itemsArray = (root as? kotlinx.serialization.json.JsonObject)?.get("items") as? kotlinx.serialization.json.JsonArray
-                        if (itemsArray != null && itemsArray.isNotEmpty()) {
+                        if (!itemsArray.isNullOrEmpty()) {
                             val items = itemsArray.mapNotNull { element ->
                                 val obj = element as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
                                 val name = obj["name"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content } ?: ""
@@ -185,7 +185,7 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
             // Second attempt: Search GitHub specifically for Android repositories (topic:android, language:Kotlin/Java)
             try {
                 val token = sharedPreferenceManager.githubToken
-                val androidQuery = "${trimmed} topic:android"
+                val androidQuery = "$trimmed topic:android"
                 val encodedQuery = java.net.URLEncoder.encode(androidQuery, "UTF-8")
                 val reqBuilder = Request.Builder()
                     .url("https://api.github.com/search/repositories?q=$encodedQuery&sort=stars&order=desc")
