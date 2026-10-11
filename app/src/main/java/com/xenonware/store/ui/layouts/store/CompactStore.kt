@@ -502,6 +502,9 @@ fun CompactStore(
                                                 },
                                                 onOpen = { item ->
                                                     viewModel.openApp(item, context)
+                                                },
+                                                onCancelDownload = { item ->
+                                                    viewModel.cancelDownload(item, context)
                                                 }
                                             )
                                         }

@@ -14,14 +14,22 @@ import androidx.core.content.ContextCompat
 import com.xenonware.store.MainActivity
 import com.xenonware.store.R
 import com.xenonware.store.viewmodel.classes.StoreItem
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -30,7 +38,8 @@ import java.util.concurrent.ConcurrentHashMap
 enum class DownloadStatus {
     DOWNLOADING,
     SUCCESS,
-    FAILED
+    FAILED,
+    CANCELLED
 }
 
 data class DownloadProgress(
@@ -55,6 +64,7 @@ class DownloadService : Service() {
         const val COMPLETE_NOTIFICATION_ID = 2002
 
         const val ACTION_START_DOWNLOAD = "com.xenonware.store.action.START_DOWNLOAD"
+        const val ACTION_CANCEL_DOWNLOAD = "com.xenonware.store.action.CANCEL_DOWNLOAD"
         const val EXTRA_PACKAGE_NAME = "extra_package_name"
         const val EXTRA_APP_NAME = "extra_app_name"
         const val EXTRA_DOWNLOAD_URL = "extra_download_url"
@@ -65,10 +75,12 @@ class DownloadService : Service() {
         val downloadProgressFlow: StateFlow<Map<String, DownloadProgress>> = _downloadProgressFlow.asStateFlow()
 
         private val activeTasks = ConcurrentHashMap<String, DownloadProgress>()
+        private val activeJobs = ConcurrentHashMap<String, Job>()
+        private val activeCalls = ConcurrentHashMap<String, Call>()
 
         fun isDownloading(packageName: String): Boolean {
             return activeTasks.containsKey(packageName) ||
-                   _downloadProgressFlow.value[packageName]?.status == DownloadStatus.DOWNLOADING
+                    _downloadProgressFlow.value[packageName]?.status == DownloadStatus.DOWNLOADING
         }
 
         fun getProgress(packageName: String): DownloadProgress? {
@@ -99,6 +111,26 @@ class DownloadService : Service() {
             }
             ContextCompat.startForegroundService(context, intent)
         }
+
+        fun cancelDownload(context: Context, packageName: String) {
+            cancelDownloadTask(packageName)
+            val intent = Intent(context, DownloadService::class.java).apply {
+                action = ACTION_CANCEL_DOWNLOAD
+                putExtra(EXTRA_PACKAGE_NAME, packageName)
+            }
+            try {
+                context.startService(intent)
+            } catch (_: Exception) {
+            }
+        }
+
+        fun cancelDownloadTask(pkg: String) {
+            // Abort the network call first: this unblocks execute()/read() immediately.
+            activeCalls.remove(pkg)?.cancel()
+            activeJobs.remove(pkg)?.cancel()
+            activeTasks.remove(pkg)
+            _downloadProgressFlow.update { it - pkg }
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -109,6 +141,13 @@ class DownloadService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_CANCEL_DOWNLOAD) {
+            val pkg = intent.getStringExtra(EXTRA_PACKAGE_NAME)
+            if (pkg != null) {
+                cancelDownloadTask(pkg)
+            }
+            return START_NOT_STICKY
+        }
         if (intent?.action == ACTION_START_DOWNLOAD) {
             val pkg = intent.getStringExtra(EXTRA_PACKAGE_NAME) ?: return START_NOT_STICKY
             if (isDownloading(pkg)) {
@@ -147,57 +186,91 @@ class DownloadService : Service() {
         updateProgressFlow()
         updateForegroundNotification()
 
-        serviceScope.launch {
+        // LAZY so the job is registered in activeJobs before it can run/finish.
+        val job = serviceScope.launch(start = CoroutineStart.LAZY) {
+            val call = client.newCall(Request.Builder().url(url).build())
+            activeCalls[pkg] = call
             try {
-                val request = Request.Builder().url(url).build()
-                val response = client.newCall(request).execute()
+                ensureActive()
+                call.execute().use { response ->
+                    if (!response.isSuccessful) {
+                        onDownloadFailed(pkg, appName, "HTTP Code ${response.code}", destFile)
+                        return@launch
+                    }
 
-                if (!response.isSuccessful) {
-                    onDownloadFailed(pkg, appName, "HTTP Code ${response.code}", destFile)
-                    return@launch
-                }
+                    val body = response.body
+                    val total = body.contentLength()
+                    destFile.outputStream().use { out ->
+                        body.byteStream().use { inp ->
+                            val buf = ByteArray(8192)
+                            var bytes = inp.read(buf)
+                            var current = 0L
+                            var lastNotifyTime = 0L
 
-                val body = response.body
+                            while (bytes >= 0) {
+                                ensureActive()
+                                out.write(buf, 0, bytes)
+                                current += bytes
 
-                val total = body.contentLength()
-                destFile.outputStream().use { out ->
-                    body.byteStream().use { inp ->
-                        val buf = ByteArray(8192)
-                        var bytes = inp.read(buf)
-                        var current = 0L
-                        var lastNotifyTime = 0L
+                                val now = System.currentTimeMillis()
+                                if (now - lastNotifyTime > 250L || current == total) {
+                                    lastNotifyTime = now
+                                    val progress = DownloadProgress(
+                                        packageName = pkg,
+                                        appName = appName,
+                                        bytesDownloaded = current,
+                                        totalBytes = total,
+                                        status = DownloadStatus.DOWNLOADING,
+                                        isCustom = isCustom
+                                    )
+                                    // Only update if the task wasn't cancelled meanwhile,
+                                    // otherwise we'd re-add it to the UI.
+                                    if (activeTasks.computeIfPresent(pkg) { _, _ -> progress } != null) {
+                                        updateProgressFlow()
+                                        updateForegroundNotification()
+                                    }
+                                }
 
-                        while (bytes >= 0) {
-                            out.write(buf, 0, bytes)
-                            current += bytes
-
-                            val now = System.currentTimeMillis()
-                            if (now - lastNotifyTime > 250L || current == total) {
-                                lastNotifyTime = now
-                                val progress = DownloadProgress(
-                                    packageName = pkg,
-                                    appName = appName,
-                                    bytesDownloaded = current,
-                                    totalBytes = total,
-                                    status = DownloadStatus.DOWNLOADING,
-                                    isCustom = isCustom
-                                )
-                                activeTasks[pkg] = progress
-                                updateProgressFlow()
-                                updateForegroundNotification()
+                                bytes = inp.read(buf)
                             }
-
-                            bytes = inp.read(buf)
                         }
                     }
                 }
 
+                ensureActive()
                 onDownloadSuccess(pkg, appName, destFile, isCustom)
 
             } catch (e: Exception) {
-                onDownloadFailed(pkg, appName, e.message ?: "Download error", destFile)
+                // call.cancel() surfaces as an IOException ("Canceled" / "Socket closed"),
+                // not as a CancellationException, so check all cancel signals.
+                if (e is CancellationException || call.isCanceled() || !isActive) {
+                    onDownloadCancelled(pkg, destFile)
+                } else {
+                    onDownloadFailed(pkg, appName, e.message ?: "Download error", destFile)
+                }
+            } finally {
+                activeCalls.remove(pkg, call)
+                activeJobs.remove(pkg, coroutineContext.job)
             }
         }
+        activeJobs[pkg] = job
+        job.start()
+    }
+
+    private fun cancelDownloadTask(pkg: String) {
+        Companion.cancelDownloadTask(pkg)
+        checkStopService()
+    }
+
+    private fun onDownloadCancelled(pkg: String, destFile: File) {
+        if (destFile.exists()) {
+            try {
+                destFile.delete()
+            } catch (_: Exception) {}
+        }
+        activeTasks.remove(pkg)
+        Companion.cancelDownloadTask(pkg)
+        checkStopService()
     }
 
     private fun onDownloadSuccess(pkg: String, appName: String, destFile: File, isCustom: Boolean) {
@@ -240,9 +313,7 @@ class DownloadService : Service() {
     }
 
     private fun updateProgressFlowWithCompleted(progress: DownloadProgress) {
-        val current = _downloadProgressFlow.value.toMutableMap()
-        current[progress.packageName] = progress
-        _downloadProgressFlow.value = current
+        _downloadProgressFlow.update { it + (progress.packageName to progress) }
     }
 
     private fun updateForegroundNotification() {

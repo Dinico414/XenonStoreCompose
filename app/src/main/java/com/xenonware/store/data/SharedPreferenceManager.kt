@@ -19,30 +19,58 @@ enum class InstallMethod {
 
 class SharedPreferenceManager(context: Context) {
 
-    private val prefsName = "StorePrefs"
-    private val isUserLoggedInKey = "is_user_logged_in"
-    private val googleUserIdKey = "google_user_id"
-    private val googleUsernameKey = "google_username"
-    private val googleEmailKey = "google_email"
-    private val googlePhotoUrlKey = "google_photo_url"
+    companion object {
+        const val PREFS_NAME = "StorePrefs"
+        const val KEY_IS_USER_LOGGED_IN = "is_user_logged_in"
+        const val KEY_GOOGLE_USER_ID = "google_user_id"
+        const val KEY_GOOGLE_USERNAME = "google_username"
+        const val KEY_GOOGLE_EMAIL = "google_email"
+        const val KEY_GOOGLE_PHOTO_URL = "google_photo_url"
 
-    private val isGitHubLoggedInKey = "is_github_logged_in"
-    private val githubTokenKey = "github_token"
-    private val githubUsernameKey = "github_username"
-    private val githubAvatarUrlKey = "github_avatar_url"
-    private val themeKey = "app_theme"
-    private val blackedOutModeKey = "blacked_out_mode_enabled"
-    private val coverThemeEnabledKey = "cover_theme_enabled"
-    private val coverDisplayDimension1Key = "cover_display_dimension_1"
-    private val coverDisplayDimension2Key = "cover_display_dimension_2"
-    private val languageTagKey = "app_language_tag"
-    private val developerModeKey = "developer_mode_enabled"
-    private val showDummyProfileKey = "show_dummy_profile_enabled"
-    private val addButtonStateKey = "add_button_state_enabled"
-    private val checkForPreReleasesKey = "check_for_pre_releases"
-    private val installMethodKey = "install_method"
-    private val customStoreItemsKey = "custom_store_items"
-    private val cachedCloudStoreItemsKey = "cached_cloud_store_items"
+        const val KEY_IS_GITHUB_LOGGED_IN = "is_github_logged_in"
+        const val KEY_GITHUB_TOKEN = "github_token"
+        const val KEY_GITHUB_USERNAME = "github_username"
+        const val KEY_GITHUB_AVATAR_URL = "github_avatar_url"
+        const val KEY_THEME = "app_theme"
+        const val KEY_BLACKED_OUT_MODE = "blacked_out_mode_enabled"
+        const val KEY_COVER_THEME_ENABLED = "cover_theme_enabled"
+        const val KEY_COVER_DISPLAY_DIMENSION_1 = "cover_display_dimension_1"
+        const val KEY_COVER_DISPLAY_DIMENSION_2 = "cover_display_dimension_2"
+        const val KEY_LANGUAGE_TAG = "app_language_tag"
+        const val KEY_DEVELOPER_MODE = "developer_mode_enabled"
+        const val KEY_SHOW_DUMMY_PROFILE = "show_dummy_profile_enabled"
+        const val KEY_ADD_BUTTON_STATE = "add_button_state_enabled"
+        const val KEY_CHECK_FOR_PRE_RELEASES = "check_for_pre_releases"
+        const val KEY_INSTALL_METHOD = "install_method"
+        const val KEY_CUSTOM_STORE_ITEMS = "custom_store_items"
+        const val KEY_CACHED_CLOUD_STORE_ITEMS = "cached_cloud_store_items"
+        const val KEY_DOWNLOADED_FILES_UPDATED = "downloaded_files_updated"
+    }
+
+    private val prefsName = PREFS_NAME
+    private val isUserLoggedInKey = KEY_IS_USER_LOGGED_IN
+    private val googleUserIdKey = KEY_GOOGLE_USER_ID
+    private val googleUsernameKey = KEY_GOOGLE_USERNAME
+    private val googleEmailKey = KEY_GOOGLE_EMAIL
+    private val googlePhotoUrlKey = KEY_GOOGLE_PHOTO_URL
+
+    private val isGitHubLoggedInKey = KEY_IS_GITHUB_LOGGED_IN
+    private val githubTokenKey = KEY_GITHUB_TOKEN
+    private val githubUsernameKey = KEY_GITHUB_USERNAME
+    private val githubAvatarUrlKey = KEY_GITHUB_AVATAR_URL
+    private val themeKey = KEY_THEME
+    private val blackedOutModeKey = KEY_BLACKED_OUT_MODE
+    private val coverThemeEnabledKey = KEY_COVER_THEME_ENABLED
+    private val coverDisplayDimension1Key = KEY_COVER_DISPLAY_DIMENSION_1
+    private val coverDisplayDimension2Key = KEY_COVER_DISPLAY_DIMENSION_2
+    private val languageTagKey = KEY_LANGUAGE_TAG
+    private val developerModeKey = KEY_DEVELOPER_MODE
+    private val showDummyProfileKey = KEY_SHOW_DUMMY_PROFILE
+    private val addButtonStateKey = KEY_ADD_BUTTON_STATE
+    private val checkForPreReleasesKey = KEY_CHECK_FOR_PRE_RELEASES
+    private val installMethodKey = KEY_INSTALL_METHOD
+    private val customStoreItemsKey = KEY_CUSTOM_STORE_ITEMS
+    private val cachedCloudStoreItemsKey = KEY_CACHED_CLOUD_STORE_ITEMS
 
     internal val sharedPreferences: SharedPreferences =
         context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)

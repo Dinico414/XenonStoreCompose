@@ -163,5 +163,6 @@
     <string name="github_owner_hint">GitHub-Owner / Benutzername *</string>
     <string name="github_repo_hint">Repository *</string>
     <string name="github_package_name_hint">Paketname (Optional - automatisch erkannt)</string>
+    <string name="open_repository">Repository öffnen</string>
 
 </resources>

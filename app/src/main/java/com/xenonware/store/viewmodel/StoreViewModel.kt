@@ -4,6 +4,11 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.SharedPreferences
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Build
 import android.util.Log
 import androidx.core.content.FileProvider
@@ -32,10 +37,6 @@ import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import okhttp3.Response
 import rikka.shizuku.Shizuku
 import java.io.File
@@ -86,6 +87,45 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private val activeDownloads = ConcurrentHashMap<String, Boolean>()
     private val activeInstallations = ConcurrentHashMap<String, Boolean>()
 
+    private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        when (key) {
+            SharedPreferenceManager.KEY_ADD_BUTTON_STATE -> {
+                viewModelScope.launch {
+                    loadCustomStoreItems(fetchReleases = sharedPreferenceManager.addButtonEnabled)
+                    filterItems()
+                }
+            }
+            SharedPreferenceManager.KEY_CUSTOM_STORE_ITEMS -> {
+                viewModelScope.launch {
+                    _customStoreItems.value = sharedPreferenceManager.loadCustomStoreItems()
+                    refreshItemsState(isCustom = true)
+                    filterItems()
+                }
+            }
+            SharedPreferenceManager.KEY_CHECK_FOR_PRE_RELEASES -> {
+                viewModelScope.launch {
+                    refreshItemsState(isCustom = false)
+                    refreshItemsState(isCustom = true)
+                }
+            }
+            SharedPreferenceManager.KEY_IS_GITHUB_LOGGED_IN,
+            SharedPreferenceManager.KEY_GITHUB_TOKEN -> {
+                viewModelScope.launch {
+                    if (sharedPreferenceManager.isGitHubLoggedIn && sharedPreferenceManager.addButtonEnabled) {
+                        fetchReleaseInfoForCustomApps()
+                    }
+                    refreshItemsState(isCustom = true)
+                }
+            }
+            SharedPreferenceManager.KEY_DOWNLOADED_FILES_UPDATED -> {
+                viewModelScope.launch {
+                    refreshItemsState(isCustom = true)
+                    refreshItemsState(isCustom = false)
+                }
+            }
+        }
+    }
+
     private companion object {
         const val TAG = "XenonStoreVM"
         const val XENON_STORE_PACKAGE = "com.xenonware.store"
@@ -95,6 +135,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         cleanupOldApks(application.applicationContext)
+        sharedPreferenceManager.sharedPreferences.registerOnSharedPreferenceChangeListener(prefListener)
         loadCustomStoreItems()
         loadCachedCloudStoreItems()
         fetchAndRefreshAppList()
@@ -314,16 +355,18 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
             val now = System.currentTimeMillis()
             val maxAgeMillis = 12 * 60 * 60 * 1000L // 12 hours
+            val maxTmpAgeMillis = 5 * 60 * 1000L // 5 minutes for incomplete downloads
 
             installDir.listFiles()?.forEach { file ->
-                if (file.isFile && (file.extension.equals("apk", ignoreCase = true) || file.name.startsWith("download_"))) {
+                if (file.isFile) {
+                    val isTmp = file.name.startsWith("download_") || file.name.endsWith(".tmp", ignoreCase = true)
                     val age = now - file.lastModified()
-                    if (age >= maxAgeMillis) {
+                    if ((isTmp && age >= maxTmpAgeMillis) || (!isTmp && file.extension.equals("apk", ignoreCase = true) && age >= maxAgeMillis)) {
                         try {
                             file.delete()
-                            Log.d(TAG, "Deleted old downloaded APK: ${file.name}")
+                            Log.d(TAG, "Deleted old/temp APK: ${file.name}")
                         } catch (e: Exception) {
-                            Log.w(TAG, "Failed to delete old APK: ${file.name}", e)
+                            Log.w(TAG, "Failed to delete APK: ${file.name}", e)
                         }
                     }
                 }
@@ -366,10 +409,15 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // 3. Scan all APK files in installDir for this package (handles version name differences between tag and manifest)
+        // 3. Scan all completed APK files in installDir for this package
         val files = installDir.listFiles() ?: return null
-        val sortedFiles = files.filter { it.isFile && it.extension.equals("apk", ignoreCase = true) && it.length() > 0 }
-            .sortedByDescending { it.lastModified() }
+        val sortedFiles = files.filter { file ->
+            file.isFile &&
+            file.length() > 0 &&
+            file.extension.equals("apk", ignoreCase = true) &&
+            !file.name.startsWith("download_") &&
+            !file.name.endsWith(".tmp", ignoreCase = true)
+        }.sortedByDescending { it.lastModified() }
 
         for (file in sortedFiles) {
             if (file.name.startsWith("${cleanPkg}_") || file.name == "${cleanPkg}.apk") {
@@ -476,6 +524,16 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                             }
                             refreshItemsState(progress.isCustom)
                         }
+                        com.xenonware.store.service.DownloadStatus.CANCELLED -> {
+                            activeDownloads.remove(progress.packageName)
+                            _currentActionInfo.value = null
+                            if (progress.packageName == XENON_STORE_PACKAGE) {
+                                _isXenonStoreDownloading.value = false
+                                _isXenonStoreDownloaded.value = false
+                                _xenonStoreDownloadProgress.value = 0f
+                            }
+                            refreshItemsState(progress.isCustom)
+                        }
                     }
                 }
             }
@@ -514,7 +572,14 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
             val dest = File(installDir, "${actualPkg}_${cleanVer}.apk")
             if (dest.exists()) dest.delete()
-            tempApk.renameTo(dest)
+            if (!tempApk.renameTo(dest)) {
+                try {
+                    tempApk.copyTo(dest, overwrite = true)
+                    tempApk.delete()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to move temp APK to destination: ${e.message}")
+                }
+            }
 
             if (actualPkg == XENON_STORE_PACKAGE) {
                 withContext(Dispatchers.Main) {
@@ -547,6 +612,25 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+    }
+
+    fun cancelDownload(item: StoreItem, context: Context) {
+        com.xenonware.store.service.DownloadService.cancelDownload(context, item.packageName)
+        activeDownloads.remove(item.packageName)
+        updateItemInternalState(
+            item.packageName,
+            if (item.installedVersion.isNotEmpty() && item.isOutdated()) AppEntryState.INSTALLED_AND_OUTDATED
+            else if (item.installedVersion.isNotEmpty()) AppEntryState.INSTALLED
+            else AppEntryState.NOT_INSTALLED
+        )
+        _currentActionInfo.value = null
+        if (item.packageName == XENON_STORE_PACKAGE) {
+            _isXenonStoreDownloading.value = false
+            _isXenonStoreDownloaded.value = false
+            _xenonStoreDownloadProgress.value = 0f
+        }
+        refreshItemsState(isCustom = true)
+        refreshItemsState(isCustom = false)
     }
 
     fun installApp(item: StoreItem, context: Context) {
@@ -587,7 +671,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         if (!installDir.exists()) installDir.mkdirs()
         cleanupOldApks(context)
 
-        val tempApk = File(installDir, "download_${System.currentTimeMillis()}.apk")
+        val tempApk = File(installDir, "download_${System.currentTimeMillis()}.apk.tmp")
 
         com.xenonware.store.service.DownloadService.startDownload(
             context = context,
@@ -1172,6 +1256,7 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     fun clearError() { _error.value = null }
 
     override fun onCleared() {
+        sharedPreferenceManager.sharedPreferences.unregisterOnSharedPreferenceChangeListener(prefListener)
         if (isPackageReceiverRegistered) {
             try { getApplication<Application>().unregisterReceiver(packageInstallReceiver) } catch (_: Exception) {}
         }

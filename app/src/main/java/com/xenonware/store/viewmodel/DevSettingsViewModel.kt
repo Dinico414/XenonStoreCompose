@@ -3,7 +3,9 @@ package com.xenonware.store.viewmodel
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.content.SharedPreferences
 import android.widget.Toast
+import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xenonware.store.data.InstallMethod
@@ -64,7 +66,34 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
     private val httpClient = OkHttpClient.Builder().build()
     private val jsonSerializer = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 
+    private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        when (key) {
+            SharedPreferenceManager.KEY_DEVELOPER_MODE -> {
+                _devModeToggleState.value = sharedPreferenceManager.developerModeEnabled
+            }
+            SharedPreferenceManager.KEY_ADD_BUTTON_STATE -> {
+                _addButtonState.value = sharedPreferenceManager.addButtonEnabled
+            }
+            SharedPreferenceManager.KEY_INSTALL_METHOD -> {
+                _installMethodState.value = sharedPreferenceManager.installMethod
+            }
+            SharedPreferenceManager.KEY_CUSTOM_STORE_ITEMS -> {
+                loadGithubApps()
+            }
+            SharedPreferenceManager.KEY_IS_GITHUB_LOGGED_IN -> {
+                _isGitHubLoggedIn.value = sharedPreferenceManager.isGitHubLoggedIn
+            }
+            SharedPreferenceManager.KEY_GITHUB_USERNAME -> {
+                _githubUsername.value = sharedPreferenceManager.githubUsername
+            }
+            SharedPreferenceManager.KEY_GITHUB_AVATAR_URL -> {
+                _githubAvatarUrl.value = sharedPreferenceManager.githubAvatarUrl
+            }
+        }
+    }
+
     init {
+        sharedPreferenceManager.sharedPreferences.registerOnSharedPreferenceChangeListener(preferenceListener)
         loadGithubApps()
         val user = gitHubAuthUiClient.getSignedInUser()
         if (user != null) {
@@ -281,6 +310,9 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
                 }
             }
         } catch (_: Exception) {}
+        sharedPreferenceManager.sharedPreferences.edit {
+            putLong(SharedPreferenceManager.KEY_DOWNLOADED_FILES_UPDATED, System.currentTimeMillis())
+        }
         viewModelScope.launch {
             _customAppsUpdated.emit(Unit)
         }
@@ -291,6 +323,7 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             sharedPreferenceManager.developerModeEnabled = enabled
             _devModeToggleState.value = enabled
+            _customAppsUpdated.tryEmit(Unit)
 
             if (!enabled) {
                 setAddButtonEnabled(false)
@@ -303,8 +336,7 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
             if (sharedPreferenceManager.addButtonEnabled != enabled) {
                 sharedPreferenceManager.addButtonEnabled = enabled
                 _addButtonState.value = enabled
-
-                triggerExampleDevActionThatRequiresRestart()
+                _customAppsUpdated.tryEmit(Unit)
             }
         }
     }
@@ -323,11 +355,7 @@ class DevSettingsViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun triggerExampleDevActionThatRequiresRestart() {
-        viewModelScope.launch {
-            Toast.makeText(
-                getApplication(), "To apply changes, restart the app.", Toast.LENGTH_LONG
-            ).show()
-        }
+    override fun onCleared() {
+        sharedPreferenceManager.sharedPreferences.unregisterOnSharedPreferenceChangeListener(preferenceListener)
     }
 }
